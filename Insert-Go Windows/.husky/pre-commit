@@ -1,0 +1,10 @@
+node scripts/sync-context.mjs
+git add -- CLAUDE.md AGENTS.md GEMINI.md .windsurfrules INTEGRATION.md
+
+website_dir="../Insert-Go Website"
+if git -C "$website_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1
+then
+  git -C "$website_dir" add -- CLAUDE.md AGENTS.md GEMINI.md .windsurfrules INTEGRATION.md CLAUDE.md.tmp AGENTS.md.tmp GEMINI.md.tmp .rules.tmp
+else
+  echo "sync-context: Website files generated but not staged; directory is not a Git worktree." >&2
+fi

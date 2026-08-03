@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "google-video": {
+      "command": "node",
+      "args": [
+        "--env-file=${CLAUDE_PROJECT_DIR:-.}/Insert-Go Website/.env.local",
+        "${CLAUDE_PROJECT_DIR:-.}/Insert-Go Website/scripts/google-video-mcp.mjs"
+      ]
+    }
+  }
+}

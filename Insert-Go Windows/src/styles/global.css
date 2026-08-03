@@ -1,0 +1,506 @@
+/* InsertGo global styles & theme tokens.
+   Palette is a transparent, borderless overlay — body stays transparent so the
+   rounded panel "floats" alone over the desktop. The main window requests a
+   DWM acrylic system backdrop (tauri.conf windowEffects), so the OS
+   compositor paints frosted glass behind the page; the panel is a translucent
+   tint (--ig-bg) over that material. In-page backdrop-filter still samples
+   only in-page pixels — card frost blurs the panel fill composited over
+   acrylic, never the desktop directly. Glass is built strictly from the safe
+   toolkit (see components.css header): flat translucent fills, inset
+   speculars, mask-composite rims, and in-page backdrop blur — never a
+   gradient layered over the panel fill.
+   Theme tokens flip via [data-theme] on <html>. */
+
+/* Display font — bundled locally (CSP: font-src 'self'). UI text rides the
+   system stack (SF Pro on macOS, Inter/Segoe elsewhere) for a native,
+   Apple-grade feel; Fraunces stays for the wordmark only. */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 500 600;
+  font-display: swap;
+  src: url("/fonts/fraunces-latin.woff2") format("woff2");
+}
+
+:root {
+  --ig-font: "SF Pro Text", "SF Pro Display", -apple-system,
+    BlinkMacSystemFont, "Inter", "Segoe UI Variable Text", "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --ig-font-serif: "Fraunces", Georgia, "Times New Roman", serif;
+
+  /* Radius grammar (floating > container > control) */
+  --ig-radius-panel: 18px;
+  --ig-radius-glass: 20px;
+  --ig-radius-card: 12px;
+  --ig-radius-btn: 9px;
+  --ig-radius-pill: 9999px;
+  --ig-radius: var(--ig-radius-panel);
+
+  /* ── Sizing system ─────────────────────────────────────────────────────
+     Every component draws from these scales; component rules carry no
+     literal font/padding/gap pixels (see components.css).
+
+     Type ramp — rem against the 16px root so OS/user font scaling
+     propagates; every step lands on a whole CSS px at 100% (Segoe UI
+     renders crisp at integer px). Pick by role, not by size.
+                                    px   pt @96dpi */
+  --ig-text-2xs: 0.6875rem; /*      11   8.25  overlines, kbd, badges   */
+  --ig-text-xs: 0.75rem; /*         12   9     captions, chips, hints   */
+  --ig-text-sm: 0.8125rem; /*       13   9.75  controls: buttons/inputs */
+  --ig-text-md: 0.875rem; /*        14   10.5  body default, results    */
+  --ig-text-lg: 0.9375rem; /*       15   11.25 editor, titles, wordmark */
+  --ig-text-xl: 1rem; /*            16   12    dialog titles            */
+
+  /* Line heights — tight for height-managed controls, normal for UI text,
+     relaxed for composition/reading surfaces (editor, results). */
+  --ig-leading-none: 1;
+  --ig-leading-tight: 1.2;
+  --ig-leading-normal: 1.45;
+  --ig-leading-relaxed: 1.55;
+
+  /* Spacing — strict 4px grid. px on purpose: gutters stay pixel-snapped
+     against 1px hairlines even if the root font scales (the rem
+     accessibility requirement lives on the type ramp, where it matters). */
+  --ig-space-1: 4px;
+  --ig-space-2: 8px;
+  --ig-space-3: 12px;
+  --ig-space-4: 16px;
+  --ig-space-5: 20px;
+  --ig-space-6: 24px;
+  --ig-space-8: 32px;
+  --ig-space-10: 40px;
+
+  /* Interactive control heights (Fluent-aligned: 24 compact · 28 standard
+     · 32 input/emphasized). 24px is also the WCAG 2.5.8 target floor.
+     Use min-height on anything that can hold wrapping/multiline content
+     (inputs shared with textareas), fixed height only on single-line. */
+  --ig-control-sm: 24px;
+  --ig-control-md: 28px;
+  --ig-control-lg: 32px;
+
+  /* Motion */
+  --ig-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --ig-ease-pop: cubic-bezier(0.34, 1.3, 0.5, 1);
+  --ig-fast: 150ms;
+  --ig-slow: 240ms;
+
+  /* dark (default) — "Obsidian + Cobalt Glass": near-black obsidian #0B0F14
+     ground (gives the acrylic real depth), cool off-white #F4F7FB text
+     ladder, brand cobalt #2F6BFF accent (hover #4A82FF, pressed #1F54E8).
+     color-scheme keys native selects/scrollbars to the theme. */
+  color-scheme: dark;
+  /* Translucent tint over the DWM acrylic system backdrop (tauri.conf
+     windowEffects). USER OVERRIDE (2026-07): the panel is now translucent in
+     EVERY environment — the mac/browser opaque fallbacks were removed and
+     .ig-panel carries its own backdrop-filter (see components.css). If
+     acrylic is unavailable the panel reads as a flat tint; that trade-off is
+     accepted. --ig-bg-opaque remains only for surfaces that genuinely need a
+     solid fill (selection bar window, popovers, toasts). */
+  --ig-bg: rgba(11, 15, 20, 0.55);
+  --ig-bg-opaque: #0b0f14;
+  --ig-surface-1: rgba(244, 247, 251, 0.055);
+  --ig-surface-2: rgba(244, 247, 251, 0.09);
+  --ig-surface-3: rgba(244, 247, 251, 0.135);
+  --ig-field-bg: var(--ig-surface-1);
+  /* In-page glass (modal card / floaters): translucent flat fill + backdrop
+     blur of PANEL content behind it — never the desktop. */
+  --ig-glass-bg: rgba(18, 24, 33, 0.86);
+  --ig-glass-blur: 24px;
+  /* Glass card material (safe toolkit): flat translucent fill + true frost —
+     backdrop blur/saturate of the ambient layer behind the card — plus a
+     dual-gradient hairline rim (masked 1px rings: horizontal top-edge line +
+     vertical left-edge line, both fading to 0-alpha rgba, never the
+     `transparent` keyword) and an inner glow stack (top light-catch, dim
+     bottom, soft all-around glow). No desktop sampling, no gradient over
+     the fill. */
+  --ig-glass-card-bg: rgba(244, 247, 251, 0.05);
+  --ig-glass-card-bg-hover: rgba(244, 247, 251, 0.09);
+  --ig-glass-blur-card: 13px;
+  --ig-glass-frost: saturate(180%) brightness(1.08);
+  --ig-glass-card-border: rgba(244, 247, 251, 0.05);
+  /* Edge-line highlight color for the gradient rims. */
+  --ig-glass-edge: rgba(255, 255, 255, 0.05);
+  /* Top edge: transparent → highlight → transparent (horizontal). */
+  --ig-glass-rim: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    var(--ig-glass-edge) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  /* Left edge: highlight → transparent → dim highlight (vertical). */
+  --ig-glass-rim-edge: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0) 45%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  --ig-glass-specular-set: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  /* Edges — elevation via light, not shadow */
+  --ig-border-subtle: rgba(244, 247, 251, 0.04);
+  --ig-border: rgba(244, 247, 251, 0.05);
+  --ig-border-strong: rgba(244, 247, 251, 0.08);
+  --ig-highlight: rgba(244, 247, 251, 0.13);
+  /* Sunken wells (editor / inputs): depth via inner shadow, not fill */
+  --ig-inset-well: inset 0 1px 2px rgba(0, 0, 0, 0.22);
+
+  /* Text hierarchy via color, not weight */
+  --ig-fg: #f4f7fb;
+  --ig-muted: #9aa6b2;
+  --ig-faint: rgba(244, 247, 251, 0.42);
+
+  /* Accent — brand cobalt #2F6BFF, the ONE brand hue; hover/active are its
+     only sanctioned steps. Mid-dark accent, so accent-fg is white (4.5:1).
+     soft/tint/glow all ride 47, 107, 255 so translucent states stay on-hue
+     over the frost instead of muddying. 4.3:1 on obsidian — fine for fills,
+     rings and large text; small accent-colored text should use the hover
+     shade. */
+  --ig-accent: #2f6bff;
+  --ig-accent-hover: #4a82ff;
+  --ig-accent-active: #1f54e8;
+  --ig-accent-soft: rgba(47, 107, 255, 0.26);
+  --ig-accent-tint: rgba(47, 107, 255, 0.14);
+  --ig-accent-fg: #ffffff;
+  --ig-accent-glow: rgba(47, 107, 255, 0.38);
+  /* Secondary tone — neutral gray; never competes with the brand cobalt */
+  --ig-brand: #8e8e93;
+  --ig-danger: #e0655c;
+  --ig-danger-soft: rgba(224, 101, 92, 0.14);
+  --ig-success: #74b478;
+  --ig-success-soft: rgba(116, 180, 120, 0.16);
+  --ig-warn: #d9a441;
+  --ig-warn-soft: rgba(217, 164, 65, 0.16);
+  /* Modal scrim — black */
+  --ig-scrim: rgba(0, 0, 0, 0.44);
+  --ig-scrim-strong: rgba(0, 0, 0, 0.65);
+  /* Unused on the panel since the WebView2 transparent-window compositing
+     bug (see components.css .ig-panel); kept for token-name stability. */
+  --ig-glow: rgba(47, 107, 255, 0.07);
+
+  /* Depth — contact line + ambient + long throw */
+  --ig-shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.32),
+    0 12px 32px rgba(0, 0, 0, 0.42), 0 32px 80px rgba(0, 0, 0, 0.55);
+  --ig-shadow-float: 0 8px 24px rgba(0, 0, 0, 0.4),
+    0 20px 48px rgba(0, 0, 0, 0.45);
+  --ig-shadow-raise: 0 6px 18px rgba(0, 0, 0, 0.28);
+  --ig-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.18);
+
+  /* Accent-button lighting — sits on the opaque accent fill, so it holds in
+     every theme; defined once here. */
+  --ig-btn-specular: inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+
+  /* Skill floater card material (premium glass on the panel). */
+  --ig-floater-bg: rgba(255, 255, 255, 0.08);
+  --ig-floater-border: rgba(255, 255, 255, 0.18);
+  --ig-floater-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 8px 32px rgba(0, 0, 0, 0.12);
+  /* Deliverable well on the floater: light dark-backdrop under --ig-fg. Kept
+     shallow (0.16) so it doesn't restack into a black box over the now-frosted
+     floater — legibility comes from --ig-fg contrast + the well's inner shadow,
+     not a heavy fill. */
+  --ig-result-well-bg: rgba(0, 0, 0, 0.16);
+
+  /* Floating launcher bubble. WebView2 constraint (floatingIcon.css header):
+     gradients on the inner layer must sit on an opaque base and fade to
+     0-alpha rgba, never the `transparent` keyword. */
+  --ig-float-shell: rgba(11, 15, 20, 0);
+  --ig-float-bg:
+    radial-gradient(
+      120% 90% at 30% 18%,
+      rgba(255, 255, 255, 0.16) 0%,
+      rgba(255, 255, 255, 0.05) 42%,
+      rgba(255, 255, 255, 0) 68%
+    ),
+    linear-gradient(180deg, #1b2430 0%, #121821 55%, #0b0f14 100%);
+  --ig-float-ring: inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 1px rgba(255, 255, 255, 0.14),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.45);
+  /* Recolors the logo mark for contrast on the bubble base. */
+  --ig-float-logo-filter: none;
+}
+
+:root[data-theme="light"] {
+  /* light — pure white #FFFFFF canvas, charcoal #1C1C1E text, neutral
+     cool-gray wells, same brand cobalt #2F6BFF accent. */
+  color-scheme: light;
+  /* Flat white — all surfaces #ffffff; borders/shadows carry separation. */
+  --ig-bg: #ffffff;
+  --ig-bg-opaque: #ffffff;
+  --ig-surface-1: #ffffff;
+  --ig-surface-2: #ffffff;
+  --ig-surface-3: #ffffff;
+  --ig-glass-bg: #ffffff;
+  --ig-glass-card-bg: #ffffff;
+  --ig-glass-card-bg-hover: #ffffff;
+  --ig-glass-frost: saturate(180%) brightness(1.03);
+  --ig-glass-card-border: rgba(60, 60, 67, 0.16);
+  --ig-glass-edge: rgba(255, 255, 255, 0.8);
+  --ig-glass-rim: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    var(--ig-glass-edge) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  --ig-glass-rim-edge: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0) 45%,
+    rgba(60, 60, 67, 0.14) 100%
+  );
+  --ig-glass-specular-set: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+
+  --ig-border-subtle: rgba(0, 0, 0, 0.08);
+  --ig-border: rgba(0, 0, 0, 0.12);
+  --ig-border-strong: rgba(0, 0, 0, 0.26);
+  --ig-highlight: rgba(255, 255, 255, 0.95);
+  --ig-inset-well: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+
+  --ig-fg: #1c1c1e;
+  --ig-muted: #6e6e73;
+  --ig-faint: rgba(60, 60, 67, 0.45);
+
+  --ig-accent: #2f6bff;
+  --ig-accent-hover: #4a82ff;
+  --ig-accent-active: #1f54e8;
+  --ig-accent-soft: rgba(47, 107, 255, 0.18);
+  --ig-accent-tint: rgba(47, 107, 255, 0.09);
+  --ig-accent-fg: #ffffff;
+  --ig-accent-glow: rgba(47, 107, 255, 0.3);
+  /* Neutral gray — AA (5.1:1) for small text/icons on white */
+  --ig-brand: #6e6e73;
+  /* WCAG AA on #F5F5F7 (5.1:1) */
+  --ig-danger: #d32f2f;
+  --ig-danger-soft: rgba(211, 47, 47, 0.1);
+  --ig-success: #3e7a44;
+  --ig-success-soft: rgba(62, 122, 68, 0.12);
+  --ig-warn: #9a6a00;
+  --ig-warn-soft: rgba(154, 106, 0, 0.12);
+  --ig-scrim: rgba(0, 0, 0, 0.4);
+  --ig-scrim-strong: rgba(0, 0, 0, 0.6);
+  /* No ambient glow on paper — even a faint bloom reads as tint. */
+  --ig-glow: transparent;
+
+  /* Black-tinted shadows */
+  --ig-shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.08),
+    0 12px 32px rgba(0, 0, 0, 0.14), 0 32px 80px rgba(0, 0, 0, 0.2);
+  --ig-shadow-float: 0 8px 24px rgba(0, 0, 0, 0.14),
+    0 20px 48px rgba(0, 0, 0, 0.18);
+  --ig-shadow-raise: 0 6px 18px rgba(0, 0, 0, 0.1);
+  --ig-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  /* Floater card on flat white: border defines the edge. */
+  --ig-floater-bg: #ffffff;
+  --ig-floater-border: rgba(60, 60, 67, 0.2);
+  --ig-floater-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 8px 32px rgba(0, 0, 0, 0.1);
+  --ig-result-well-bg: #ffffff;
+
+  /* Launcher bubble: paper gradient, charcoal mark. */
+  --ig-float-bg:
+    radial-gradient(
+      120% 90% at 30% 18%,
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(255, 255, 255, 0.3) 42%,
+      rgba(255, 255, 255, 0) 68%
+    ),
+    linear-gradient(180deg, #ffffff 0%, #f4f4f6 55%, #ebebee 100%);
+  --ig-float-ring: inset 0 0 0 1px rgba(0, 0, 0, 0.12),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.1);
+  --ig-float-logo-filter: none;
+}
+
+/* High-contrast — WCAG AA/AAA: pure black ground, white text (21:1), yellow
+   accent (19.5:1 on black), solid white edges, zero translucency (glass fills
+   go opaque so contrast never depends on what's behind the window). */
+:root[data-theme="high-contrast"] {
+  color-scheme: dark;
+  --ig-bg: #000000;
+  --ig-bg-opaque: #000000;
+  --ig-surface-1: #1a1a1a;
+  --ig-surface-2: #1a1a1a;
+  --ig-surface-3: #2a2a2a;
+  --ig-glass-bg: #000000;
+  --ig-glass-card-bg: #1a1a1a;
+  --ig-glass-card-bg-hover: #2a2a2a;
+  --ig-glass-frost: none;
+  --ig-glass-card-border: #ffffff;
+  --ig-glass-edge: #ffffff;
+  --ig-glass-rim: #ffffff;
+  /* gradient, not a bare color: used as a positioned background layer
+     (left / 1px 100%) in .ig-glass-card::before, where a color is invalid */
+  --ig-glass-rim-edge: linear-gradient(180deg, #ffffff, #ffffff);
+  --ig-glass-specular-set: inset 0 0 0 1px #ffffff;
+
+  --ig-border-subtle: #ffffff;
+  --ig-border: #ffffff;
+  --ig-border-strong: #ffffff;
+  --ig-highlight: rgba(255, 255, 255, 0);
+  --ig-inset-well: inset 0 0 0 1px #ffffff;
+
+  --ig-fg: #ffffff;
+  --ig-muted: #ffffff;
+  --ig-faint: #cccccc;
+
+  --ig-accent: #ffff00;
+  --ig-accent-hover: #ffff00;
+  --ig-accent-active: #ffff00;
+  --ig-accent-soft: rgba(255, 255, 0, 0.3);
+  --ig-accent-tint: rgba(255, 255, 0, 0.15);
+  --ig-accent-fg: #000000;
+  --ig-accent-glow: rgba(255, 255, 0, 0);
+  --ig-brand: #ffffff;
+  --ig-danger: #ff6b6b;
+  --ig-danger-soft: rgba(255, 107, 107, 0.2);
+  --ig-success: #6bff8a;
+  --ig-success-soft: rgba(107, 255, 138, 0.2);
+  --ig-warn: #ffd166;
+  --ig-warn-soft: rgba(255, 209, 102, 0.2);
+  --ig-scrim: rgba(0, 0, 0, 0.8);
+  --ig-scrim-strong: rgba(0, 0, 0, 0.9);
+  --ig-glow: transparent;
+
+  --ig-shadow-panel: 0 0 0 1px #ffffff;
+  --ig-shadow-float: 0 0 0 1px #ffffff;
+  --ig-shadow-raise: 0 0 0 1px #ffffff;
+  --ig-shadow-sm: 0 0 0 1px #ffffff;
+  --ig-btn-specular: inset 0 0 0 1px #ffffff;
+
+  --ig-floater-bg: #1a1a1a;
+  --ig-floater-border: #ffffff;
+  --ig-floater-shadow: 0 0 0 1px #ffffff;
+  --ig-result-well-bg: #000000;
+
+  --ig-float-bg: linear-gradient(180deg, #000000 0%, #000000 100%);
+  --ig-float-ring: inset 0 0 0 2px #ffffff;
+  --ig-float-logo-filter: none;
+}
+
+/* Flat material mode — the backend cleared window effects (transparency off
+   or pre-22H2; see window.rs apply_glass / main.tsx glass:mode). With no
+   frost behind the window, the 55% tint would float over the raw desktop:
+   raise it to near-opaque so the panel reads as smoked glass in our own
+   palette, never DWM gray. Rim, speculars, shadows and the in-page
+   backdrop-filter all still apply — only the see-through frost is gone. */
+:root[data-glass="flat"] {
+  --ig-bg: rgba(11, 15, 20, 0.94);
+  /* Card fills go opaque too — with no frost behind the window, translucent
+     stacks just compound into mud. Values pre-blend the dark 0.07/0.11
+     tints over the obsidian ground. Rim, border, speculars and the in-page
+     backdrop-filter all still apply. */
+  --ig-glass-card-bg: #1b1f24;
+  --ig-glass-card-bg-hover: #252930;
+}
+:root[data-glass="flat"][data-theme="light"] {
+  --ig-bg: #ffffff;
+  --ig-glass-card-bg: #ffffff;
+  --ig-glass-card-bg-hover: #ffffff;
+}
+
+/* USER OVERRIDE (2026-07): the macOS (data-platform="mac") and browser-
+   preview (data-runtime="browser") opaque fallbacks that forced
+   --ig-bg: var(--ig-bg-opaque) were removed — the panel stays translucent
+   everywhere so its glass never gets blocked by a solid fill. Known cost:
+   without a native blurred backdrop those environments show the raw
+   desktop / page through the tint. */
+
+* {
+  box-sizing: border-box;
+}
+
+/* WebView2 transparent-window gotcha: with color-scheme: dark set on :root,
+   the engine paints its own opaque default canvas (white in light scheme,
+   grey-black in dark) behind the document unless EVERY root layer — html,
+   body, AND the React mount node — explicitly clears it. The native window
+   is fully transparent (tauri.conf transparent/shadow:false, effects
+   cleared), so any grey slab is this default canvas, not DWM. !important
+   defensively outranks UA/extension defaults. */
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overscroll-behavior: none;
+  background: transparent !important;
+}
+
+body {
+  color: var(--ig-fg);
+  font-family: var(--ig-font);
+  /* Windows body ramp: 14px / 10.5pt (Fluent "Body"). Everything unsized
+     inherits this instead of the browser's 16px. */
+  font-size: var(--ig-text-md);
+  line-height: var(--ig-leading-normal);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overscroll-behavior: none;
+}
+
+/* Browser preview only: backdrop-filter samples in-page pixels, and a
+   transparent body over the browser canvas gives it nothing to blur — the
+   panel would read as a flat tint. Paint a subtle mesh behind the panel so
+   the frost is demonstrable. Never active in Tauri (desktop blur is DWM
+   acrylic's job there). */
+/* !important required since the root transparency enforcement above is also
+   !important — these win on selector specificity, never active in Tauri. */
+:root[data-runtime="browser"] body {
+  background:
+    radial-gradient(60% 80% at 18% 12%, rgba(47, 107, 255, 0.45), transparent 60%),
+    radial-gradient(55% 70% at 82% 28%, rgba(142, 142, 147, 0.35), transparent 62%),
+    radial-gradient(70% 90% at 50% 100%, rgba(47, 107, 255, 0.22), transparent 65%),
+    #0b0f14 !important;
+}
+:root[data-runtime="browser"][data-theme="light"] body {
+  background: #ffffff !important;
+}
+
+
+input,
+textarea {
+  user-select: text;
+  font-family: inherit;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Native check controls pick up the accent instead of Windows default blue. */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--ig-accent);
+}
+
+::selection {
+  background: var(--ig-accent-soft);
+}
+/* Cobalt-tinted selection on the light theme */
+:root[data-theme="light"] ::selection {
+  background: rgba(47, 107, 255, 0.22);
+}
+
+/* Overlay-style scrollbars — the Windows default gutter would gut the glass
+   look. Thumb only, pill-shaped, brightens on hover. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--ig-border);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: var(--ig-radius-pill);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ig-border-strong);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}

@@ -1,0 +1,65 @@
+# ============================================================
+# InsertGo-AI monorepo - root .gitignore
+# A pattern with no slash matches at ANY depth, so it covers
+# both workspaces. Nested paths need an explicit **/ prefix,
+# otherwise git anchors them to this directory.
+# ============================================================
+
+# ---------- Secrets & local environment (NEVER commit) ----------
+.env
+.env.*
+*.local
+!.env.example
+
+# ---------- Dependencies ----------
+node_modules/
+
+# ---------- Next.js (Insert-Go Website) ----------
+.next/
+out/
+next-env.d.ts
+.vercel/
+
+# ---------- Vite / Tauri (Insert-Go Windows) ----------
+dist/
+dist-ssr/
+.vite/
+.vitest/
+**/src-tauri/target/
+**/src-tauri/gen/
+
+# ---------- Build & test caches ----------
+coverage/
+*.tsbuildinfo
+
+# ---------- Editor / AI-tool local state ----------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.cursor/
+.claude/
+.kilocode/
+.kombai/
+.superdesign/
+.windsurf/
+.idx/
+.agents/
+.playwright-mcp/
+
+# ---------- Logs, temp, scratch ----------
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+npm-debug.log*
+**/null
+
+# ---------- OS metadata ----------
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ---------- Paid, local-only assets (Font Awesome Pro) ----------
+**/public/fonts/

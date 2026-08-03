@@ -1,0 +1,48 @@
+{
+  "name": "insertgo-ai-website",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "plates": "node --env-file=.env.local scripts/render-plates.mjs",
+    "plates:optimize": "node scripts/optimize-plates.mjs",
+    "remotion": "remotion studio",
+    "remotion:render": "remotion render FeatureReel out/feature-reel.mp4"
+  },
+  "//deps": "@upstash/redis + @upstash/vector are fetch-only and back the two shared caches the Edge generate route depends on (lib/edgeCache.ts). pg is now Node-runtime only — Better Auth's adapter, the billing webhook and the account page (lib/pgPool.ts); nothing reachable from an Edge route may import it. The Edge route reaches Postgres over PostgREST with plain fetch (lib/db.ts), so no Edge database driver is a dependency at all.",
+  "dependencies": {
+    "@better-auth/sso": "^1.6.23",
+    "@google/genai": "^2.10.0",
+    "@remotion/cli": "^4.0.490",
+    "@upstash/redis": "^1.38.0",
+    "@upstash/vector": "^1.2.3",
+    "better-auth": "^1.6.23",
+    "framer-motion": "^11.15.0",
+    "next": "^15.3.8",
+    "pg": "^8.22.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "^4.0.490",
+    "resend": "^6.17.1"
+  },
+  "//overrides": "Both are transitive under next, which has no release that resolves them: sharp (libvips CVE-2026-33327/33328/35590/35591) and next's vendored postcss (GHSA-qx2v-qp2m-jg93). Drop an entry once next ships a version that pulls the patched range itself.",
+  "overrides": {
+    "sharp": "^0.35.3",
+    "postcss": "^8.5.10"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.10"
+  }
+}

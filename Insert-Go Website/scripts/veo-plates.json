@@ -1,0 +1,53 @@
+{
+  "_readme": "Veo 3.1 plate generation queue for the InsertGo launch reel. Each entry maps 1:1 to a google_video_start call on the `google-video` MCP server (.mcp.json). Plates are ENVIRONMENT ONLY - no UI, no text. Real InsertGo UI composites on top in remotion/scenes/*. Output lands in Insert-Go Website/out/google-video/, move to public/plates/.",
+  "_defaults": {
+    "model": "veo-3.1-fast-generate-preview",
+    "aspectRatio": "16:9",
+    "resolution": "1080p",
+    "durationSeconds": 8,
+    "generateAudio": false
+  },
+  "_negativePrompt": "text, letters, words, numbers, UI, user interface, buttons, icons, cursor, keyboard, screen, monitor, hands, fingers, faces, people, watermark, logo, subtitles, captions, lens flare, chromatic aberration, warm light, orange, red, yellow, clutter, camera shake, handheld, fast motion, zoom punch, motion blur streaks, cuts, speech, talking, singing, music",
+
+  "plates": [
+    {
+      "id": "hero-glass",
+      "scene": "Scene 1 - Main Product Hero",
+      "target": "public/plates/hero-glass.mp4",
+      "crop": "none (16:9 native)",
+      "prompt": "Cinematic macro shot in a pitch-black void, background a matte featureless near-black charcoal. Three panes of dark smoked translucent glass float at different depths, each edge catching a razor-thin white specular highlight. The largest pane sits centered, a smaller pane floats thirty percent closer to camera on the left, and a small circular glass disc hovers at the far left edge nearest camera. The camera performs an extremely slow dolly-in with a slight lateral truck to the right, revealing the depth separation between panes through parallax. A cyan rim light rakes across the top-left glass edges at low intensity. A violet fill pools underneath and bleeds upward as soft volumetric haze. Fine dust motes drift slowly through the violet pool. Shallow depth of field racks slowly from the far pane to the near disc, bokeh rendering soft and hexagonal. Photorealistic Apple product film aesthetic, ultra clean, high dynamic range, subtle film grain, perfectly smooth locked motion."
+    },
+    {
+      "id": "selector-glass",
+      "scene": "Scene 2 - The Selector",
+      "target": "public/plates/selector-glass.mp4",
+      "crop": "center-crop to 1:1 in Remotion",
+      "prompt": "Extreme macro on a single sheet of dark smoked glass lying nearly flat, receding toward a vanishing point and filling the lower two thirds of frame. Background is a pure near-black charcoal void. A second, much smaller shard of glass hovers a few centimeters above it, casting no shadow, only a faint refraction. The camera holds locked for two seconds, then begins an extremely slow four percent push-in with no rotation. A horizontal band of cyan light sweeps left to right across the lower glass like a scanner pass, leaving a fading afterglow behind it. Moments later the small hovering shard catches a violet rim light along its bottom edge, and a soft violet glow blooms downward onto the larger sheet beneath. Shallow depth of field, the background falling to pure black, micro dust suspended in the violet bloom. Fingerprint-free optical clarity, hairline specular edges, Leica macro photorealism, subtle film grain, smooth locked motion."
+    },
+    {
+      "id": "skillbar-wall",
+      "scene": "Scene 3 - The Skillbar Dock",
+      "target": "public/plates/skillbar-wall.mp4",
+      "crop": "center-crop to 1:1 in Remotion",
+      "_take1": "Veo read 'server-rack aesthetic' literally and built photoreal data-center hardware instead of glass tiles. Aesthetic reference removed, glass emphasised as one continuous featureless slab, hardware banned per-plate.",
+      "negativePromptExtra": "server rack, servers, data center, electronics, cables, wiring, machinery, hardware, circuit boards, ventilation grilles, perforated metal, industrial equipment",
+      "prompt": "A vertical wall of dark smoked glass stands at the left third of frame against a near-black charcoal void. The wall is one continuous polished glass slab, optically smooth and completely featureless, divided into six equal horizontal tiles by faintly glowing hairline gaps. To the right, a much larger flat glass plane recedes into shallow depth of field. The camera begins a slow lateral truck moving right, then settles into a locked hold with no rotation. The six glass tiles illuminate in sequence from top to bottom, each igniting with a cyan edge glow a fraction of a second after the one above it, like a cascading equalizer. The third tile from the top then intensifies sharply, its cyan shifting to violet, projecting a beam of violet light rightward onto the large recessed plane and forming a soft elongated pool of light that slowly brightens. Volumetric haze catches the beam and reveals its cone. Fine drifting dust, deep blacks with no lift, minimalist photorealistic studio product film, subtle film grain."
+    },
+    {
+      "id": "bubble-sphere",
+      "scene": "Scene 4 - Floating App Widget",
+      "target": "public/plates/bubble-sphere.mp4",
+      "crop": "center-crop to 1:1 in Remotion (keep sphere in frame)",
+      "_take1": "Sphere landed dead centre with an invented rocky floor and a banned flare burst. Floor/terrain now banned per-plate. Sphere moved to the LEFT THIRD, not the far left edge: at the edge it sits outside this plate's own 1:1 centre crop (x 420-1500 of 1920), so the take1 framing and the crop note could never both hold.",
+      "negativePromptExtra": "floor, ground, table, surface, horizon, terrain, rocks, stones, boulders, landscape, clouds, smoke plume, flare, starburst, sunburst, glare streak",
+      "prompt": "A single perfect glass sphere floats in mid-air at the left third of frame against an empty near-black charcoal void, with no floor, no ground and no horizon anywhere. The sphere is dark and translucent with a bright hairline specular ring around its circumference and a soft internal caustic. The right two thirds of frame are pure empty negative space. The camera holds absolutely locked for three seconds, then performs a gentle six percent push-in toward the sphere before holding again. The sphere breathes, its internal caustic pulsing slowly between dim and bright, tinted cyan. A violet halo then blooms outward from the sphere in a single smooth expansion, spilling light rightward across the empty void and briefly revealing suspended dust. The caustic flares brighter, and a large flat pane of smoked glass materializes to the right of the sphere with a soft scale-up, catching cyan rim light along its top edge. Jewel-like optics, extreme minimalism, photorealistic, shallow depth of field, subtle film grain."
+    },
+    {
+      "id": "inline-slab",
+      "scene": "Scene 5 - Inline In-Place Improve",
+      "target": "public/plates/inline-slab.mp4",
+      "crop": "none (16:9 native)",
+      "prompt": "A single wide horizontal slab of dark smoked glass floats dead center against a near-black charcoal void, filling the middle sixty percent of frame, tilted three degrees away from camera at its top edge, with a hairline specular edge. Below and slightly right, a tiny pill-shaped glass capsule hovers close to camera, softly out of focus. The camera performs an extremely slow straight push-in across the entire shot, rock steady, with no truck and no rotation. A dim cyan edge light traces the slab's top edge. Two sharp cyan pulses then strike the slab in rapid succession, like keystrokes registering. The foreground capsule ignites with a cyan glow sweeping continuously around its perimeter, then stops and flashes a soft green before dimming. Simultaneously a wave of violet light washes left to right across the slab and settles into a calm, even underglow pooling beneath it. Volumetric haze, suspended dust, deep blacks, photorealistic keynote hero shot, subtle film grain."
+    }
+  ]
+}

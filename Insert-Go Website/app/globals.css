@@ -1,0 +1,679 @@
+@import "tailwindcss";
+
+@theme {
+  /*
+   * InsertGo.AI design tokens — mirrors the desktop app's dark palette
+   * (source of truth: InsertGo-AI/src/styles/global.css, dark :root).
+   * Base palette (WCAG AA dark scheme):
+   *   Near-black #0A0A0A — page background / canvas
+   *   Neutral    #171717 — surfaces / cards (depth without borders)
+   *   Zinc-200   #E4E4E7 — primary text (avoids halation on dark)
+   *   Zinc-400   #A1A1AA — muted / secondary text
+   *   Cobalt     #2F6BFF — the ONE brand accent (hover #4A82FF, active
+   *              #1F54E8). 4.4:1 on #0A0A0A — fills, UI and large text;
+   *              small accent-colored body text should use the hover shade.
+   *   Gray       #8E8E93 — neutral secondary tone, never competes with brand
+   * Legacy class names (terracotta, chambray, paper, ink, cream…) are kept
+   * registered so existing pages compile — remapped to the new palette.
+   */
+
+  /* ---- Semantic core ---- */
+  --color-bg-base: #0a0a0a;
+  /* Near-black — page background */
+  --color-paper: #0a0a0a;
+  /* alias of bg-base (legacy class name) */
+  --color-surface: rgba(255, 255, 255, 0.05);
+  /* wells, chips — glass wash (≈#171717 over base) */
+  --color-surface-hover: rgba(255, 255, 255, 0.09);
+  /* surface hover step */
+  --color-card: rgba(255, 255, 255, 0.05);
+  /* raised card fill — glass wash */
+
+  --color-text-primary: #e4e4e7;
+  /* Zinc-200 — headings / body */
+  --color-ink: #e4e4e7;
+  /* alias (legacy class name) */
+  --color-ink-soft: #a1a1aa;
+  /* Zinc-400 — secondary text */
+  --color-text-secondary: #a1a1aa;
+  /* alias of muted */
+
+  --color-line: rgba(255, 255, 255, 0.05);
+  /* hairlines — delicate glass edge */
+  --color-border-subtle: rgba(255, 255, 255, 0.04);
+
+  --color-accent-primary: #2f6bff;
+  /* Brand cobalt (--ig-accent) */
+  --color-terracotta: #2f6bff;
+  /* legacy alias — now brand cobalt */
+  --color-accent-hover: #4a82ff;
+  /* hover step (--ig-accent-hover) */
+  --color-accent-active: #1f54e8;
+  /* pressed step (--ig-accent-active) */
+
+  --color-accent-secondary: #8e8e93;
+  /* neutral gray (--ig-brand) */
+  --color-chambray: #8e8e93;
+  /* legacy alias — now neutral gray */
+  --color-brand: #2f6bff;
+  /* kickers, links — ride the brand cobalt */
+
+  --color-on-accent: #ffffff;
+  /* text on cobalt fills (--ig-accent-fg) */
+  --color-focus-ring: rgba(47, 107, 255, 0.38);
+  /* accent glow */
+
+  --color-accent: rgba(47, 107, 255, 0.26);
+  /* highlight wash — decorative only, not for text */
+
+  /* ---- Dark panels / footer (grounds the page below near-black canvas) ---- */
+  --color-dark: rgba(0, 0, 0, 0.4);
+  /* dark panels / footer — lets ambient glow bleed through */
+  --color-dark-2: rgba(255, 255, 255, 0.05);
+  /* dark panel inner */
+  --color-dark-line: rgba(255, 255, 255, 0.05);
+  /* dark panel borders (--ig-border) */
+  --color-cream: #f5f5f7;
+  /* light logo tone = Off-white */
+
+  /* ---- Status (--ig-success / --ig-danger) ---- */
+  --color-success: #74b478;
+  --color-danger: #e0655c;
+
+  /* ---- Decorative icon tiles (app soft washes on charcoal) ---- */
+  --color-tile-sand: rgba(142, 142, 147, 0.16);
+  /* neutral wash (was warn) */
+  --color-tile-sky: rgba(47, 107, 255, 0.14);
+  /* --ig-accent-tint */
+  --color-tile-mist: rgba(245, 245, 247, 0.09);
+  /* --ig-surface-2 */
+  --color-tile-dusk: rgba(47, 107, 255, 0.26);
+  /* --ig-accent-soft */
+  --color-tile-stone: rgba(245, 245, 247, 0.055);
+  /* --ig-surface-1 */
+  --color-tile-clay: rgba(142, 142, 147, 0.1);
+  /* neutral wash (was danger) */
+
+  /* System stack for a native, Apple-grade feel (--ig-font). */
+  --font-sans: "SF Pro Text", "SF Pro Display", -apple-system,
+    BlinkMacSystemFont, "Inter", "Segoe UI Variable Text", "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-serif: var(--font-fraunces), "Fraunces", Georgia, serif;
+
+  /* Radius grammar (floating > container > control) — app exact values */
+  --radius-panel: 18px;
+  --radius-glass: 16px;
+  --radius-card: 12px;
+  --radius-btn: 9px;
+
+  /* Depth — contact line + ambient + long throw (--ig-shadow-*) */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.18);
+  --shadow-card-md: 0 6px 18px rgba(0, 0, 0, 0.28);
+  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.4),
+    0 20px 48px rgba(0, 0, 0, 0.45);
+  --shadow-overlay: 0 1px 2px rgba(0, 0, 0, 0.32),
+    0 12px 32px rgba(0, 0, 0, 0.42), 0 32px 80px rgba(0, 0, 0, 0.55);
+
+  /* Accent-button lighting — exact --ig-btn-specular from the app. */
+  --shadow-specular: inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+  /* CTA = specular lighting + app depth shadows (no colored glows). */
+  --shadow-cta: inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.18);
+  --shadow-cta-sm: inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.18);
+  --shadow-cta-hover: inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 6px 18px rgba(0, 0, 0, 0.28);
+
+  /* ---- Motion grammar ----
+     Two curves, one meaning each. `standard` for state changes the pointer
+     drives (hover, press, colour, the nav pill sliding); `emphasized` for
+     things that enter the page and settle (reveals, hero rise). Every
+     component references these instead of re-typing a bezier. */
+  --ease-standard: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.28, 0.11, 0.32, 1);
+
+  --animate-marquee: marquee 36s linear infinite;
+  --animate-float: floatY 6s ease-in-out infinite;
+  --animate-blink: blink 1s step-end infinite;
+  --animate-glow-cta: glowPulseCta 4s ease-in-out infinite;
+  --animate-nav-enter: navEnter 0.7s var(--ease-standard) both;
+  /* Apple's reveal: short rise + slight scale-up, so content reads as
+     approaching the viewer. Curve is front-loaded and settles slowly. */
+  --animate-fade-up: fadeUp 0.85s var(--ease-emphasized) both;
+
+  --animate-hero-rise: heroRise 0.9s var(--ease-standard) 0.35s both;
+
+  @keyframes fadeUp {
+    from {
+      transform: translateY(24px) scale(0.985);
+      opacity: 0;
+    }
+
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  @keyframes heroRise {
+    from {
+      transform: translateY(40px);
+      opacity: 0;
+    }
+
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  @keyframes heroParallax {
+    from {
+      transform: translateY(0);
+    }
+
+    to {
+      transform: translateY(60px);
+    }
+  }
+
+  @keyframes navEnter {
+    from {
+      transform: translateY(-70px);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @keyframes floatY {
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @keyframes blink {
+
+    0%,
+    49% {
+      opacity: 1;
+    }
+
+    50%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes glowPulseCta {
+
+    0%,
+    100% {
+      box-shadow: 0 8px 24px rgba(47, 107, 255, 0.35);
+    }
+
+    50% {
+      box-shadow: 0 8px 40px rgba(47, 107, 255, 0.6);
+    }
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  line-height: 1.47;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ambient aurora — the single most important layer on the page. Glass only
+   reads as glass when there is COLOR behind it to blur, saturate and refract;
+   over flat black, backdrop-filter is a no-op and every panel collapses into
+   a grey rectangle. Apple product pages solve this with large, soft, slowly
+   moving colour fields behind the material. Same idea here.
+   Fixed pseudo-element (not background-attachment) so scroll never repaints it. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -25%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 42% 34% at 14% 8%, rgba(47, 107, 255, 0.3), transparent 62%),
+    radial-gradient(ellipse 38% 30% at 88% 6%, rgba(96, 148, 255, 0.22), transparent 60%),
+    radial-gradient(ellipse 50% 34% at 72% 62%, rgba(47, 107, 255, 0.17), transparent 62%),
+    radial-gradient(ellipse 46% 32% at 22% 88%, rgba(74, 130, 255, 0.16), transparent 62%);
+  filter: blur(28px);
+  animation: auroraDrift 34s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+/* Vignette — pulls the aurora back down to near-black at the edges so the
+   page still reads as a dark canvas, not a blue wash. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 90% 70% at 50% 40%, transparent 30%, rgba(10, 10, 10, 0.72) 100%);
+}
+
+@keyframes auroraDrift {
+  from {
+    transform: translate3d(-1.5%, -1%, 0) scale(1);
+  }
+
+  to {
+    transform: translate3d(2%, 1.5%, 0) scale(1.08);
+  }
+}
+
+/* ---- Antigravity glass surfaces ----
+   Modelled on Apple's material stack (ultraThin → thick), not the usual
+   "translucent box + 1px white border" glassmorphism.
+
+   Three rules carried over from how Apple actually lights these surfaces:
+   1. Light hits the TOP EDGE. A bright sub-pixel hairline that decays into a
+      short sheen, never a uniform perimeter stroke.
+   2. Saturation does the heavy lifting. saturate(160-180%) is what pulls the
+      aurora's colour through the material; blur alone reads as dirty grey.
+   3. Shadows are asymmetric and stacked — a tight contact shadow plus a long
+      diffuse throw, so the surface looks lifted rather than outlined.
+
+   The specular layer sits at z-index:-1 — above the element's own fill, but
+   strictly BELOW its text. A translucent light layer painted over glyphs is
+   what was washing out card and overlay copy. */
+@layer components {
+
+  .glass-panel,
+  .glass-card,
+  .glass-floating,
+  .nav-shell {
+    position: relative;
+    isolation: isolate;
+  }
+
+  /* Specular layer, shared by every glass tier (and the nav shell).
+     Two signatures of the InsertGo glass recipe:
+     - top edge: a bright hairline that is strongest near the centre and
+       fades out before the corners (never a uniform perimeter stroke)
+     - left edge: a vertical catch-light, bright at the top, gone by the
+       middle, faintly returning at the bottom
+     Both sit at z-index:-1 — above the element's own fill, but strictly
+     BELOW its text. A translucent light layer painted over glyphs is what
+     was washing out card and overlay copy. */
+  .glass-panel::before,
+  .glass-floating::before,
+  .nav-shell::before {
+    display: none;
+  }
+
+  /* Section-scale slabs: hero mockup window, CTA band, forms, auth cards */
+  .glass-panel {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-panel);
+    background:
+      linear-gradient(177deg,
+        rgba(255, 255, 255, 0.03) 0%,
+        rgba(255, 255, 255, 0.015) 46%,
+        rgba(255, 255, 255, 0.01) 100%),
+      linear-gradient(180deg, rgba(17, 18, 22, 0.66) 0%, rgba(12, 13, 16, 0.72) 100%);
+    -webkit-backdrop-filter: blur(20px) saturate(170%);
+    backdrop-filter: blur(20px) saturate(170%);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.22), 0 14px 34px rgba(0, 0, 0, 0.3),
+      0 34px 76px rgba(0, 0, 0, 0.34);
+  }
+
+  /* Grid cards: steps, features, compatibility, FAQ, notes. */
+  .glass-card {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background:
+      linear-gradient(135deg,
+        rgba(255, 255, 255, 0.03) 0%,
+        rgba(255, 255, 255, 0.01) 50%,
+        rgba(255, 255, 255, 0) 100%),
+      rgba(16, 17, 22, 0.65);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    box-shadow:
+      0 2px 6px rgba(0, 0, 0, 0.22),
+      0 12px 32px rgba(0, 0, 0, 0.28);
+    /* `transform` belongs in this list, not on the element in markup: a
+       Tailwind `transition-transform` utility sets transition-property to
+       transform ALONE, which silently dropped the light/shadow transitions
+       below on every card that also lifts on hover. One list, one duration. */
+    transition: box-shadow 300ms var(--ease-standard),
+      background 300ms var(--ease-standard),
+      border-color 300ms var(--ease-standard),
+      transform 300ms var(--ease-standard);
+  }
+
+  /* Card hover: the surface catches subtle light without white border lines. */
+  .glass-card:hover {
+    border-color: rgba(255, 255, 255, 0.08);
+    background:
+      linear-gradient(135deg,
+        rgba(255, 255, 255, 0.05) 0%,
+        rgba(255, 255, 255, 0.02) 50%,
+        rgba(255, 255, 255, 0.01) 100%),
+      rgba(20, 21, 27, 0.68);
+    box-shadow:
+      0 4px 10px rgba(0, 0, 0, 0.26),
+      0 20px 48px rgba(0, 0, 0, 0.34);
+  }
+
+  /* Top layer: floating overlay, dark plan card, phone mockups. */
+  .glass-floating {
+    border-radius: var(--radius-glass);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: linear-gradient(177deg,
+        rgba(30, 31, 36, 0.72) 0%,
+        rgba(16, 17, 20, 0.78) 55%,
+        rgba(10, 10, 12, 0.82) 100%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    backdrop-filter: blur(28px) saturate(180%);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.34), 0 16px 44px rgba(0, 0, 0, 0.4),
+      0 40px 90px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Small controls: chips, pills, keycaps, inputs, ghost buttons. */
+  .glass-chip {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: linear-gradient(177deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.24), 0 4px 12px rgba(0, 0, 0, 0.18);
+    transition: background 220ms var(--ease-standard),
+      border-color 220ms var(--ease-standard);
+  }
+
+  /* Pre-composited glass for surfaces nested inside other glass. */
+  .glass-solid {
+    position: relative;
+    isolation: isolate;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: linear-gradient(177deg, rgba(38, 39, 45, 0.92) 0%, rgba(22, 23, 27, 0.94) 55%, rgba(14, 14, 17, 0.95) 100%);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Edge-to-edge grounded bands: nav rail, footer. These DO blur — they are
+     the surfaces the page physically scrolls beneath, which is the one place
+     a live backdrop actually shows motion. */
+  .glass-band {
+    position: relative;
+    background: linear-gradient(180deg, rgba(10, 11, 14, 0.55), rgba(6, 6, 8, 0.72));
+    -webkit-backdrop-filter: blur(24px) saturate(175%);
+    backdrop-filter: blur(24px) saturate(175%);
+  }
+
+  /* Footer hairline: brightest at centre, fading to nothing at the page
+     edges — a hard full-width rule reads as a table border, not a horizon. */
+  .glass-band::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg,
+        transparent,
+        rgba(255, 255, 255, 0.14) 22%,
+        rgba(120, 160, 255, 0.28) 50%,
+        rgba(255, 255, 255, 0.14) 78%,
+        transparent);
+  }
+
+  /* Floating nav pill. Rides the shared specular layer (edge lines, ring,
+     inner glow) via the tier vars below; `data-condensed` is the past-the-fold
+     state — tighter, darker, longer shadow. Radius and layout come from
+     Tailwind classes in SiteNav; this class owns only the material. */
+  .nav-shell {
+    --glass-edge: 0.42;
+    --glass-sheen: 0.055;
+    --glass-ring: 0.1;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.04)),
+      rgba(17, 18, 23, 0.62);
+    -webkit-backdrop-filter: blur(26px) saturate(1.8);
+    backdrop-filter: blur(26px) saturate(1.8);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 20px rgba(47, 107, 255, 0.07);
+    transition: background-color 550ms var(--ease-standard),
+      box-shadow 550ms var(--ease-standard);
+  }
+
+  .nav-shell[data-condensed="true"] {
+    --glass-ring: 0.16;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03)),
+      rgba(13, 14, 18, 0.78);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 14px 38px rgba(0, 0, 0, 0.5),
+      0 0 24px rgba(47, 107, 255, 0.08);
+  }
+
+  /* Legibility fallback when backdrop-filter is unsupported. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+
+    .glass-panel,
+    .glass-card {
+      background: rgba(26, 27, 31, 0.94);
+    }
+
+    .glass-floating {
+      background: rgba(12, 12, 15, 0.96);
+    }
+
+    .glass-band {
+      background: rgba(8, 8, 10, 0.96);
+    }
+
+    .nav-shell {
+      background: rgba(10, 11, 14, 0.94) !important;
+    }
+  }
+}
+
+/* Apple's reveal curve — a long, front-loaded ease that settles rather than
+   stops. Shared by the nav morph, section reveals and control transitions. */
+@layer utilities {
+  .ease-apple {
+    transition-timing-function: var(--ease-emphasized);
+  }
+}
+
+/* Section tint. A flat `bg-muted/5` band cuts two hard horizontal seams into
+   the page where the rectangle starts and stops. Apple fades section grounds
+   in and out instead, so the eye reads one continuous surface. */
+@layer components {
+  .section-tint {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .section-tint::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(180deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.028) 18%,
+        rgba(255, 255, 255, 0.034) 82%,
+        transparent 100%);
+  }
+}
+
+/* Skip link — parked off-screen rather than display:none, so it stays in the
+   tab order, and pulled onto the canvas the moment it takes focus. Sits above
+   the nav's z-[500] or it would appear behind the pill. */
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  z-index: 600;
+  transform: translate(-50%, calc(-100% - 24px));
+  border-radius: 999px;
+  padding: 12px 22px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-on-accent);
+  background: var(--color-accent-primary);
+  box-shadow: var(--shadow-cta);
+  transition: transform 220ms var(--ease-standard);
+}
+
+.skip-link:focus-visible {
+  transform: translate(-50%, 0);
+}
+
+::selection {
+  background: rgba(47, 107, 255, 0.26);
+  /* accent-soft */
+}
+
+/* The skip link moves focus to a non-interactive wrapper; the global focus
+   ring on a full-page container would draw a box around the entire viewport. */
+#main-content:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-muted);
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+/* Hero mockup parallax — scroll-driven, no JS. Browsers without scroll-driven
+   animations (Firefox) just render it static, which is the same end state.
+   `transform` here composes with Tailwind's `translate` centering. */
+@supports (animation-timeline: scroll()) {
+  .hero-parallax {
+    animation: heroParallax linear both;
+    animation-timeline: scroll(root block);
+    animation-range: 0 100vh;
+  }
+}
+
+/* Meter fill. The bar grows out from its left edge on first paint so the
+   number above it is read as a *level*, not a static stripe. scaleX (not
+   width) keeps it on the compositor, and the inline width still owns the
+   final value — the animation only plays it in. */
+.meter-fill {
+  transform-origin: left center;
+  animation: meterFill 900ms var(--ease-emphasized) 120ms both;
+}
+
+@keyframes meterFill {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Skeleton placeholder. A static grey block is ambiguous — it reads as an
+   empty or broken panel. The sheen says "content is on its way" without a
+   spinner, and it holds the final element's box so nothing shifts on swap. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.07),
+      transparent);
+  animation: skeletonSheen 1.4s ease-in-out infinite;
+}
+
+@keyframes skeletonSheen {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* pre-reveal state: hidden until IntersectionObserver fires. Without JS the
+   observer never runs, so unhide it there rather than leaving content blank. */
+.reveal-pending {
+  opacity: 0;
+}
+
+@media (scripting: none) {
+  .reveal-pending {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* Looping decoration has to STOP, not fast-forward. Collapsing the duration
+     jumps a loop to its last frame: the marquee lands at translateX(-50%)
+     (row visibly shifted half a track), the aurora at its zoomed extreme, the
+     text cursor mid-blink at opacity 0. `animation: none` holds the authored
+     resting state instead. */
+  .animate-marquee,
+  .animate-float,
+  .animate-blink,
+  .animate-ping,
+  .animate-spin,
+  .animate-glow-cta,
+  .hero-parallax,
+  .skeleton::after,
+  body::before {
+    animation: none !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}

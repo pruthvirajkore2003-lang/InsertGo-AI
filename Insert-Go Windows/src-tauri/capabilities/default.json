@@ -1,0 +1,90 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capability for the InsertGo main window.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:window:allow-center",
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-start-dragging",
+    "core:window:allow-start-resize-dragging",
+    "core:window:allow-set-size",
+    "core:event:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-is-registered",
+    "clipboard-manager:allow-write-text",
+    "clipboard-manager:allow-read-text",
+    "log:default",
+    "deep-link:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "comment": "The bare `https://*/**` rule exists for grounded-run citations (SkillComponentsFloater Sources): their hosts are arbitrary publisher/redirect domains that no allowlist can enumerate. It only ever hands a URL to the SYSTEM BROWSER — never the webview — and the caller filters to http(s) first, so no javascript:/file: URI can reach it.",
+      "allow": [
+        { "url": "https://insertgo.ai/*" },
+        { "url": "https://www.insertgo.ai/*" },
+        { "url": "https://dodopayments.com/*" },
+        { "url": "https://*.dodopayments.com/*" },
+        { "url": "https://*/**" },
+        { "url": "http://localhost:*/**" },
+        { "url": "http://127.0.0.1:*/**" }
+      ]
+    },
+    {
+      "identifier": "http:default",
+      "comment": "BYOK provider hosts (src/services/providerCatalog.ts) + InsertGo.AI site + Google OAuth. Custom/SAP endpoints and non-default overrides of editable-baseUrl lanes (doubao/minimax/z.ai/self-hosted LiteLLM on a remote host) must add their host here.",
+      "allow": [
+        { "url": "https://insertgo.ai/*" },
+        { "url": "https://www.insertgo.ai/*" },
+        { "url": "https://*.insertgo.ai/*" },
+
+        { "url": "https://api.anthropic.com/*" },
+        { "url": "https://api.openai.com/*" },
+        { "url": "https://generativelanguage.googleapis.com/*" },
+        { "url": "https://api.deepseek.com/*" },
+        { "url": "https://api.groq.com/*" },
+        { "url": "https://api.mistral.ai/*" },
+        { "url": "https://api.x.ai/*" },
+        { "url": "https://api.moonshot.ai/*" },
+        { "url": "https://api.cerebras.ai/*" },
+        { "url": "https://api.sambanova.ai/*" },
+        { "url": "https://api.fireworks.ai/*" },
+        { "url": "https://api.deepinfra.com/*" },
+        { "url": "https://ark.cn-beijing.volces.com/*" },
+        { "url": "https://api.minimax.io/*" },
+        { "url": "https://api.minimaxi.com/*" },
+        { "url": "https://api.z.ai/*" },
+        { "url": "https://inference.baseten.co/*" },
+        { "url": "https://llm.chutes.ai/*" },
+        { "url": "https://api.featherless.ai/*" },
+        { "url": "https://router.huggingface.co/*" },
+        { "url": "https://api.inceptionlabs.ai/*" },
+        { "url": "https://api.intelligence.io.solutions/*" },
+        { "url": "https://oai.endpoints.kepler.ai.cloud.ovh.net/*" },
+        { "url": "https://api.synthetic.new/*" },
+        { "url": "https://api.bluesminds.com/*" },
+
+        { "url": "https://openrouter.ai/*" },
+        { "url": "https://glama.ai/*" },
+        { "url": "https://router.requesty.ai/*" },
+        { "url": "https://api.getunbound.ai/*" },
+        { "url": "https://ai-gateway.vercel.sh/*" },
+        { "url": "https://zenmux.ai/*" },
+        { "url": "https://aihubmix.com/*" },
+        { "url": "https://nano-gpt.com/*" },
+
+        { "url": "https://bedrock-runtime.*.amazonaws.com/*" },
+        { "url": "https://aiplatform.googleapis.com/*" },
+        { "url": "https://*-aiplatform.googleapis.com/*" },
+        { "url": "https://oauth2.googleapis.com/*" },
+
+        { "url": "http://localhost:*/**" },
+        { "url": "http://127.0.0.1:*/**" }
+      ]
+    }
+  ]
+}

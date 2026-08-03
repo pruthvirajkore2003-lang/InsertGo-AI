@@ -1,0 +1,3984 @@
+/* InsertGo component styles. Single sheet for v1 to keep the tree lean.
+   Material architecture: the panel is the only visible object in the window —
+   a translucent graphite/porcelain tint over the DWM acrylic system backdrop
+   (tauri.conf windowEffects). The panel's see-through frost comes from the OS
+   compositor, not CSS. Depth comes from the surface ladder
+   (--ig-surface-1/2/3) + hairline borders + top specular highlights + one
+   deep soft shadow — elevation via light.
+
+   GLASS TOOLKIT (WebView2 transparent-window safe list — verified by pixel
+   sampling; see .ig-panel):
+     ✓ flat translucent fills (rgba) over the panel
+     ✓ inset specular box-shadows
+     ✓ mask-composite gradient hairline rims (1px rings)
+     ✓ backdrop-filter sampling IN-PAGE pixels (panel fill / panel content —
+       in-page blur never samples the desktop; the desktop blur behind the
+       panel is DWM acrylic, requested at the window level)
+     ✗ any gradient layered over a near-opaque fill (punches desktop through
+       — verified by pixel sampling; not re-tested under acrylic)
+     ~ backdrop-filter on the panel itself — USER OVERRIDE (2026-07): now
+       applied despite the original warning. It still cannot sample outside
+       the webview (desktop blur remains DWM acrylic's job); the override
+       exists so environments without acrylic at least get an in-page frost
+       instead of a flat rectangle. Costs GPU time when acrylic IS active.
+     ✗ mix-blend-mode / plus-lighter (unverified on a transparent window)
+   The panel fills the window edge-to-edge (no transparent margin — DWM
+   acrylic paints the full rectangular window bounds, so any gutter shows as
+   a flat square bezel). Known limitation, NOT a regression: the window's
+   four literal corners stay square acrylic slivers outside the panel's
+   rounded corners — CSS border-radius can't shape the native backdrop, and
+   transparent windows are excluded from DWM auto-rounding (see
+   electron/electron#43075; the DWMWA_WINDOW_CORNER_PREFERENCE opt-in in
+   platform/window.rs was tried and pixel-verified a no-op on this window).
+   Never animate backdrop-filter or blur; transform, opacity, colors only.
+   Budget: keep simultaneously visible backdrop-filtered elements ≲ 12 — if a
+   grid exceeds that, frost the grid container instead of each tile. */
+
+.ig-overlay {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  height: 100%;
+  /* No gutter: with acrylic live, DWM paints the ENTIRE rectangular window
+     bounds — a margin here is no longer invisible desktop, it's a flat square
+     acrylic bezel around the rounded panel. The panel must run edge-to-edge
+     so there is nothing left for the backdrop to show through (except the
+     corner slivers — see GLASS TOOLKIT header). */
+  padding: 0;
+}
+
+/* Panel — the hero surface. A translucent flat tint (--ig-bg) over the DWM
+   acrylic backdrop: the OS composites frosted glass behind the window, so
+   content behind the app reads blurred through the panel body. The old
+   opaque ambient raster is gone — it would fully occlude the acrylic.
+   .ig-glass-card's backdrop-filter now frosts this tint composited over
+   acrylic. USER OVERRIDE (2026-07): the panel now ALSO carries its own
+   backdrop-filter (former safe-list ✗, see GLASS TOOLKIT header) so the
+   glass look survives environments where acrylic never engages.
+   position: relative anchors the absolutely-positioned .ig-modal scrim so
+   dialogs dim only the panel. */
+/* COMPONENT-BACKGROUND ARCHITECTURE (2026-07-17): the panel is a purely
+   invisible flex container — NO background, border, radius, shadow or frost.
+   The OS window carries no material either (windowEffects removed;
+   apply_glass clears effects and reports glass:mode "flat", which raises
+   --ig-bg to near-opaque). Every visible surface — .ig-header, the
+   .ig-autoheight content card, modal cards, toasts — paints its own flat
+   fill + border, so the window's rectangular slack is genuinely empty
+   desktop instead of a grey slab. */
+.ig-panel {
+  position: relative;
+  width: 100%;
+  /* Auto, not 100%: the visible UI is header + the animated .ig-autoheight
+     card (dynamic window cropping) — the OS window may transiently be taller
+     while a resize sequence is in flight; that slack must hold NOTHING. */
+  height: auto;
+  max-height: 100%;
+  color: var(--ig-fg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: ig-panel-in var(--ig-slow) var(--ig-ease);
+}
+
+@keyframes ig-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Header: brand · segmented tabs · window actions ─────────────────────
+   The empty strip is a native window-drag handle (see App.tsx); interactive
+   children override the grab cursor so they still read as clickable.
+   Standalone floating bar: the window behind it is raw transparent desktop,
+   so it carries its own flat fill (near-opaque under [data-glass="flat"]),
+   full border (doubles as the forced-colors edge) and lift — no gradient
+   over the fill (WebView2 punch-through bug). */
+.ig-header {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  padding: var(--ig-space-2) var(--ig-space-3);
+  cursor: grab;
+  background: var(--ig-bg);
+  border: 1px solid var(--ig-border);
+  border-radius: var(--ig-radius-card);
+  /* No drop-shadow: the window is transparent, so --ig-shadow-float paints a
+     gray halo onto the desktop showing through around the card (user report
+     2026-07-18). The 1px border carries the edge instead. */
+  margin: var(--ig-space-2) var(--ig-space-2) 0;
+}
+
+.ig-brand {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  padding: 0 var(--ig-space-1);
+  pointer-events: none;
+  /* brand is part of the drag strip */
+}
+
+/* Logo mark */
+.ig-brand__mark {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+}
+
+.ig-brand__mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Wordmark — Fraunces serif, like the site nav: InsertGo<span>.AI</span> */
+.ig-brand__name {
+  font-family: var(--ig-font-serif);
+  font-size: var(--ig-text-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.ig-brand__name .ig-brand__ai {
+  color: var(--ig-brand);
+}
+
+/* Segmented control — one raised pill slides between flat siblings. */
+.ig-tabs {
+  position: relative;
+  /* offsetParent + anchor for .ig-tab-indicator */
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-space-1);
+  padding: var(--ig-space-1);
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--ig-radius-btn);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  cursor: default;
+}
+
+/* Sliding pill — x/width driven by Framer Motion springs from Tabs.tsx.
+   No backdrop-filter here: moving blurs stutter; the container already
+   provides the glass. */
+.ig-tab-indicator {
+  position: absolute;
+  top: var(--ig-space-1);
+  /* mirrors .ig-tabs padding */
+  bottom: var(--ig-space-1);
+  left: 0;
+  background: var(--ig-surface-3);
+  border: 1px solid var(--ig-border-subtle);
+  border-radius: 7px;
+  box-shadow:
+    inset 0 1px 0 var(--ig-highlight),
+    var(--ig-shadow-sm);
+  pointer-events: none;
+}
+
+.ig-tab {
+  position: relative;
+  z-index: 1;
+  /* text above the indicator */
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-space-1);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ig-muted);
+  height: var(--ig-control-sm);
+  padding: 0 var(--ig-space-3);
+  border-radius: 7px;
+  font-size: var(--ig-text-xs);
+  font-weight: 500;
+  letter-spacing: -0.1px;
+  cursor: pointer;
+  transition: color var(--ig-fast) ease;
+}
+
+.ig-tab .fa-solid {
+  font-size: var(--ig-text-2xs);
+  color: var(--ig-faint);
+  transition: color var(--ig-fast) ease;
+}
+
+.ig-tab .ig-tab-lock {
+  font-size: var(--ig-text-2xs);
+}
+
+.ig-tab:hover {
+  color: var(--ig-fg);
+}
+
+.ig-tab:hover .fa-solid {
+  color: var(--ig-muted);
+}
+
+.ig-tab[aria-selected="true"] {
+  color: var(--ig-fg);
+  /* pill itself lives on .ig-tab-indicator */
+}
+
+.ig-tab[aria-selected="true"] .fa-solid {
+  color: var(--ig-accent);
+}
+
+.ig-tab:focus-visible {
+  outline: 2px solid var(--ig-accent);
+  outline-offset: 2px;
+}
+
+/* Tab panel — subtle enter transition when switching tabs. */
+.ig-tabpanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-3);
+  min-height: 0;
+  animation: ig-panel-in var(--ig-fast) ease;
+}
+
+/* App-level view panels sit under .ig-autoheight's block measuring wrapper,
+   so flex:1 is inert there — kept only for the browser-dev fallback layout. */
+.ig-tabpanel--view {
+  flex: 1;
+  gap: 0;
+}
+
+@keyframes ig-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ig-tabpanel {
+    animation: none;
+  }
+
+  /* indicator: Tabs.tsx switches the spring off via useReducedMotion() */
+}
+
+/* Composer shell — the nested sub-tab bar (Improvise / History / Library)
+   stacked above the active sub-panel. Each sub-panel owns its .ig-body
+   padding, so this wrapper adds none of its own. */
+.ig-composer {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Centered selector row — every in-panel tab bar (composer sub-tabs, Settings
+   sections) sits centered like a segmented control, not flush-left. */
+.ig-subtabs {
+  display: flex;
+  justify-content: center;
+}
+
+/* The composer's shell has no padding of its own, so its sub-tab row carries
+   the top/side spacing; Settings' row inherits .ig-body padding instead. */
+.ig-composer > .ig-subtabs {
+  padding: var(--ig-space-3) var(--ig-space-4) 0;
+}
+
+.ig-header__actions {
+  display: flex;
+  gap: var(--ig-space-1);
+}
+
+/* Right header zone — flex:1 balances the equal-flex brand on the left so the
+   Views tab bar between them lands dead-center; contents hug the right edge. */
+.ig-header__right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ig-space-1);
+}
+
+.ig-creditbadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-space-1);
+  min-height: var(--ig-control-sm);
+  padding: 0 var(--ig-space-2);
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: var(--ig-text-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+
+.ig-creditbadge .fa-solid {
+  font-size: var(--ig-text-2xs);
+}
+
+/* Daily-allowance progress inside the pill: a 24px track showing how much of
+   today's allowance remains. currentColor inherits the tier color, so the
+   bar needs no per-tier variants. */
+.ig-creditbadge__bar {
+  width: 24px;
+  height: 3px;
+  border-radius: 999px;
+  position: relative;
+  overflow: hidden;
+}
+
+.ig-creditbadge__bar::before {
+  /* Dim track under the fill (currentColor at low alpha via opacity). */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0.25;
+}
+
+.ig-creditbadge__bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: currentColor;
+  border-radius: 999px;
+  transition: width 200ms var(--ig-ease, ease);
+}
+
+.ig-creditbadge--green {
+  color: var(--ig-success);
+  background: var(--ig-success-soft);
+  border-color: var(--ig-success);
+}
+
+.ig-creditbadge--amber {
+  color: var(--ig-warn);
+  background: var(--ig-warn-soft);
+  border-color: var(--ig-warn);
+}
+
+.ig-creditbadge--red {
+  color: var(--ig-danger);
+  background: var(--ig-danger-soft);
+  border-color: var(--ig-danger);
+}
+
+/* Ghost icon button (header close, result actions). */
+.ig-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ig-control-sm);
+  height: var(--ig-control-sm);
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  color: var(--ig-faint);
+  font-size: var(--ig-text-xs);
+  transition:
+    background var(--ig-fast) ease,
+    color var(--ig-fast) ease,
+    transform var(--ig-fast) var(--ig-ease);
+}
+
+.ig-iconbtn:hover {
+  background: var(--ig-surface-2);
+  color: var(--ig-fg);
+}
+
+.ig-iconbtn:active {
+  transform: scale(0.92);
+}
+
+.ig-iconbtn:focus-visible {
+  outline: 2px solid var(--ig-accent);
+  outline-offset: 1px;
+}
+
+/* Resize handles (ResizeHandles.tsx): decorative hit-targets pinned to the
+   panel rim, each driving native startResizeDragging from that edge/corner.
+   Kept inside the panel (not the transparent window margin) so they sit on
+   the visible card. */
+.ig-resize {
+  position: absolute;
+  z-index: 950;
+  background: transparent;
+}
+
+.ig-resize--n,
+.ig-resize--s {
+  left: 12px;
+  right: 12px;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.ig-resize--n {
+  top: 0;
+}
+
+.ig-resize--s {
+  bottom: 0;
+}
+
+.ig-resize--e,
+.ig-resize--w {
+  top: 12px;
+  bottom: 12px;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.ig-resize--e {
+  right: 0;
+}
+
+.ig-resize--w {
+  left: 0;
+}
+
+.ig-resize--ne,
+.ig-resize--sw {
+  width: 12px;
+  height: 12px;
+  cursor: nesw-resize;
+}
+
+.ig-resize--nw,
+.ig-resize--se {
+  width: 12px;
+  height: 12px;
+  cursor: nwse-resize;
+}
+
+.ig-resize--ne {
+  top: 0;
+  right: 0;
+}
+
+.ig-resize--nw {
+  top: 0;
+  left: 0;
+}
+
+.ig-resize--se {
+  bottom: 0;
+  right: 0;
+}
+
+.ig-resize--sw {
+  bottom: 0;
+  left: 0;
+}
+
+/* Auto-height scroll viewport (useAutoWindowHeight) — THE single scroll
+   region of the main window: its bare inner wrapper must stay UNCONSTRAINED
+   so the ResizeObserver reads the content's natural height. Nothing inside
+   (.ig-tabpanel--view, .ig-body) may be a scroll container: they always fit
+   their content here, and a non-overflowing scroller with overscroll
+   containment eats wheel events instead of chaining them up to this box.
+   NO flex:1 here: framer-motion drives an inline `height`, and a 0% flex
+   basis would override it in the flex algorithm — default basis:auto lets
+   the animated height rule (and natural height before the first measure).
+   Component-background architecture: this wrapper IS the content card — the
+   one styled surface every view (auth, composer, library, providers,
+   settings) floats in over the transparent desktop. Flat fill only. The
+   gap above it (to the header bar) is intentionally bare desktop. */
+.ig-autoheight {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--ig-bg);
+  border: 1px solid var(--ig-border);
+  border-radius: var(--ig-radius-card);
+  /* No drop-shadow (see .ig-header): over the transparent window it casts a
+     gray halo onto the desktop; the 1px border defines the edge. */
+  margin: var(--ig-space-2);
+  /* ponytail: below ~120px content the min-height window clamp (200) leaves
+     an empty card bottom; no real view is that short — hug height if one
+     ever is. */
+}
+
+/* Plain padded column — NOT a scroll container. Scrolling is centralized on
+   .ig-autoheight; under its unconstrained measuring wrapper this box always
+   fits its content, and a non-overflowing overflow:auto here + overscroll
+   contain would trap wheel events instead of chaining them up (the
+   Settings/Providers "can't scroll" bug). */
+.ig-body {
+  padding: var(--ig-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-3);
+}
+
+/* Micro section label — hierarchy without weight. */
+.ig-section-label {
+  font-size: var(--ig-text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ig-faint);
+}
+
+/* Composer hero zones — Improvise & Create both always visible (Nielsen
+   H5/H6/H8): dedicated editors, persistent ribbons, colocated actions. */
+.ig-zone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+}
+
+.ig-zone+.ig-zone {
+  border-top: 1px solid var(--ig-border-subtle);
+  padding-top: var(--ig-space-3);
+}
+
+.ig-zone__head {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  font-size: var(--ig-text-sm);
+  font-weight: 600;
+  color: var(--ig-fg);
+}
+
+.ig-zone__head .fa-solid {
+  font-size: var(--ig-text-xs);
+  color: var(--ig-muted);
+}
+
+.ig-editor {
+  width: 100%;
+  /* 80px (was 130px): two zone editors must fit a ≥480px window together */
+  min-height: 80px;
+  /* none: the window is user-resizable (see ResizeHandles), so growing the
+     textarea itself would fight the panel's own flex sizing */
+  resize: none;
+  background: var(--ig-field-bg);
+  color: var(--ig-fg);
+  border: 1px solid var(--ig-border);
+  border-radius: var(--ig-radius-card);
+  padding: var(--ig-space-3);
+  font-size: var(--ig-text-lg);
+  line-height: var(--ig-leading-relaxed);
+  outline: none;
+  box-shadow: var(--ig-inset-well);
+  transition:
+    border-color var(--ig-fast) ease,
+    box-shadow var(--ig-fast) ease,
+    background var(--ig-fast) ease;
+}
+
+.ig-editor::placeholder {
+  color: var(--ig-faint);
+}
+
+.ig-editor:focus {
+  border-color: var(--ig-accent);
+  box-shadow:
+    var(--ig-inset-well),
+    0 0 0 3px var(--ig-accent-soft);
+}
+
+.ig-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  flex-wrap: wrap;
+}
+
+/* Action row closing a zone: a hairline separates it from the skill ribbon
+   above (the ribbon transforms the draft, this row moves it somewhere) and the
+   buttons sit trailing-aligned so the primary lands under the thumb/cursor. */
+.ig-actions--zone {
+  justify-content: flex-end;
+  padding-top: var(--ig-space-2);
+  border-top: 1px solid var(--ig-border-subtle);
+}
+
+.ig-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  min-height: var(--ig-control-md);
+  line-height: var(--ig-leading-tight);
+  white-space: nowrap;
+  /* Liquid glass: 15% white fill + top-lit gradient overlay over 12px frost. */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.04)),
+    rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--ig-fg);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--ig-radius-btn);
+  padding: 0 var(--ig-space-3);
+  font-size: var(--ig-text-sm);
+  font-weight: 500;
+  letter-spacing: -0.1px;
+  box-shadow:
+    inset 0 1px 0 var(--ig-highlight),
+    0 4px 30px rgba(0, 0, 0, 0.1);
+  transition:
+    background var(--ig-fast) ease,
+    border-color var(--ig-fast) ease,
+    color var(--ig-fast) ease,
+    filter var(--ig-fast) ease,
+    box-shadow var(--ig-fast) ease,
+    transform var(--ig-fast) var(--ig-ease);
+}
+
+.ig-btn .fa-solid {
+  font-size: var(--ig-text-xs);
+  color: var(--ig-muted);
+}
+
+.ig-btn:hover:not(:disabled) {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.08)),
+    rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow:
+    inset 0 1px 0 var(--ig-highlight),
+    0 8px 40px rgba(0, 0, 0, 0.16);
+}
+
+.ig-btn:active:not(:disabled) {
+  transform: scale(0.96);
+  box-shadow:
+    inset 0 1px 0 var(--ig-highlight),
+    0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.ig-btn:focus-visible {
+  outline: 2px solid var(--ig-accent);
+  outline-offset: 2px;
+}
+
+/* Primary — accent-tinted glass: translucent fill over the frost so the
+   material stays consistent; 85% brand fill keeps accent-fg text AA over any
+   ground. Hover/active ride the sanctioned brand-step tokens. */
+.ig-btn--primary {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0)),
+    color-mix(in srgb, var(--ig-accent) 85%, transparent);
+  color: var(--ig-accent-fg);
+  border-color: rgba(255, 255, 255, 0.25);
+  border-radius: var(--ig-radius-pill);
+  box-shadow:
+    var(--ig-btn-specular),
+    0 4px 14px var(--ig-accent-glow);
+}
+
+.ig-btn--primary .fa-solid {
+  color: var(--ig-accent-fg);
+}
+
+.ig-btn--primary:hover:not(:disabled) {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0)),
+    color-mix(in srgb, var(--ig-accent-hover) 95%, transparent);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow:
+    var(--ig-btn-specular),
+    0 6px 20px var(--ig-accent-glow);
+}
+
+.ig-btn--primary:active:not(:disabled) {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0)),
+    color-mix(in srgb, var(--ig-accent-active) 95%, transparent);
+  box-shadow:
+    var(--ig-btn-specular),
+    0 2px 10px var(--ig-accent-glow);
+}
+
+.ig-btn--danger {
+  color: var(--ig-danger);
+}
+
+.ig-btn--danger .fa-solid {
+  color: var(--ig-danger);
+}
+
+.ig-btn--danger:hover:not(:disabled) {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
+    var(--ig-danger-soft);
+  border-color: var(--ig-danger);
+}
+
+.ig-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+}
+
+/* Skill bar — one-click prompt transformations as compact glass chips.
+   Renders directly inside the Improvise zone (no labelled wrapper). */
+.ig-skillbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ig-space-2);
+}
+
+.ig-skill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-space-1);
+  min-height: var(--ig-control-sm);
+  padding: 0 var(--ig-space-3);
+  font-size: var(--ig-text-xs);
+  border-radius: var(--ig-radius-pill);
+  border-color: var(--ig-border-subtle);
+}
+
+.ig-skill:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 var(--ig-highlight),
+    var(--ig-shadow-raise);
+}
+
+.ig-skill:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.ig-skill .fa-solid {
+  color: var(--ig-accent);
+  font-size: var(--ig-text-xs);
+}
+
+.ig-skill:disabled .fa-solid {
+  color: var(--ig-muted);
+}
+
+/* Empty-bar hint — shown when the user has toggled every skill off. */
+.ig-skillbar__empty {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-space-1);
+  font-size: var(--ig-text-xs);
+  color: var(--ig-faint);
+}
+
+.ig-skillbar__empty .fa-solid {
+  color: var(--ig-faint);
+}
+
+/* ── Skill Manager modal ─────────────────────────────────────────────────── */
+.ig-skillmgr {
+  width: min(560px, 100%);
+  max-height: min(80vh, 720px);
+  /* Flex column with an inner scroll region (.ig-skillmgr__body): the title,
+     intro and footer are flex-shrink:0 and stay pinned; only the body scrolls
+     on a short viewport, so the footer never scrolls out of reach. */
+  overflow: hidden;
+}
+
+.ig-skillmgr > .ig-modal__title,
+.ig-skillmgr > p,
+.ig-skillmgr__footer {
+  flex-shrink: 0;
+}
+
+.ig-skillmgr__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-3);
+  /* Room for the focus ring / scrollbar so neither clips against the edge. */
+  padding-right: var(--ig-space-1);
+}
+
+/* The intro <p> keeps the UA paragraph margin (no global reset), which fights
+   the card's flex gap — zero it so spacing stays even. */
+.ig-skillmgr > p {
+  margin: 0;
+}
+
+.ig-skillmgr__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-1);
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: var(--ig-space-1);
+}
+
+.ig-skillmgr__row {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  padding: var(--ig-space-2);
+  border-radius: var(--ig-radius-btn);
+}
+
+.ig-skillmgr__row:hover {
+  background: var(--ig-surface-1);
+}
+
+.ig-skillmgr__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.ig-skillmgr__icon {
+  color: var(--ig-accent);
+  width: 1.1em;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.ig-skillmgr__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ig-skillmgr__label {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  font-size: var(--ig-text-sm);
+  font-weight: 500;
+}
+
+.ig-skillmgr__badge {
+  font-size: var(--ig-text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ig-accent);
+  border: 1px solid var(--ig-border-subtle);
+  border-radius: var(--ig-radius-pill);
+  padding: 0 var(--ig-space-1);
+}
+
+.ig-skillmgr__desc {
+  font-size: var(--ig-text-xs);
+  color: var(--ig-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ig-skillmgr__del {
+  padding: 0 var(--ig-space-2);
+  flex-shrink: 0;
+}
+
+.ig-skillmgr__confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+}
+
+.ig-skillmgr__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-3);
+  border-top: 1px solid var(--ig-border-subtle);
+  padding-top: var(--ig-space-3);
+}
+
+/* Section label inside the modal — a quiet divider caption, NOT a second
+   serif modal title (which is what reusing .ig-modal__title looked like). */
+.ig-skillmgr__section {
+  font-size: var(--ig-text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ig-faint);
+}
+
+/* Icon row: preview swatch + resolved name + "Select Icon" trigger. No glyphs
+   are shown here until the user opens the picker — this is just the current
+   choice and the way in. */
+.ig-skillmgr__iconrow {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+}
+
+.ig-skillmgr__iconname {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ig-text-sm);
+  color: var(--ig-muted);
+  text-transform: capitalize;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ig-skillmgr__iconbtn {
+  flex-shrink: 0;
+}
+
+.ig-skillmgr__iconpreview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ig-control-lg);
+  height: var(--ig-control-lg);
+  flex-shrink: 0;
+  background: var(--ig-surface-1);
+  border: 1px solid var(--ig-border-subtle);
+  border-radius: var(--ig-radius-btn);
+  color: var(--ig-accent);
+}
+
+/* Prompt template shares .ig-input chrome (matches the fields above) but needs
+   room to write in — a monospace-ish multi-line well, not the big composer. */
+.ig-skillmgr__template {
+  min-height: 88px;
+  resize: vertical;
+  line-height: var(--ig-leading-relaxed);
+}
+
+/* Template hint stays inside its field: wraps long text and never gets
+   squashed to zero height (which pushed it to bleed past the field edge). */
+.ig-skillmgr__hint {
+  font-size: var(--ig-text-2xs);
+  color: var(--ig-faint);
+  flex-shrink: 0;
+  overflow-wrap: anywhere;
+}
+
+.ig-skillmgr__footer {
+  border-top: 1px solid var(--ig-border-subtle);
+  padding-top: var(--ig-space-3);
+}
+
+/* ── Icon picker popup (SkillManager → "Select Icon") ────────────────────────
+   A dialog layered ABOVE the Skill Manager (z-index over the 900 manager): its
+   own scrim + glass card, mirroring .ig-modal / .ig-modal__card. The grid is
+   the single scroll region; the head and search stay pinned. */
+.ig-iconpicker__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ig-space-4);
+  background: var(--ig-scrim);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  animation: ig-fade-in var(--ig-fast) ease;
+}
+
+.ig-iconpicker__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-3);
+  width: min(460px, 100%);
+  max-height: min(80vh, 560px);
+  padding: var(--ig-space-5);
+  background: var(--ig-glass-bg);
+  backdrop-filter: blur(var(--ig-glass-blur));
+  -webkit-backdrop-filter: blur(var(--ig-glass-blur));
+  border: 1px solid transparent;
+  border-radius: var(--ig-radius-panel);
+  box-shadow:
+    var(--ig-shadow-float),
+    inset 0 1px 0 var(--ig-highlight);
+  overflow: hidden;
+  animation: ig-modal-in var(--ig-slow) var(--ig-ease-pop);
+}
+
+.ig-iconpicker__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ig-space-2);
+  flex-shrink: 0;
+}
+
+/* Search: magnifier + input + clear on one row; the input flexes and reserves
+   room on both ends for the two icons. */
+.ig-iconpicker__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ig-iconpicker__search .ig-input {
+  flex: 1;
+  min-width: 0;
+  padding-left: calc(var(--ig-space-3) + 1.2em);
+  padding-right: calc(var(--ig-space-3) + 1.2em);
+}
+
+.ig-iconpicker__searchicon {
+  position: absolute;
+  left: var(--ig-space-3);
+  color: var(--ig-faint);
+  font-size: var(--ig-text-sm);
+  pointer-events: none;
+}
+
+.ig-iconpicker__clear {
+  position: absolute;
+  right: var(--ig-space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ig-faint);
+  cursor: pointer;
+  border-radius: var(--ig-radius-pill);
+}
+
+.ig-iconpicker__clear:hover {
+  color: var(--ig-fg);
+  background: var(--ig-surface-2);
+}
+
+/* The one flex child that soaks the card's slack and scrolls. */
+.ig-iconpicker__grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: var(--ig-space-1);
+  padding-right: var(--ig-space-1);
+}
+
+.ig-iconpicker__tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  font-size: var(--ig-text-md);
+  background: var(--ig-surface-1);
+  border: 1px solid var(--ig-border-subtle);
+  border-radius: var(--ig-radius-btn);
+  color: var(--ig-muted);
+  cursor: pointer;
+  transition:
+    background var(--ig-fast) ease,
+    border-color var(--ig-fast) ease,
+    color var(--ig-fast) ease;
+}
+
+.ig-iconpicker__tile:hover {
+  background: var(--ig-surface-2);
+  color: var(--ig-fg);
+}
+
+.ig-iconpicker__tile:focus-visible {
+  outline: none;
+  border-color: var(--ig-accent);
+  box-shadow: 0 0 0 3px var(--ig-accent-soft);
+}
+
+.ig-iconpicker__tile--active {
+  background: var(--ig-accent-tint);
+  border-color: var(--ig-accent);
+  color: var(--ig-accent);
+}
+
+.ig-iconpicker__empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ig-space-5);
+  text-align: center;
+  font-size: var(--ig-text-sm);
+  color: var(--ig-muted);
+}
+
+/* Keyboard hint footer — quiet affordance, never chrome. */
+.ig-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-1);
+  font-size: var(--ig-text-xs);
+  color: var(--ig-faint);
+}
+
+.ig-kbd {
+  display: inline-block;
+  padding: 0 var(--ig-space-1);
+  font-size: var(--ig-text-2xs);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  color: var(--ig-muted);
+  background: var(--ig-surface-1);
+  border: 1px solid var(--ig-border-subtle);
+  border-bottom-color: var(--ig-border);
+  border-radius: 5px;
+}
+
+/* Working pulse — shown while a run streams its hidden <analysis> phase and
+   the result area has nothing to render yet (Kinetic Minimalism: the pulse is
+   the only moving element, no spinner chrome). */
+.ig-working {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-1);
+  border-top: 1px solid var(--ig-border-subtle);
+  padding-top: var(--ig-space-3);
+  animation: ig-fade-in var(--ig-slow) var(--ig-ease);
+}
+
+.ig-working__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--ig-radius-pill);
+  background: var(--ig-accent);
+  box-shadow: 0 0 6px var(--ig-accent-glow);
+  animation: ig-working-pulse 1.2s var(--ig-ease) infinite;
+}
+
+.ig-working__dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.ig-working__dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes ig-working-pulse {
+
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.85);
+  }
+
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ThinkingOrb canvas (src/components/ui/ThinkingOrb.tsx). Color is painted
+   inside the canvas from --ig-accent at runtime; here only layout + a soft
+   brand glow. */
+.ig-orb {
+  display: block;
+  flex: none;
+  filter: drop-shadow(0 0 6px var(--ig-accent-glow));
+}
+
+.ig-result {
+  border-top: 1px solid var(--ig-border-subtle);
+  padding-top: var(--ig-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+}
+
+.ig-result__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ig-space-2);
+}
+
+/* Live latency chips (Kinetic Minimalism): the numbers ticking in place
+   during a stream are the moving element — tabular numerals so a changing
+   digit never shifts its neighbors, and no decoration beyond a subtle
+   border. */
+.ig-chips {
+  display: flex;
+  gap: var(--ig-space-2);
+  flex-wrap: wrap;
+}
+
+.ig-chip {
+  background: var(--ig-surface-1);
+  border: 1px solid var(--ig-border-subtle);
+  border-radius: var(--ig-radius-pill);
+  padding: 0 var(--ig-space-2);
+  font-size: var(--ig-text-2xs);
+  color: var(--ig-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ig-result__text {
+  background: var(--ig-surface-1);
+  border: 1px solid var(--ig-border-subtle);
+  border-radius: var(--ig-radius-card);
+  box-shadow: inset 0 1px 0 var(--ig-highlight);
+  padding: var(--ig-space-3);
+  font-size: var(--ig-text-md);
+  line-height: var(--ig-leading-relaxed);
+  white-space: pre-wrap;
+  /* No own max-height/scroll: .ig-autoheight is the single scroll region,
+     so this grows with a resized window instead of staying pinned. */
+  user-select: text;
+}
+
+.ig-error {
+  color: var(--ig-danger);
+  font-size: var(--ig-text-sm);
+}
+
+/* Relay capacity 503 (ProxyOverloadCard) — a wait-and-retry state, not a
+   failure: warn tones, never danger red. No drop-shadow (this can render in
+   the transparent selection-floater window). */
+.ig-overload {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+  padding: var(--ig-space-3);
+  border: 1px solid var(--ig-border);
+  border-radius: var(--ig-radius-card);
+  background: var(--ig-warn-soft);
+}
+
+.ig-overload__head {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  font-size: var(--ig-text-sm);
+  font-weight: 600;
+}
+
+.ig-overload__head .fa-solid {
+  color: var(--ig-warn);
+}
+
+.ig-overload__body {
+  margin: 0;
+  font-size: var(--ig-text-xs);
+  line-height: var(--ig-leading-normal);
+  color: var(--ig-muted);
+}
+
+.ig-overload__track {
+  height: 4px;
+  border-radius: var(--ig-radius-pill);
+  background: var(--ig-surface-2);
+  overflow: hidden;
+}
+
+.ig-overload__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ig-warn);
+  transition: width 1s linear;
+}
+
+.ig-overload__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ig-space-2);
+}
+
+.ig-overload__count {
+  font-size: var(--ig-text-2xs);
+  color: var(--ig-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ig-muted {
+  color: var(--ig-muted);
+  font-size: var(--ig-text-sm);
+}
+
+/* Inline text-link button (e.g. "Get your API key" on the Provider Keys page).
+   A button, not an <a>, so it opens through the opener plugin. */
+.ig-linkbtn {
+  align-self: flex-start;
+  padding: 0;
+  margin-top: var(--ig-space-1);
+  background: none;
+  border: none;
+  color: var(--ig-accent);
+  font: inherit;
+  font-size: var(--ig-text-xs);
+  cursor: pointer;
+}
+
+.ig-linkbtn:hover {
+  text-decoration: underline;
+}
+
+.ig-linkbtn:focus-visible {
+  outline: 2px solid var(--ig-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Empty states — a quiet centered card instead of a bare sentence. */
+.ig-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ig-space-2);
+  text-align: center;
+  padding: var(--ig-space-8) var(--ig-space-4);
+}
+
+.ig-empty__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--ig-surface-1);
+  border: 1px solid var(--ig-border-subtle);
+  box-shadow: inset 0 1px 0 var(--ig-highlight);
+  color: var(--ig-accent);
+  font-size: var(--ig-text-xl);
+}
+
+.ig-empty__title {
+  font-family: var(--ig-font-serif);
+  font-size: var(--ig-text-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.ig-empty__hint {
+  font-size: var(--ig-text-xs);
+  color: var(--ig-muted);
+  max-width: 320px;
+}
+
+/* Library */
+.ig-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ig-space-2);
+  padding: var(--ig-space-3) var(--ig-space-4);
+  border: 1px solid var(--ig-border-subtle);
+  border-radius: var(--ig-radius-card);
+  background: var(--ig-surface-1);
+  box-shadow: inset 0 1px 0 var(--ig-highlight);
+  transition:
+    background var(--ig-fast) ease,
+    border-color var(--ig-fast) ease,
+    box-shadow var(--ig-fast) ease,
+    transform var(--ig-fast) var(--ig-ease);
+}
+
+.ig-card:hover {
+  background: var(--ig-surface-2);
+  border-color: var(--ig-border);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 var(--ig-highlight),
+    var(--ig-shadow-raise);
+}
+
+.ig-card__title {
+  font-family: var(--ig-font-serif);
+  font-size: var(--ig-text-md);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.ig-card__tags {
+  font-size: var(--ig-text-xs);
+  color: var(--ig-faint);
+}
+
+.ig-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+  /* No own max-height/scroll: .ig-autoheight is the single scroll region,
+     so this grows with a resized window instead of staying pinned. */
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* History run row — prompt preview + run metrics + reuse, in the library's
+   card idiom. */
+.ig-history {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-3);
+  padding: var(--ig-space-3) var(--ig-space-4);
+  border: 1px solid var(--ig-border-subtle);
+  border-radius: var(--ig-radius-card);
+  background: var(--ig-surface-1);
+  box-shadow: inset 0 1px 0 var(--ig-highlight);
+}
+
+.ig-history__body {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--ig-text-sm);
+  color: var(--ig-fg);
+}
+
+.ig-history__meta {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--ig-space-2);
+  font-size: var(--ig-text-2xs);
+  color: var(--ig-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.ig-history .ig-btn {
+  flex-shrink: 0;
+}
+
+/* Settings */
+.ig-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-1);
+  /* Let the field shrink in a flex/grid parent instead of forcing its content
+     to overflow sideways into neighbours. */
+  min-width: 0;
+}
+
+.ig-field>label,
+.ig-field__label {
+  font-size: var(--ig-text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ig-faint);
+}
+
+.ig-input,
+.ig-select {
+  background: var(--ig-field-bg);
+  color: var(--ig-fg);
+  border: 1px solid var(--ig-border);
+  border-radius: var(--ig-radius-btn);
+  min-height: var(--ig-control-lg);
+  padding: var(--ig-space-1) var(--ig-space-3);
+  font-size: var(--ig-text-sm);
+  outline: none;
+  box-shadow: var(--ig-inset-well);
+  transition:
+    border-color var(--ig-fast) ease,
+    box-shadow var(--ig-fast) ease,
+    background var(--ig-fast) ease;
+}
+
+.ig-input::placeholder {
+  color: var(--ig-faint);
+}
+
+.ig-input:focus,
+.ig-select:focus {
+  border-color: var(--ig-accent);
+  box-shadow:
+    var(--ig-inset-well),
+    0 0 0 3px var(--ig-accent-soft);
+}
+
+/* Multi-line fields (Settings blocklist, provider credential textareas)
+   share .ig-input; the control height is a single-line concern. */
+textarea.ig-input {
+  min-height: 0;
+  padding: var(--ig-space-2) var(--ig-space-3);
+}
+
+/* Custom chevron so the native arrow doesn't break the glass look. Neutral
+   gray encodes legibly on both themes; CSP allows data: images. */
+.ig-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: var(--ig-space-8);
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23909098' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--ig-space-3) center;
+  cursor: pointer;
+}
+
+.ig-select:hover {
+  border-color: var(--ig-border-strong);
+}
+
+/* Native popup list: Chromium propagates the select's own translucent
+   background/color to the option list, so the near-transparent field fill
+   composites to white and the light --ig-fg text vanishes on it. Pin OPAQUE
+   theme colors on option/optgroup so both themes stay legible. */
+.ig-select option,
+.ig-select optgroup {
+  background: var(--ig-bg-opaque);
+  color: var(--ig-fg);
+}
+
+.ig-select optgroup {
+  color: var(--ig-muted);
+  font-weight: 600;
+  font-style: normal;
+}
+
+.ig-select option {
+  padding: var(--ig-space-1) var(--ig-space-2);
+  font-weight: 400;
+}
+
+.ig-select option:checked {
+  background: var(--ig-accent);
+  color: var(--ig-accent-fg);
+}
+
+/* Combobox (SearchableSelect.tsx). Field chrome comes from .ig-input; the
+   popup is glass — a SINGLE flat translucent fill + backdrop-filter (never a
+   gradient over near-opaque: WebView2 compositing bug, see .ig-panel note).
+   Enter/exit animation lives in the component (framer-motion). */
+.ig-combobox {
+  position: relative;
+}
+
+.ig-combobox__input {
+  width: 100%;
+  padding-right: var(--ig-space-8);
+  /* room for the chevron, mirrors .ig-select */
+  cursor: pointer;
+}
+
+.ig-combobox__input[aria-expanded="true"]:not([readonly]) {
+  cursor: text;
+}
+
+.ig-combobox__chevron {
+  position: absolute;
+  right: var(--ig-space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--ig-text-2xs);
+  color: var(--ig-faint);
+  pointer-events: none;
+}
+
+.ig-combobox__list {
+  position: absolute;
+  top: calc(100% + var(--ig-space-1));
+  left: 0;
+  right: 0;
+  z-index: 40;
+  max-height: 240px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--ig-space-1);
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(15px) saturate(160%);
+  -webkit-backdrop-filter: blur(15px) saturate(160%);
+  border: 1px solid var(--ig-border);
+  border-radius: var(--ig-radius-card);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  transform-origin: top center;
+  /* motion scale expands from the field */
+}
+
+.ig-combobox__option {
+  padding: var(--ig-space-2) var(--ig-space-3);
+  font-size: var(--ig-text-sm);
+  color: var(--ig-fg);
+  cursor: pointer;
+  border-radius: 6px;
+  /* macOS menu item */
+  transition:
+    background var(--ig-fast) ease,
+    transform var(--ig-fast) ease;
+}
+
+.ig-combobox__option.is-active {
+  background: var(--ig-accent-soft);
+}
+
+.ig-combobox__option:hover,
+.ig-combobox__option:active {
+  transform: scale(0.98);
+}
+
+.ig-combobox__option[aria-selected="true"] {
+  color: var(--ig-accent);
+  font-weight: 600;
+}
+
+.ig-combobox__empty {
+  padding: var(--ig-space-2) var(--ig-space-3);
+  font-size: var(--ig-text-sm);
+  color: var(--ig-muted);
+}
+
+/* Prompt picker — the composer's visual library browser (replaces the native
+   select). Popover fill is a single FLAT opaque color: layering a gradient
+   over a near-opaque fill on this transparent window punches the desktop
+   through (WebView2 compositing bug — see .ig-panel note). */
+.ig-picker {
+  position: relative;
+}
+
+.ig-picker__trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  width: 100%;
+  background: var(--ig-field-bg);
+  color: var(--ig-muted);
+  border: 1px solid var(--ig-border);
+  border-radius: var(--ig-radius-btn);
+  min-height: var(--ig-control-lg);
+  padding: var(--ig-space-1) var(--ig-space-3);
+  font-size: var(--ig-text-sm);
+  text-align: left;
+  box-shadow: var(--ig-inset-well);
+  cursor: pointer;
+  transition:
+    border-color var(--ig-fast) ease,
+    box-shadow var(--ig-fast) ease;
+}
+
+.ig-picker__trigger .fa-solid {
+  font-size: var(--ig-text-xs);
+  color: var(--ig-accent);
+}
+
+.ig-picker__trigger:hover {
+  border-color: var(--ig-border-strong);
+}
+
+.ig-picker__trigger:focus-visible,
+.ig-picker__trigger[aria-expanded="true"] {
+  border-color: var(--ig-accent);
+  box-shadow:
+    var(--ig-inset-well),
+    0 0 0 3px var(--ig-accent-soft);
+  outline: none;
+}
+
+.ig-picker__chevron {
+  margin-left: auto;
+}
+
+.ig-picker__trigger .ig-picker__chevron {
+  font-size: var(--ig-text-2xs);
+  color: var(--ig-faint);
+}
+
+/* Inline variant — the same browser rendered flat inside the Create tab
+   (no popover). Flat opaque-ish fill for the same WebView2 reason as above. */
+.ig-picker__pop {
+  position: absolute;
+  top: calc(100% + var(--ig-space-1));
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: var(--ig-bg-opaque);
+  border: 1px solid var(--ig-border-strong);
+  border-radius: var(--ig-radius-card);
+  box-shadow: var(--ig-shadow-float);
+  overflow: hidden;
+  animation: ig-picker-pop var(--ig-fast) var(--ig-ease-pop);
+}
+
+@keyframes ig-picker-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Off-screen but announced — for explicit <label>s on icon-only inputs. */
+.ig-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ig-picker__empty {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  padding: var(--ig-space-4) var(--ig-space-3);
+  font-size: var(--ig-text-xs);
+  color: var(--ig-muted);
+}
+
+.ig-picker__empty .fa-solid {
+  color: var(--ig-faint);
+}
+
+/* Template fill dialog — multi-select checklist + toggle rows */
+.ig-checklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ig-space-2) var(--ig-space-4);
+  padding: var(--ig-space-1) 0;
+}
+
+.ig-check {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  font-size: var(--ig-text-sm);
+  color: var(--ig-fg);
+}
+
+/* Toasts. Fixed to the window corner, which overlaps the transparent margin
+   OUTSIDE the panel — so like .ig-panel the fill must be a single flat,
+   effectively-opaque color. Tints are pre-blended with color-mix instead of
+   a translucent layer stack. */
+.ig-toaster {
+  position: fixed;
+  right: var(--ig-space-6);
+  bottom: var(--ig-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+  z-index: 1000;
+  align-items: flex-end;
+}
+
+.ig-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ig-space-2);
+  max-width: 360px;
+  text-align: left;
+  border: 1px solid var(--ig-border-strong);
+  border-radius: var(--ig-radius-card);
+  padding: var(--ig-space-3) var(--ig-space-4);
+  font-size: var(--ig-text-sm);
+  color: var(--ig-fg);
+  background: var(--ig-bg-opaque);
+  box-shadow:
+    var(--ig-shadow-float),
+    inset 0 1px 0 var(--ig-highlight);
+  animation: ig-toast-in 200ms var(--ig-ease-pop);
+}
+
+.ig-toast__icon {
+  font-size: var(--ig-text-sm);
+  margin-top: var(--ig-space-1);
+  color: var(--ig-muted);
+}
+
+.ig-toast--error {
+  border-color: var(--ig-danger);
+  background: color-mix(in srgb, var(--ig-danger) 9%, var(--ig-bg-opaque));
+}
+
+.ig-toast--error .ig-toast__icon {
+  color: var(--ig-danger);
+}
+
+.ig-toast--success {
+  border-color: var(--ig-success);
+  background: color-mix(in srgb, var(--ig-success) 9%, var(--ig-bg-opaque));
+}
+
+.ig-toast--success .ig-toast__icon {
+  color: var(--ig-success);
+}
+
+.ig-toast--info .ig-toast__icon {
+  color: var(--ig-accent);
+}
+
+@keyframes ig-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Modal dialog (prompt editor). absolute, not fixed: the scrim resolves to
+   the position:relative .ig-panel (overflow:hidden, 18px radius), so the
+   dim + blur cover only the floater's rounded body — nothing outside it.
+   The scrim's backdrop-filter works here — it blurs in-page panel content
+   behind it, not the desktop. */
+.ig-modal {
+  position: absolute;
+  inset: 0;
+  background: var(--ig-scrim);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 900;
+  padding: var(--ig-space-4);
+  animation: ig-fade-in var(--ig-fast) ease;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ig-modal {
+    background: var(--ig-scrim-strong);
+  }
+}
+
+/* True in-page glass: translucent flat fill + its own backdrop blur of the
+   (already dimmed) panel content behind it. Two blur layers total on screen
+   — scrim + card — which is the budget ceiling. */
+.ig-modal__card {
+  position: relative;
+  width: min(520px, 100%);
+  background: var(--ig-glass-bg);
+  backdrop-filter: blur(var(--ig-glass-blur));
+  -webkit-backdrop-filter: blur(var(--ig-glass-blur));
+  border: 1px solid var(--ig-border);
+  border-radius: var(--ig-radius-card);
+  padding: var(--ig-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-3);
+  box-shadow:
+    var(--ig-shadow-float),
+    inset 0 1px 0 var(--ig-highlight);
+  animation: ig-modal-in var(--ig-slow) var(--ig-ease-pop);
+}
+
+.ig-modal__card::before {
+  display: none;
+}
+
+.ig-modal__title {
+  font-family: var(--ig-font-serif);
+  font-size: var(--ig-text-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.ig-modal__preview {
+  background: var(--ig-surface-1);
+  border: 1px solid var(--ig-border-subtle);
+  border-radius: var(--ig-radius-btn);
+  padding: var(--ig-space-3);
+  max-height: 140px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  white-space: pre-wrap;
+  font-size: var(--ig-text-sm);
+  color: var(--ig-muted);
+  user-select: text;
+}
+
+@keyframes ig-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ig-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Glass card — reusable frosted material for cards / tiles / pills.
+   True frost: backdrop-filter blur+saturate+brightness samples the panel's
+   ambient mesh (in-page pixels — this works; only the desktop is
+   unsampleable), under a flat low-alpha fill. Lighting is the 4-edge inset
+   specular set + the masked 1px rim — box-shadows, never a sheen overlay
+   (semi-transparent gradients over fills are the punch-through bug; blend
+   modes unverified on a transparent window). backdrop-filter creates a
+   stacking context, so children need no z-index. Do not nest inside another
+   backdrop-filtered element except .ig-modal__card (nested filters compound
+   GPU cost), and mind the ≲12 visible frosted elements budget (header). */
+.ig-glass-card {
+  position: relative;
+  background: var(--ig-glass-card-bg);
+  /* flat rgba — never a gradient fill */
+  backdrop-filter: blur(var(--ig-glass-blur-card)) var(--ig-glass-frost);
+  -webkit-backdrop-filter: blur(var(--ig-glass-blur-card)) var(--ig-glass-frost);
+  border: 1px solid var(--ig-border);
+  border-radius: var(--ig-radius-card);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), var(--ig-glass-specular-set);
+  transition:
+    background var(--ig-fast) var(--ig-ease),
+    border-color var(--ig-fast) var(--ig-ease),
+    box-shadow var(--ig-fast) var(--ig-ease),
+    transform var(--ig-fast) var(--ig-ease);
+}
+
+.ig-glass-card::before {
+  display: none;
+}
+
+/* Hover lifts fill + shadow only — blur radius stays constant, never
+   animated (file-header rule). */
+.ig-glass-card:hover {
+  background: var(--ig-glass-card-bg-hover);
+  box-shadow: var(--ig-glass-specular-set), var(--ig-shadow-float);
+  transform: translateY(-1px);
+}
+
+/* Accent "hero" variant — fully opaque fill (alpha = 1), so no translucency
+   rules apply; the masked rim + shadow still carry the glass read. Frost is
+   invisible behind an opaque fill — drop it, it would be pure GPU cost. */
+.ig-glass-card--accent {
+  background: var(--ig-accent);
+  color: var(--ig-accent-fg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.ig-glass-card--accent:hover {
+  background: var(--ig-accent);
+}
+
+/* No-blur engines: solid surface fill stands in for the frost (mirror of the
+   .ig-modal fallback pattern; placed after :hover so it wins the cascade).
+   Query names the -webkit- spelling too — WKWebView lacks unprefixed
+   backdrop-filter by default, and would wrongly take this fallback. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ig-glass-card {
+    background: var(--ig-surface-2);
+  }
+
+  .ig-glass-card:hover {
+    background: var(--ig-surface-3);
+  }
+
+  .ig-glass-card--accent,
+  .ig-glass-card--accent:hover {
+    background: var(--ig-accent);
+  }
+}
+
+/* Skill Components floater — review surface for one-click skill runs.
+   Reuses the .ig-modal__card glass material but NOT the .ig-modal scrim: the
+   card sits bare over the panel so its backdrop-filter frosts the real page
+   content, not a tinted overlay. Centered via absolute + translate against
+   the position:relative .ig-panel; dismissal is a document-level mousedown
+   in the component (no scrim to click). */
+/* A long deliverable (+ open reasoning) can outgrow the panel. Cap the card
+   to the panel height (minus the 16px gutter the scrim used to provide) and
+   clip it; the flex column then keeps __head and the action bar pinned while
+   __screen absorbs the slack and scrolls, so the header never gets pushed
+   off the top nor Apply/Edit off the bottom. Scoped to the floater — other
+   .ig-modal__card dialogs have no inner scroll region and must not be
+   clipped. */
+.ig-modal__card.ig-skillfloater {
+  /* Safe centering: inset bounds + margin:auto can never push the card
+     outside the panel the way the old 50%/translate centering did on short
+     viewports — the card shrinks against the 16px gutter instead of clipping. */
+  position: absolute;
+  inset: 16px;
+  margin: auto;
+  height: max-content;
+  z-index: 900;
+  /* auto stretches to the inset box (never past the gutters, unlike 100%,
+     which resolves against the panel); max-width caps it on wide panels. */
+  width: auto;
+  max-width: 360px;
+  max-height: calc(100% - 32px);
+  overflow: hidden;
+  padding: var(--ig-space-4);
+  gap: var(--ig-space-3);
+  border-radius: 14px;
+  /* Premium glass material: light white tint + frost, real hairline border,
+     one soft diffuse drop + a top inset specular for the lit-edge read. */
+  background: var(--ig-floater-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--ig-floater-border);
+  box-shadow: var(--ig-floater-shadow);
+  /* Own entrance (design: 420ms overshoot pop, rising + sharpening from a
+     2px blur). Animates `filter`, NOT backdrop-filter — the frost radius
+     itself never animates (file-header rule). No fill-mode: after the
+     entrance the cascade owns transform so the hover scale can win. */
+  animation: ig-skillfloater-in 420ms var(--ig-ease-pop);
+  transition: transform 180ms var(--ig-ease-pop);
+}
+
+.ig-modal__card.ig-skillfloater:hover {
+  transform: scale(1.01);
+}
+
+@keyframes ig-skillfloater-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.955);
+    filter: blur(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+.ig-skillfloater__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ig-space-2);
+}
+
+.ig-skillfloater__close {
+  width: var(--ig-control-sm);
+  height: var(--ig-control-sm);
+  min-height: 0;
+  padding: 0;
+  justify-content: center;
+  border-radius: 7px;
+  font-size: var(--ig-text-xs);
+  line-height: var(--ig-leading-none);
+}
+
+.ig-skillfloater__skill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-space-1);
+  align-self: flex-start;
+  min-height: var(--ig-control-sm);
+  padding: 0 var(--ig-space-2);
+  border-radius: var(--ig-radius-pill);
+  /* Accent wash reads as lit glass via the tint + top specular alone —
+     no outline ring competing with the card rim. */
+  background: var(--ig-accent-tint);
+  border: 1px solid transparent;
+  box-shadow: inset 0 1px 0 var(--ig-highlight);
+  font-size: var(--ig-text-xs);
+  line-height: var(--ig-leading-relaxed);
+  color: var(--ig-fg);
+}
+
+.ig-skillfloater__skill .fa-solid {
+  color: var(--ig-accent);
+  font-size: var(--ig-text-xs);
+}
+
+/* Chips / secondary buttons / thinking well sit ON the brighter frosted
+   card, so their fills step up from the stock surface ladder to keep the
+   same perceived contrast (design values). Primary Apply is untouched. */
+.ig-skillfloater .ig-chip {
+  background: var(--ig-surface-2);
+  border-color: var(--ig-border);
+  padding: 0 var(--ig-space-2);
+}
+
+.ig-skillfloater .ig-btn:not(.ig-btn--primary) {
+  background: var(--ig-surface-2);
+  border-color: var(--ig-border);
+}
+
+.ig-skillfloater .ig-btn:not(.ig-btn--primary):hover:not(:disabled) {
+  background: var(--ig-surface-3);
+  border-color: var(--ig-border-strong);
+}
+
+/* Deliverable well on the frosted card: sunken glass — a backdrop that
+   contrasts with --ig-fg per theme (--ig-result-well-bg) + inner shadow. */
+.ig-skillfloater .ig-result__text {
+  font-size: var(--ig-text-md);
+  font-weight: 600;
+  line-height: var(--ig-leading-relaxed);
+  color: var(--ig-fg);
+  background: var(--ig-result-well-bg);
+  border-color: transparent;
+  box-shadow: var(--ig-inset-well);
+  padding: var(--ig-space-4);
+  border-radius: var(--ig-radius-card);
+}
+
+/* The screen is the flex child that soaks up the card's remaining height and
+   scrolls. flex-basis auto so a short result stays its natural size (no forced
+   empty box); min-height:0 lets it shrink below its content on a small window
+   so the scroll — not the head/actions — gives way. */
+.ig-skillfloater__screen {
+  flex: 1 1 auto;
+  min-height: 0;
+  /* Design cap: the screen scrolls past ~190px so the card stays a compact
+     floating object (the card max-height still bounds it on tiny panels). */
+  max-height: 190px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.ig-skillfloater__screen .ig-working {
+  justify-content: center;
+  padding: var(--ig-space-4) 0;
+  border-top: none;
+}
+
+/* Live <analysis> reasoning, streamed as collapsible "thinking" (L1 latency
+   work). Deliberately muted and secondary to the deliverable screen — it is
+   progress/context, never the artifact. */
+.ig-thinking {
+  margin: 0 0 var(--ig-space-2);
+  border: 1px solid var(--ig-border-subtle);
+  border-radius: var(--ig-radius-card);
+  background: var(--ig-surface-1);
+  color: var(--ig-muted);
+}
+
+.ig-thinking__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-1);
+  cursor: pointer;
+  padding: var(--ig-space-2) var(--ig-space-3);
+  list-style: none;
+  user-select: none;
+  font-size: var(--ig-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ig-faint);
+  transition: color var(--ig-fast) ease;
+}
+
+.ig-thinking__summary:hover {
+  color: var(--ig-muted);
+}
+
+.ig-thinking__summary::-webkit-details-marker {
+  display: none;
+}
+
+.ig-thinking__summary::before {
+  content: "›";
+  font-size: var(--ig-text-sm);
+  font-weight: 700;
+  line-height: var(--ig-leading-none);
+  transition: transform var(--ig-fast) var(--ig-ease);
+}
+
+.ig-thinking[open] .ig-thinking__summary::before {
+  transform: rotate(90deg);
+}
+
+.ig-thinking[open] .ig-thinking__summary {
+  border-bottom: 1px solid var(--ig-border-subtle);
+}
+
+.ig-thinking__text {
+  padding: var(--ig-space-1) var(--ig-space-3);
+  max-height: 160px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  white-space: pre-wrap;
+  user-select: text;
+  font-size: var(--ig-text-xs);
+  line-height: var(--ig-leading-normal);
+}
+
+/* Grounded-run citations. Reuses the .ig-thinking shell (padding, scroll cap,
+   type scale); this only turns the <ul> into a flat link list. */
+.ig-sources {
+  margin: 0;
+  padding-left: var(--ig-space-3);
+  white-space: normal;
+}
+
+.ig-sources a {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ig-accent);
+  text-decoration: none;
+  padding: 2px 0;
+}
+
+.ig-sources a:hover {
+  text-decoration: underline;
+}
+
+/* On the frosted floater card: no extra margin (the card's 12px gap is the
+   rhythm) and a hair more edge to hold against the brighter fill (design). */
+.ig-skillfloater .ig-thinking {
+  margin: 0;
+  border-color: var(--ig-border);
+}
+
+.ig-skillfloater__refine {
+  display: flex;
+  gap: var(--ig-space-2);
+}
+
+.ig-skillfloater__refine .ig-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* On the frosted card the field's stock border can wash out; restate the
+   focus ring at scoped specificity so it clearly wins here. */
+.ig-skillfloater .ig-input:focus {
+  border-color: var(--ig-accent);
+  box-shadow:
+    var(--ig-inset-well),
+    0 0 0 3px var(--ig-accent-soft);
+}
+
+/* Action bar rhythm: even 8px between buttons, a breath above the row. */
+.ig-skillfloater .ig-actions {
+  gap: var(--ig-space-2);
+  margin-top: var(--ig-space-1);
+}
+
+/* Selection-flow "bare" mode — the Skill Components floater is the ONLY object
+   on screen (App drops the header, PromptPalette drops the composer). Strip the
+   panel fill and the scrim so just the glassy card floats over the raw desktop;
+   nothing else should read as a background.
+
+   The card is now the hero surface, so it takes the panel's near-opaque FLAT
+   fill (--ig-bg, WebView2-proven) in place of the in-page --ig-glass-bg. A
+   translucent fill + backdrop-blur can't sample the desktop behind a
+   transparent window and would punch it through (see GLASS TOOLKIT header) —
+   invalid the moment the panel isn't behind it. The gradient rim (::before),
+   float shadow and specular highlight stay: that's the glassy edge.
+
+   Specificity note: `.ig-panel--bare .ig-modal__card…` (≥2 classes) outranks
+   the base card rules regardless of source order. */
+/* Base .ig-panel is already invisible (component-background architecture) —
+   bare mode only restores window-filling height: its only child (the card)
+   is position:absolute, so auto height would collapse to 0. The CARD
+   carries the animated height in this mode. */
+.ig-panel--bare {
+  height: 100%;
+}
+
+/* The floater picker reuses .ig-autoheight as its scroll cell INSIDE the
+   card — the card is already the styled surface there, so strip the main
+   window's content-card dressing (fill/edge/lift/margin) in bare mode. */
+.ig-panel--bare .ig-autoheight {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  margin: 0;
+}
+
+/* The card is the hero surface. The selfloater window now carries a NATIVE
+   DWM acrylic blur-behind (selection_floater.rs), so the design's frosted-
+   desktop read comes from the OS compositor: a flat translucent porcelain
+   tint over the acrylic backdrop — the exact architecture the main panel
+   uses. CSS backdrop-filter is dropped (it can only sample in-page pixels,
+   which are empty here) and the card runs edge-to-edge like .ig-panel: DWM
+   paints the full rectangular window bounds, so any gutter would show as a
+   flat glass bezel (same known corner-sliver limitation). Outer drop
+   shadows are meaningless at the window edge and are dropped with them. */
+.ig-panel--bare .ig-modal__card.ig-skillfloater {
+  inset: 0;
+  margin: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  /* Inherit the base card's light FLAT fill (--ig-floater-bg) so the selfloater
+     is no longer the dark near-black box the old override produced — but keep
+     the CSS blur OFF here. This is the ONLY skillfloater whose height animates
+     every frame (useAutoWindowHeight auto-grow); a live backdrop-filter would
+     re-blur the whole card each frame and break the open animation. And on the
+     transparent window CSS backdrop-filter can't sample the desktop anyway —
+     the real frost is DWM acrylic (apply_floater_glass). So: light fill, no
+     blur, acrylic frosts.
+     Only the shadow is overridden too: the base drop shadow casts a gray halo
+     on the transparent window, so the selfloater keeps the inset specular only
+     (glass round 5).
+     ponytail: over a LIGHT desktop with acrylic fully off, the ~8% fill could
+     let light --ig-fg lose contrast; raise ACRYLIC_TINT or make the fill
+     theme-aware (glass:mode flat-raise) if that surfaces. */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: var(--ig-glass-specular-set);
+  /* The card body doubles as the window drag handle (manual startWindowDrag
+     in SkillComponentsFloater, selection source only). */
+  cursor: grab;
+}
+
+.ig-panel--bare .ig-modal__card.ig-skillfloater:active {
+  cursor: grabbing;
+}
+
+/* Edge-to-edge card + fixed window height: let the screen soak the slack
+   (the 190px design cap would leave a dead strip above the actions). */
+.ig-panel--bare .ig-skillfloater .ig-skillfloater__screen {
+  max-height: none;
+}
+
+/* Selection skill bar (second window, `skillbar`). One horizontal row of
+   icon-only buttons floating above a selection in an external app. The
+   window is transparent; like .ig-panel the bar carries a SINGLE FLAT fill —
+   layering a gradient over a translucent fill punches the desktop through
+   (WebView2 transparent-window compositing bug). */
+/* Shell: fills the (fixed, oversized) transparent window and centers the pill
+   horizontally on the selection anchor. Vertical alignment follows the side
+   the backend placed the bar on, so the caret always sits between the pill and
+   the selection. `position: fixed; inset: 0` means it does not depend on
+   #root's height and never scrolls. */
+.ig-selbar-shell {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  /* only the pill itself is interactive */
+}
+
+.ig-selbar-shell>.ig-skillbar {
+  pointer-events: auto;
+}
+
+.ig-selbar-shell--above {
+  align-items: flex-start;
+  /* toolbar hugs the top, caret hangs below toward selection */
+}
+
+.ig-selbar-shell--below {
+  align-items: flex-end;
+  /* toolbar hugs the bottom, caret rises above toward selection */
+}
+
+/* Idle/hidden: the bar stays mounted (no remount cost / glyph reflow on show)
+   but is removed from paint, hit-testing and the a11y tree. The backend also
+   parks the window off-screen, so this is belt-and-braces for the brief window
+   between an idle React state and the off-screen move. */
+.ig-selbar-shell--hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The selection-window instance of .ig-skillbar wears the floating pill
+   chrome (the palette's instance stays bare — scoping via the shell keeps
+   the two from bleeding into each other). */
+.ig-selbar-shell>.ig-skillbar {
+  position: relative;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--ig-space-1);
+  padding: var(--ig-space-1) var(--ig-space-2);
+  background: var(--ig-bg-opaque);
+  border: 1px solid var(--ig-border-strong);
+  border-radius: var(--ig-radius-pill);
+  box-shadow: inset 0 1px 0 var(--ig-highlight);
+  animation: ig-selbar-in var(--ig-fast) var(--ig-ease-pop);
+}
+
+/* Caret: a small rotated square centered under (above placement) or over
+   (below placement) the pill, pointing at the selection. Half of it overlaps
+   the pill and — since it shares the pill's exact fill and carries NO border —
+   that overlap is seamless (a border would paint a diagonal line across the
+   pill, because a pseudo-element paints over its parent's background per CSS
+   painting order). Only the protruding half is visible, reading as a solid
+   triangle. Single flat fill only, never a gradient over it (WebView2
+   transparent-window compositing bug). */
+.ig-selbar-shell>.ig-skillbar::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  background: var(--ig-bg-opaque);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.ig-selbar-shell--above>.ig-skillbar::after {
+  bottom: -5px;
+}
+
+.ig-selbar-shell--below>.ig-skillbar::after {
+  top: -5px;
+}
+
+@keyframes ig-selbar-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ig-skillbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--ig-control-md);
+  width: auto;
+  height: var(--ig-control-md);
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--ig-radius-btn);
+  color: var(--ig-accent);
+  font-size: var(--ig-text-md);
+  transition:
+    background var(--ig-fast) ease,
+    color var(--ig-fast) ease,
+    transform var(--ig-fast) var(--ig-ease);
+}
+
+/* The icon keeps a fixed control-md box so the ten icons stay evenly aligned. */
+.ig-skillbtn>.fa-solid {
+  flex: none;
+  width: var(--ig-control-md);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  /* No slide-in entrance for motion-sensitive users (the global reduced-motion
+     rule near the end of this file also caps durations; this states intent
+     locally and covers the entrance specifically). */
+  .ig-selbar-shell>.ig-skillbar {
+    animation: none;
+  }
+}
+
+/* High-contrast: strengthen the pill and control edges so the bar reads as a
+   solid, well-delineated surface when the accent-tint hover fills are muted. */
+@media (prefers-contrast: more) {
+  .ig-selbar-shell>.ig-skillbar {
+    border-color: var(--ig-fg);
+    border-width: 2px;
+  }
+
+  .ig-skillbtn:focus-visible {
+    outline-width: 3px;
+  }
+
+  .ig-skillbtn:hover:not(:disabled) {
+    outline: 1px solid var(--ig-fg);
+  }
+}
+
+.ig-skillbtn:hover:not(:disabled) {
+  background: var(--ig-surface-2);
+  transform: translateY(-1px);
+}
+
+.ig-skillbtn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.ig-skillbtn:focus-visible {
+  outline: 2px solid var(--ig-accent);
+  outline-offset: 1px;
+}
+
+.ig-skillbtn:disabled {
+  color: var(--ig-muted);
+  cursor: default;
+}
+
+.ig-selbar__note {
+  font-size: var(--ig-text-xs);
+  color: var(--ig-muted);
+  padding: 0 var(--ig-space-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ig-selbar__note--error {
+  color: var(--ig-danger);
+}
+
+/* Accessibility guards. The 1px border stays on every surface: in
+   forced-colors mode transparency is stripped and that border is the only
+   visible edge. Surfaces are already near-opaque; the fully opaque fallback
+   removes the last whisper of see-through (and the blur work) for
+   reduced-transparency users. */
+@media (prefers-reduced-transparency: reduce) {
+
+  /* The .ig-panel background shorthand also drops the ambient mesh here —
+     solid color only, so glass cards have nothing lively to reveal. */
+  .ig-panel,
+  .ig-toast,
+  .ig-modal__card {
+    background: var(--ig-bg-opaque);
+  }
+
+  .ig-modal,
+  .ig-modal__card,
+  .ig-glass-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .ig-modal {
+    background: var(--ig-scrim-strong);
+  }
+
+  /* Glass card falls back to the solid surface ladder; the rim ring goes
+     from gradient to a flat hairline. */
+  .ig-glass-card,
+  .ig-glass-card:hover {
+    background: var(--ig-surface-2);
+  }
+
+  .ig-glass-card::before {
+    background: var(--ig-border);
+  }
+
+  /* Accent variant is already fully opaque — keep its solid fill (this rule
+     follows the fallback above, so the cascade restores it). */
+  .ig-glass-card--accent,
+  .ig-glass-card--accent:hover {
+    background: var(--ig-accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Providers tab: browsable catalog grid */
+.ig-provider-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+}
+
+.ig-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--ig-space-2);
+}
+
+.ig-provider-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--ig-space-2);
+  /* Grid items default to min-width:auto — without this a long label or the
+     badge row forces the card wider than its track and text escapes the box. */
+  min-width: 0;
+  overflow: hidden;
+  padding: var(--ig-space-3);
+  text-align: left;
+  border: 1px solid var(--ig-border-subtle);
+  border-radius: var(--ig-radius-card);
+  background: var(--ig-surface-1);
+  box-shadow: inset 0 1px 0 var(--ig-highlight);
+  cursor: pointer;
+  transition:
+    background var(--ig-fast) ease,
+    border-color var(--ig-fast) ease,
+    box-shadow var(--ig-fast) ease,
+    transform var(--ig-fast) var(--ig-ease);
+}
+
+.ig-provider-card:hover {
+  background: var(--ig-surface-2);
+  border-color: var(--ig-border);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 var(--ig-highlight),
+    var(--ig-shadow-raise);
+}
+
+.ig-provider-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ig-space-2);
+  /* Keeps the row height stable whether or not badges are present. */
+  min-height: 26px;
+}
+
+.ig-provider-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ig-provider-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ig-provider-card__label {
+  font-size: var(--ig-text-sm);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ig-provider-card__group {
+  font-size: var(--ig-text-2xs);
+  color: var(--ig-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ig-provider-card__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  font-size: var(--ig-text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px var(--ig-space-2);
+  border-radius: 999px;
+  color: var(--ig-faint);
+  background: var(--ig-surface-2);
+  border: 1px solid var(--ig-border-subtle);
+}
+
+.ig-provider-card__badge--active {
+  color: var(--ig-accent);
+  border-color: var(--ig-accent);
+  background: var(--ig-accent-tint);
+}
+
+.ig-provider-card__badge--pro {
+  color: var(--ig-warn);
+  border-color: var(--ig-warn);
+  background: var(--ig-warn-soft);
+}
+
+/* Lettered fallback when a provider ships no logo (or the img fails). */
+.ig-provider-logo--fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 7px;
+  background: var(--ig-surface-2);
+  border: 1px solid var(--ig-border-subtle);
+  color: var(--ig-faint);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* ── Auth — sign-in / device-code / account stages. One frosted stage card
+   (reuses the .ig-glass-card material), strict 4px rhythm, hierarchy from
+   the type ramp + color. Stage swaps animate via framer AnimatePresence in
+   AuthPanel.tsx; CSS keeps only the ambient details (pulse dot, hairlines). */
+.ig-body--center {
+  justify-content: center;
+}
+
+.ig-auth {
+  width: 100%;
+  max-width: 360px;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-5);
+  padding: var(--ig-space-6) var(--ig-space-2) var(--ig-space-8);
+}
+
+.ig-auth__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+  text-align: center;
+}
+
+.ig-auth__title {
+  margin: 0;
+  font-family: var(--ig-font-serif);
+  /* 22px — one display step above the ramp, reserved for the auth hero */
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: var(--ig-leading-tight);
+  letter-spacing: -0.02em;
+}
+
+.ig-auth__sub {
+  margin: 0 auto;
+  max-width: 34ch;
+  font-size: var(--ig-text-sm);
+  line-height: var(--ig-leading-normal);
+  color: var(--ig-muted);
+  text-wrap: balance;
+}
+
+/* Stage — the keyed AnimatePresence child: card + its sibling action
+   (Cancel / account buttons) travel as one unit. */
+.ig-auth__stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-3);
+}
+
+/* Lone buttons under the card (Cancel) stretch full width, label centered. */
+.ig-auth__stage>.ig-btn {
+  justify-content: center;
+}
+
+/* Static surface: neutralize .ig-glass-card's hover lift — this card is a
+   stage, not an affordance. */
+.ig-auth-card {
+  padding: var(--ig-space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ig-space-4);
+  text-align: center;
+}
+
+.ig-auth-card:hover {
+  background: var(--ig-glass-card-bg);
+  box-shadow: var(--ig-glass-specular-set), var(--ig-shadow-raise);
+  transform: none;
+}
+
+/* Account variant — data reads left-aligned. */
+.ig-auth-card--start {
+  align-items: stretch;
+  text-align: left;
+}
+
+.ig-auth-card__lede {
+  margin: 0;
+  font-size: var(--ig-text-sm);
+  line-height: var(--ig-leading-normal);
+  color: var(--ig-muted);
+}
+
+.ig-auth-card__lede--error {
+  color: var(--ig-danger);
+}
+
+/* h3 reset for the .ig-section-label overlines used as stage headings. */
+.ig-auth__label {
+  margin: 0;
+}
+
+.ig-auth__error {
+  font-size: var(--ig-text-xs);
+  color: var(--ig-danger);
+}
+
+.ig-auth__cta {
+  width: 100%;
+  justify-content: center;
+  min-height: var(--ig-control-lg);
+  font-weight: 600;
+}
+
+/* Device code — hero glyphs of the pairing stage. Letter-spacing trails a
+   gap after the last glyph; padding-left recenters the run. */
+.ig-auth__code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  padding-left: 0.25em;
+  line-height: var(--ig-leading-tight);
+  user-select: text;
+}
+
+.ig-auth__copyrow {
+  width: 100%;
+  display: flex;
+  gap: var(--ig-space-2);
+}
+
+.ig-auth__copyrow .ig-input {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: var(--ig-text-xs);
+  color: var(--ig-muted);
+}
+
+.ig-auth__wait {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  font-size: var(--ig-text-xs);
+  color: var(--ig-muted);
+}
+
+/* Account key/value rows, separated by hairlines. */
+.ig-auth__meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+}
+
+.ig-auth__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--ig-space-3);
+  font-size: var(--ig-text-sm);
+}
+
+.ig-auth__row+.ig-auth__row {
+  border-top: 1px solid var(--ig-border-subtle);
+  padding-top: var(--ig-space-2);
+}
+
+.ig-auth__key {
+  flex: 0 0 auto;
+  font-size: var(--ig-text-xs);
+  color: var(--ig-muted);
+}
+
+.ig-auth__val {
+  text-align: right;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.ig-auth__val--cap {
+  text-transform: capitalize;
+}
+
+.ig-auth__val--ok {
+  color: var(--ig-success);
+}
+
+.ig-auth__val--faint {
+  font-size: var(--ig-text-2xs);
+  color: var(--ig-faint);
+}
+
+.ig-auth__coin {
+  font-size: var(--ig-text-2xs);
+  color: var(--ig-warn);
+  margin-right: var(--ig-space-1);
+}
+
+/* Account actions (Log Out only — the upgrade CTA lives in the plan card).
+   Trailing-aligned and wrapping, so a narrow window pushes buttons onto a new
+   line instead of into the section below. */
+.ig-auth__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ig-space-2);
+}
+
+/* The panel had no box of its own: as an unstyled block its stage collapsed
+   against the next section's heading. An explicit column makes the Profile
+   flow structural, not incidental. */
+.ig-auth-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Profile tab: plan showcase, then account. One column, generous section
+   spacing — nothing here may share a line with anything else. */
+.ig-profile {
+  gap: var(--ig-space-5);
+}
+/* ============================= MONETIZATION ==============================
+   Plan chooser + privacy route (MonetizationOnboarding / PrivacyIndicator).
+   Cards ride .ig-glass-card; everything here is borders/tints on existing
+   tokens — no new drop-shadows (transparent-window halo rule). */
+
+.ig-plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-3);
+}
+
+.ig-plan__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ig-space-2);
+}
+
+.ig-plan__current {
+  font-size: var(--ig-text-2xs);
+  color: var(--ig-faint);
+}
+
+.ig-plan__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--ig-space-3);
+  align-items: stretch;
+}
+
+.ig-plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+  padding: var(--ig-space-4);
+  border: 1px solid var(--ig-border);
+  border-radius: var(--ig-radius-card);
+}
+
+/* Selected plan — sleek 1px accent border with subtle glow matching upper active pill */
+.ig-plan-card--active {
+  border-color: var(--ig-accent);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2), inset 0 0 0 1px var(--ig-accent-soft);
+}
+
+.ig-plan-card--active::before {
+  display: none;
+}
+
+.ig-plan-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ig-space-2);
+}
+
+.ig-plan-card__chip {
+  font-size: var(--ig-text-2xs);
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: var(--ig-radius-pill);
+  color: var(--ig-success);
+  background: var(--ig-success-soft);
+}
+
+.ig-plan-card__title {
+  margin: 0;
+  font-size: var(--ig-text-md);
+  font-weight: 650;
+}
+
+/* Title leads the head row; chips (Active / Pro) ride the right edge. */
+.ig-plan-card__head>.ig-plan-card__title {
+  margin-right: auto;
+}
+
+.ig-plan-card__price {
+  margin: 0;
+  font-size: var(--ig-text-xs);
+  color: var(--ig-faint);
+}
+
+.ig-plan-card__list {
+  margin: 0;
+  padding-left: var(--ig-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-1);
+  font-size: var(--ig-text-xs);
+  line-height: 1.45;
+}
+
+.ig-plan-card__cta {
+  margin-top: auto;
+  justify-content: center;
+  min-height: var(--ig-control-lg);
+  font-weight: 600;
+}
+
+/* --- Pro showcase (feature badges, trial meter, action stack) ------------
+   Accent tint is a low-alpha overlay ON the card fill, and no new
+   drop-shadow is introduced — both are transparent-window rules. */
+
+.ig-plan-card--pro {
+  gap: var(--ig-space-3);
+  background-image: linear-gradient(135deg, var(--ig-accent-tint), transparent 62%);
+}
+
+.ig-plan-card__badges {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: var(--ig-space-2);
+}
+
+.ig-plan-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  padding: var(--ig-space-2);
+  border: 1px solid var(--ig-border-subtle);
+  border-radius: var(--ig-radius-card);
+  background: var(--ig-surface-1);
+  font-size: var(--ig-text-2xs);
+  font-weight: 600;
+  line-height: var(--ig-leading-tight);
+}
+
+.ig-plan-badge .fa-solid {
+  color: var(--ig-accent);
+  font-size: var(--ig-text-xs);
+}
+
+/* Trial credit meter — same thresholds as the header CreditBadge. */
+.ig-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ig-meter__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ig-space-2);
+  font-size: var(--ig-text-2xs);
+  color: var(--ig-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ig-meter__track {
+  height: 6px;
+  border-radius: var(--ig-radius-pill);
+  background: var(--ig-surface-2);
+  overflow: hidden;
+}
+
+.ig-meter__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ig-accent);
+  transition: width var(--ig-fast) var(--ig-ease);
+}
+
+.ig-meter--low .ig-meter__fill {
+  background: var(--ig-warn);
+}
+
+.ig-meter--out .ig-meter__fill {
+  background: var(--ig-danger);
+}
+
+/* CTA stack: primary button, then the website pricing link under it. */
+.ig-plan-card__actions {
+  margin-top: auto;
+  padding-top: var(--ig-space-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+}
+
+.ig-plan-card__actions .ig-linkbtn {
+  align-self: center;
+  margin-top: 0;
+}
+
+/* --- Privacy route diagram (PrivacyIndicator) ---------------------------- */
+
+/* Diagram-only now (captions deleted — the map is the copy). Wraps so the
+   3-node managed route never overflows a narrow grid column. */
+.ig-route__map {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ig-space-1);
+}
+
+.ig-route__node {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--ig-border);
+  border-radius: var(--ig-radius-pill);
+  font-size: var(--ig-text-2xs);
+  white-space: nowrap;
+}
+
+.ig-route__node>.fa-solid {
+  font-size: 10px;
+  color: var(--ig-faint);
+}
+
+.ig-route__node--hub {
+  border-color: var(--ig-accent);
+  background: var(--ig-accent-tint);
+}
+
+.ig-route__node--hub>.fa-solid {
+  color: var(--ig-accent);
+}
+
+.ig-route__track {
+  position: relative;
+  flex: 1 1 24px;
+  min-width: 24px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--ig-border);
+}
+
+.ig-route__dot {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: var(--ig-accent);
+}
+
+/* ═══════════════════════ Skill Manager panel (Skills tab) ═══════════════════
+   The dedicated "Skills" view: presets bar, category chips + search, a card
+   grid, and the create wizard. Reuses the glass card material, chip pills, and
+   field/button chrome already defined above; only the layout is new. */
+
+.ig-skillpanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-4);
+  padding: var(--ig-space-4);
+}
+
+.ig-skillpanel__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-1);
+}
+
+.ig-skillpanel__title {
+  font-size: var(--ig-text-lg);
+  font-weight: 600;
+}
+
+/* Category chips (left) + search box (right), wrapping on a narrow window. */
+.ig-skillpanel__filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ig-space-3);
+  flex-wrap: wrap;
+}
+
+.ig-skillpanel__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 180px;
+  max-width: 280px;
+  margin-left: auto;
+}
+
+.ig-skillpanel__search .ig-input {
+  padding-left: var(--ig-space-6);
+  padding-right: var(--ig-space-6);
+  width: 100%;
+}
+
+/* Interactive chip: .ig-chip is a static pill, so this adds the button
+   affordances (pointer, hover, active/pressed accent state). */
+.ig-chip--btn {
+  cursor: pointer;
+  transition: background var(--ig-fast) var(--ig-ease),
+    border-color var(--ig-fast) var(--ig-ease), color var(--ig-fast) var(--ig-ease);
+  text-transform: capitalize;
+  line-height: var(--ig-control-md, 26px);
+}
+
+.ig-chip--btn:hover {
+  background: var(--ig-surface-2);
+  color: var(--ig-fg);
+}
+
+.ig-chip--active,
+.ig-chip--active:hover {
+  background: var(--ig-accent);
+  border-color: var(--ig-accent);
+  color: var(--ig-accent-fg);
+}
+
+.ig-chip--btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ig-accent-soft);
+}
+
+/* ── Skill card grid ──────────────────────────────────────────────────────── */
+.ig-skillpanel__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--ig-space-3);
+}
+
+.ig-skillcard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+  padding: var(--ig-space-3);
+  /* Off-bar cards read quieter; --on lifts to full opacity + an accent edge. */
+  opacity: 0.72;
+  transition: opacity var(--ig-fast) var(--ig-ease),
+    border-color var(--ig-fast) var(--ig-ease);
+}
+
+.ig-skillcard--on {
+  opacity: 1;
+  border-color: var(--ig-accent-soft);
+}
+
+.ig-skillcard__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ig-skillcard__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ig-control-lg);
+  height: var(--ig-control-lg);
+  border-radius: var(--ig-radius-btn);
+  background: var(--ig-surface-1);
+  border: 1px solid var(--ig-border-subtle);
+  color: var(--ig-accent);
+  flex-shrink: 0;
+}
+
+.ig-skillcard__label {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  min-width: 0;
+}
+
+.ig-skillcard__title {
+  font-size: var(--ig-text-sm);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ig-skillcard__desc {
+  font-size: var(--ig-text-xs);
+  color: var(--ig-muted);
+  line-height: var(--ig-leading-relaxed);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ig-skillcard__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ig-space-2);
+  margin-top: auto;
+  min-height: var(--ig-control-md, 26px);
+}
+
+.ig-skillcard__foot .ig-chip {
+  text-transform: capitalize;
+}
+
+.ig-skillcard__del {
+  padding: 0 var(--ig-space-2);
+  color: var(--ig-muted);
+}
+
+.ig-skillcard__del:hover {
+  color: var(--ig-danger);
+}
+
+/* Dashed "create" tile — a button that opens the wizard; not a real card. */
+.ig-skillcard--create {
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  gap: var(--ig-space-2);
+  min-height: 96px;
+  opacity: 1;
+  border-style: dashed;
+  border-color: var(--ig-border-strong);
+  color: var(--ig-muted);
+  cursor: pointer;
+  font-size: var(--ig-text-sm);
+  font-weight: 500;
+}
+
+.ig-skillcard--create:hover {
+  color: var(--ig-accent);
+  border-color: var(--ig-accent-soft);
+}
+
+.ig-skillpanel__empty {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  padding: var(--ig-space-3) 0;
+}
+
+.ig-skillpanel__footer {
+  border-top: 1px solid var(--ig-border-subtle);
+  padding-top: var(--ig-space-3);
+}
+
+/* ── Toggle switch (skill cards) ──────────────────────────────────────────── */
+.ig-switch {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+/* The native checkbox stays but is visually replaced by the track/thumb; it
+   remains the focus/keyboard/AT target (never display:none — that drops it
+   from the a11y tree). */
+.ig-switch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ig-switch__track {
+  display: inline-flex;
+  align-items: center;
+  width: 34px;
+  height: 20px;
+  padding: 2px;
+  border-radius: var(--ig-radius-pill);
+  background: var(--ig-surface-3);
+  border: 1px solid var(--ig-border-subtle);
+  transition: background var(--ig-fast) var(--ig-ease);
+}
+
+.ig-switch__thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ig-fg);
+  transition: transform var(--ig-fast) var(--ig-ease);
+}
+
+.ig-switch input:checked + .ig-switch__track {
+  background: var(--ig-accent);
+  border-color: var(--ig-accent);
+}
+
+.ig-switch input:checked + .ig-switch__track .ig-switch__thumb {
+  transform: translateX(14px);
+  background: var(--ig-accent-fg);
+}
+
+.ig-switch input:focus-visible + .ig-switch__track {
+  box-shadow: 0 0 0 3px var(--ig-accent-soft);
+}
+
+/* ── Skill-set presets bar ────────────────────────────────────────────────── */
+.ig-presets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+}
+
+.ig-presets__label {
+  font-size: var(--ig-text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ig-faint);
+}
+
+.ig-presets__row {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  flex-wrap: wrap;
+}
+
+.ig-presets__empty {
+  font-size: var(--ig-text-xs);
+}
+
+.ig-preset {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--ig-border-subtle);
+  border-radius: var(--ig-radius-pill);
+  background: var(--ig-surface-1);
+  overflow: hidden;
+}
+
+.ig-preset__apply {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-space-1);
+  padding: var(--ig-space-1) var(--ig-space-3);
+  font-size: var(--ig-text-xs);
+  color: var(--ig-fg);
+  cursor: pointer;
+}
+
+.ig-preset__apply:hover {
+  background: var(--ig-accent-tint);
+  color: var(--ig-accent-hover);
+}
+
+.ig-preset__del {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--ig-space-2);
+  border-left: 1px solid var(--ig-border-subtle);
+  color: var(--ig-muted);
+  cursor: pointer;
+  font-size: var(--ig-text-2xs);
+}
+
+.ig-preset__del:hover {
+  color: var(--ig-danger);
+  background: var(--ig-danger-soft);
+}
+
+.ig-preset__add {
+  border-style: dashed;
+}
+
+.ig-presets__save {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+}
+
+/* ── Create Skill wizard ──────────────────────────────────────────────────── */
+.ig-wizard {
+  width: min(560px, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-4);
+}
+
+.ig-wizard__steps {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ig-wizard__step {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  flex: 1;
+  min-width: 0;
+  color: var(--ig-faint);
+  font-size: var(--ig-text-xs);
+}
+
+.ig-wizard__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--ig-border);
+  background: var(--ig-surface-1);
+  font-size: var(--ig-text-2xs);
+  font-weight: 600;
+}
+
+.ig-wizard__steplabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ig-wizard__step--active {
+  color: var(--ig-fg);
+}
+
+.ig-wizard__step--active .ig-wizard__num {
+  background: var(--ig-accent);
+  border-color: var(--ig-accent);
+  color: var(--ig-accent-fg);
+}
+
+.ig-wizard__step--done .ig-wizard__num {
+  border-color: var(--ig-accent-soft);
+  color: var(--ig-accent);
+}
+
+.ig-wizard__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-3);
+  min-height: 168px;
+}
+
+.ig-wizard__cats {
+  margin-top: var(--ig-space-1);
+}
+
+.ig-wizard__footer {
+  border-top: 1px solid var(--ig-border-subtle);
+  padding-top: var(--ig-space-3);
+}
+
+
+/* ── Onboarding wizard (first run) ───────────────────────────────────────────
+   Reuses .ig-modal__card's glass material, .ig-wizard's step rail/body/footer,
+   .ig-glass-card for the tiles, and .ig-permcard only for what a permission
+   tile genuinely adds. Two structural differences from every other dialog:
+
+   1. IN FLOW, not absolute. The wizard renders inside App's auto-height probe
+      so the native window grows to fit it (useAutoWindowHeight); an absolute
+      .ig-modal would be cropped to whatever height the composer needed. It
+      still reads as an overlay because App hides the tabs while it is up.
+   2. NO scrim blur. There is nothing behind it to dim on first run, and the
+      scrim's backdrop-filter would spend GPU on a uniform surface — the ≲12
+      frosted-element budget (file header) is already carrying the tiles. */
+.ig-onb {
+  position: relative;
+  inset: auto;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  z-index: auto;
+  animation: none;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ig-onb {
+    background: none;
+  }
+}
+
+.ig-onb__card {
+  /* Wider than the 560px Create Skill wizard: the welcome screen carries the
+     two move tiles and the legal reader in one column. */
+  width: min(640px, 100%);
+}
+
+.ig-onb__step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-4);
+}
+
+.ig-onb__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-1);
+}
+
+.ig-onb__title {
+  font-family: var(--ig-font-serif);
+  font-size: var(--ig-text-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: var(--ig-leading-tight);
+}
+
+.ig-onb__actions {
+  justify-content: flex-end;
+}
+
+/* ── Welcome: the two moves ── */
+.ig-onb__moves {
+  display: grid;
+  gap: var(--ig-space-3);
+}
+
+.ig-onb__move {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ig-space-3);
+  padding: var(--ig-space-4);
+}
+
+.ig-onb__move-icon {
+  color: var(--ig-accent);
+  font-size: var(--ig-text-lg);
+  margin-top: 2px;
+}
+
+.ig-onb__move-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-1);
+  min-width: 0;
+}
+
+.ig-onb__move-title {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  font-size: var(--ig-text-md);
+  font-weight: 600;
+}
+
+/* ── Welcome: legal ── */
+.ig-onb__legal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+}
+
+.ig-onb__legal-tabs {
+  display: flex;
+  gap: var(--ig-space-2);
+}
+
+.ig-onb__legal-tab--active {
+  border-color: var(--ig-accent);
+  color: var(--ig-fg);
+}
+
+/* Scroll region for the agreement text. Fixed height, not max-height: the box
+   must LOOK scrollable so it's obvious there is more to read. overscroll
+   containment stops the panel behind it from scrolling at the ends. */
+.ig-onb__legal-body {
+  height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--ig-surface-1);
+  border: 1px solid var(--ig-border-subtle);
+  border-radius: var(--ig-radius-btn);
+  padding: var(--ig-space-3);
+  font-size: var(--ig-text-sm);
+  line-height: var(--ig-leading-relaxed);
+  color: var(--ig-muted);
+  user-select: text;
+}
+
+.ig-onb__legal-body:focus-visible {
+  outline: none;
+  border-color: var(--ig-accent);
+  box-shadow: 0 0 0 3px var(--ig-accent-soft);
+}
+
+.ig-onb__legal-title {
+  font-size: var(--ig-text-md);
+  font-weight: 600;
+  color: var(--ig-fg);
+  margin-bottom: var(--ig-space-2);
+}
+
+.ig-onb__legal-section + .ig-onb__legal-section {
+  margin-top: var(--ig-space-3);
+}
+
+.ig-onb__legal-heading {
+  font-size: var(--ig-text-sm);
+  font-weight: 600;
+  color: var(--ig-fg);
+  margin-bottom: var(--ig-space-1);
+}
+
+/* The consent control is the gate: give it more presence than a list row. */
+.ig-onb__consent {
+  gap: var(--ig-space-3);
+  padding: var(--ig-space-3);
+  background: var(--ig-accent-tint);
+  border: 1px solid var(--ig-border);
+  border-radius: var(--ig-radius-btn);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* ── Settings › Access: permission tiles ── */
+.ig-onb__perms {
+  display: grid;
+  gap: var(--ig-space-2);
+}
+
+.ig-permcard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+  padding: var(--ig-space-3);
+}
+
+/* Tiles are informational, not clickable — suppress .ig-glass-card's hover
+   lift so nothing implies the whole card is a button. */
+.ig-permcard:hover {
+  transform: none;
+}
+
+.ig-permcard__head {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+}
+
+.ig-permcard__icon {
+  color: var(--ig-accent);
+  flex-shrink: 0;
+}
+
+.ig-permcard__title {
+  font-size: var(--ig-text-sm);
+  font-weight: 600;
+  margin-right: auto;
+}
+
+.ig-permcard__badge {
+  flex-shrink: 0;
+  padding: 2px var(--ig-space-2);
+  border: 1px solid var(--ig-border);
+  border-radius: var(--ig-radius-pill);
+  background: var(--ig-surface-1);
+  font-size: var(--ig-text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ig-faint);
+  white-space: nowrap;
+}
+
+.ig-permcard__badge--ok {
+  background: var(--ig-success-soft);
+  border-color: var(--ig-success);
+  color: var(--ig-success);
+}
+
+.ig-permcard__badge--warn {
+  background: var(--ig-warn-soft);
+  border-color: var(--ig-warn);
+  color: var(--ig-warn);
+}
+
+.ig-permcard__why {
+  font-size: var(--ig-text-sm);
+  line-height: var(--ig-leading-normal);
+  color: var(--ig-muted);
+}
+
+.ig-permcard__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-3);
+  flex-wrap: wrap;
+}
+
+.ig-permcard__actions > .ig-btn {
+  min-height: var(--ig-control-sm);
+  font-size: var(--ig-text-xs);
+}
+
+.ig-permcard__toggle {
+  font-size: var(--ig-text-xs);
+}
+
+/* Recovery guidance appears in place under a failed check — animated height,
+   so overflow must be clipped while it opens. */
+.ig-permcard__recovery {
+  overflow: hidden;
+}
+
+.ig-permcard__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-1);
+  margin: var(--ig-space-1) 0 0;
+  padding-left: var(--ig-space-4);
+  font-size: var(--ig-text-sm);
+  line-height: var(--ig-leading-normal);
+  color: var(--ig-muted);
+}
+
+/* Compact list-item variant used in Settings › Access. */
+.ig-permcard--compact {
+  gap: 0;
+  padding: var(--ig-space-2) var(--ig-space-3);
+}
+
+.ig-permcard--compact .ig-permcard__main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ig-space-3);
+}
+
+.ig-permcard--compact .ig-permcard__head {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ig-permcard--compact .ig-permcard__title {
+  margin-right: 0;
+}
+
+.ig-permcard--compact .ig-permcard__chord {
+  margin-left: var(--ig-space-1);
+}
+
+.ig-permcard--compact .ig-permcard__info {
+  margin-left: var(--ig-space-1);
+}
+
+.ig-permcard--compact .ig-permcard__actions {
+  flex-wrap: nowrap;
+}
+
+.ig-permcard__details {
+  overflow: hidden;
+}
+
+.ig-permcard__detail-body {
+  padding-top: var(--ig-space-2);
+}
+
+.ig-permcard__detail-body .ig-permcard__why {
+  margin: 0 0 var(--ig-space-2);
+}
+
+/* The privacy line sits leading while Start stays trailing. */
+.ig-onb__privacy {
+  margin-right: auto;
+}
+
+.ig-onb__legal-version {
+  margin-left: auto;
+}
+
+/* ── First-run card (composer, not a modal) ──────────────────────────────
+   Pinned above the Improvise zone until Improve has worked once. It reads as
+   a card rather than a banner because it holds a live control (the chips, or
+   the sandbox textarea), and the accent rim is what separates "still setting
+   up" from the composer's own surfaces underneath. */
+.ig-firstrun {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-3);
+  padding: var(--ig-space-4);
+  border-color: var(--ig-accent);
+  overflow: hidden; /* the exit animation collapses height */
+}
+
+/* Informational, not clickable — suppress .ig-glass-card's hover lift. */
+.ig-firstrun:hover {
+  transform: none;
+}
+
+.ig-firstrun__head {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+}
+
+.ig-firstrun__close {
+  margin-left: auto;
+}
+
+.ig-firstrun__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ig-space-2);
+  font-family: var(--ig-font-serif);
+  font-size: var(--ig-text-lg);
+  font-weight: 600;
+  line-height: var(--ig-leading-tight);
+}
+
+.ig-firstrun__chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--ig-space-2);
+}
+
+.ig-firstrun__chip {
+  justify-content: flex-start;
+  gap: var(--ig-space-2);
+}
+
+/* Skip is a real answer, so it stays a button — just a quieter one that never
+   competes with the four chips above it. */
+.ig-firstrun__skip {
+  align-self: flex-start;
+  background: none;
+  border-color: transparent;
+  color: var(--ig-muted);
+}
+
+.ig-firstrun__input {
+  resize: vertical;
+  line-height: var(--ig-leading-normal);
+}
+
+.ig-firstrun__result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+}
+
+.ig-firstrun__result .ig-modal__preview {
+  max-height: 180px;
+  color: var(--ig-fg);
+}

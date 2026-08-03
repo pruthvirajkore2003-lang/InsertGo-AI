@@ -1,0 +1,80 @@
+/* Floating launcher bubble (`floating-icon` window, 64×64).
+   Body stays transparent (global.css); only the 44px circle paints. The
+   ~10px transparent margin around it is deliberate breathing room: the OS
+   window hard-clips HTML, so the drop shadow and the framer-motion hover
+   scale (×1.08 → ~47.5px + shadow) must fit inside 64×64 or they get cut.
+   Keep shadow extent (offset + blur) ≤ ~9px if you retune it.
+
+   minWidth/minHeight stay at 64 in tauri.conf.json — Windows clamps
+   top-level windows to a ~136px minimum track width unless they're set
+   (tao overrides WM_GETMINMAXINFO).
+
+   Two layers on purpose — WebView2 transparent windows mis-composite
+   gradients painted over a semi-transparent fill and punch the desktop
+   through. The outer shell stays fully transparent (0-alpha rgba shell var)
+   and only handles hit-testing/centering — no overflow clipping, that would
+   eat the shadow. Every gradient/shadow lives on the inner layer, which sits
+   on a fully OPAQUE base. Gradients must fade to a 0-alpha color
+   (rgba(..., 0)), never the `transparent` keyword — same bug. */
+.ig-float {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ig-float-shell);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ig-float:active {
+  cursor: grabbing;
+}
+
+.ig-float__inner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Themed in global.css. Opaque base underneath; sheen fades to 0-alpha
+     rgba, not `transparent` (WebView2 rule above). */
+  background: var(--ig-float-bg);
+  /* Hairline ring + bevels (themed), then the ambient drop shadow that
+     lifts the bubble off the desktop. Shadow extent tuned to the 10px
+     window margin (see file header). Themes may override --ig-float-drop. */
+  box-shadow:
+    var(--ig-float-ring),
+    var(
+      --ig-float-drop,
+      0 1px 2px rgba(0, 0, 0, 0.4),
+      0 3px 6px rgba(0, 0, 0, 0.3)
+    );
+  transition: filter 120ms ease;
+  will-change: transform;
+}
+
+.ig-float:focus-visible .ig-float__inner {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.ig-float:hover .ig-float__inner {
+  filter: brightness(1.12);
+}
+
+.ig-float:active .ig-float__inner {
+  filter: brightness(0.94);
+}
+
+.ig-float__logo {
+  width: 56%;
+  height: 56%;
+  object-fit: contain;
+  pointer-events: none;
+  /* Recolor the mark for contrast on the themed base (white on dark,
+     charcoal on light); shadow applies after the recolor. */
+  filter: var(--ig-float-logo-filter);
+}

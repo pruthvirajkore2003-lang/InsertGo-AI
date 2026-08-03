@@ -1,0 +1,26 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "skillbar",
+  "description": "Capability for the InsertGo selection skill bar window.",
+  "windows": ["skillbar"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-position",
+    "core:window:allow-set-always-on-top",
+    "core:event:default",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text",
+    "log:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://insertgo.ai/**" },
+        { "url": "https://*.insertgo.ai/**" },
+        { "url": "http://localhost:*/**" },
+        { "url": "http://127.0.0.1:*/**" }
+      ]
+    }
+  ]
+}

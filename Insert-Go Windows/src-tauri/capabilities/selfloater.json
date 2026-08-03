@@ -1,0 +1,23 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "selfloater",
+  "description": "Capability for the selection review floater window: listens for selection:review / insert:fallback, runs the provider stream (plugin HTTP), and drives hide/insert via app commands.",
+  "windows": ["selfloater"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:window:allow-set-size",
+    "core:window:allow-start-dragging",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text",
+    "log:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://**" },
+        { "url": "http://localhost:*/**" },
+        { "url": "http://127.0.0.1:*/**" }
+      ]
+    }
+  ]
+}

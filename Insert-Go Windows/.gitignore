@@ -1,0 +1,50 @@
+# Dependencies
+/node_modules/
+
+# Generated frontend output and test caches
+/dist/
+/dist-ssr/
+/coverage/
+/.vite/
+/.vitest/
+*.tsbuildinfo
+
+# Generated Rust and Tauri output
+/src-tauri/target/
+/src-tauri/gen/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Local editor and AI-tool state
+/.claude/
+/.cursor/
+/.idx/
+/.idea/
+/.kilocode/
+/.kombai/
+/.superdesign/
+/.windsurf/
+/.vscode/*
+!/.vscode/extensions.json
+
+# Logs, temporary files, and local scratch artifacts
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+/image.png
+/null
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Font Awesome Pro binaries are paid, local-only assets
+/public/fonts/

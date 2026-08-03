@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "floating-icon",
+  "description": "Capability for the InsertGo floating desktop icon window.",
+  "windows": ["floating-icon"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:window:allow-unminimize",
+    "core:window:allow-start-dragging",
+    "core:event:default",
+    "log:default"
+  ]
+}
