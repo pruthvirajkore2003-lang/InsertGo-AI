@@ -1,7 +1,7 @@
 /**
  * Plan panel for the managed model (Monetization & Trust layer). There is one
- * route now that BYOK is gone — InsertGo Pro (Managed): subscription,
- * zero-setup relay, open to free/trial users. Conversion is optimized by being
+ * route now: InsertGo Pro (Managed) — subscription, zero-setup relay, open to
+ * free/trial users. Conversion is optimized by being
  * radically transparent: the card carries a PrivacyIndicator showing the
  * literal data path BEFORE the user commits, and names its trade-off (relay in
  * the path) instead of hiding it.

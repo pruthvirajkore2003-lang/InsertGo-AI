@@ -137,7 +137,7 @@ export function LoginForm() {
   const inputCls =
     "glass-chip h-12 w-full rounded-2xl px-4 text-[15px] text-ink placeholder:text-muted focus:outline-none focus:ring-4 focus:ring-focus-ring";
   const primaryBtn =
-    "inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-2xl bg-terracotta px-6 text-[15px] font-medium text-on-accent shadow-cta-sm transition-all duration-200 hover:-translate-y-px hover:shadow-cta-hover disabled:cursor-not-allowed disabled:opacity-60";
+    "inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-2xl bg-terracotta px-6 text-[15px] font-medium text-on-accent shadow-cta-sm transition-[transform,box-shadow,opacity] duration-200 hover:-translate-y-px hover:shadow-cta-hover disabled:cursor-not-allowed disabled:opacity-60";
   const laneBtn =
     "glass-chip inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-2xl px-6 text-[15px] font-medium text-ink transition-colors duration-200 hover:bg-muted/10 disabled:cursor-not-allowed disabled:opacity-60";
   const backBtn =
@@ -207,7 +207,8 @@ export function LoginForm() {
             <form onSubmit={verifyOtp} className="flex flex-col gap-3">
               <p className="text-center text-sm text-muted">
                 We sent a 6-digit code to{" "}
-                <strong className="text-ink">{email}</strong>. It expires in 5
+                <strong className="break-all text-ink">{email}</strong>. It
+                expires in 5
                 minutes.
               </p>
               <input

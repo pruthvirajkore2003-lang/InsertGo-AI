@@ -8,6 +8,8 @@
 /.vite/
 /.vitest/
 *.tsbuildinfo
+/.vscode
+/.husky
 
 # Generated Rust and Tauri output
 /src-tauri/target/

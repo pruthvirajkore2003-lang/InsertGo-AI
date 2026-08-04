@@ -14,6 +14,16 @@
     "clipboard-manager:allow-write-text",
     "log:default",
     {
+      "identifier": "opener:allow-open-url",
+      "comment": "Sign-in from the bar (SelectionBar 'Log in'): opens the system browser on the InsertGo authorize page. Scoped to the auth host only — the bar never opens arbitrary URLs.",
+      "allow": [
+        { "url": "https://insertgo.ai/*" },
+        { "url": "https://www.insertgo.ai/*" },
+        { "url": "http://localhost:*/**" },
+        { "url": "http://127.0.0.1:*/**" }
+      ]
+    },
+    {
       "identifier": "http:default",
       "allow": [
         { "url": "https://insertgo.ai/**" },

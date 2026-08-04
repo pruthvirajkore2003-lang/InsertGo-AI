@@ -87,7 +87,7 @@ export function DesktopApprove({
         type="button"
         disabled={status === "busy"}
         onClick={() => void approve()}
-        className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-terracotta text-[15px] font-medium text-on-accent shadow-cta-sm transition-all hover:-translate-y-px hover:shadow-cta-hover disabled:opacity-60"
+        className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-terracotta text-[15px] font-medium text-on-accent shadow-cta-sm transition-[transform,box-shadow,opacity] hover:-translate-y-px hover:shadow-cta-hover disabled:opacity-60"
       >
         {status === "busy" ? "Working…" : "Approve and open InsertGo"}
       </button>

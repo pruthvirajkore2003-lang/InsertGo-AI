@@ -3,10 +3,9 @@
  * (the "proxy" lane, SPEC §5.4). The client holds no LLM key — the server does
  * (`aiProviders.ts`).
  *
- * This module used to pick between the proxy and ~35 BYOK lanes; BYOK was
- * removed, so the single remaining route is resolved here rather than inlined
- * at the four call sites (composer, Inline Improve, prompt refiner, skill
- * wizard). Keeping the seam means a second route later is one edit, not four.
+ * The single route is resolved here rather than inlined at the four call sites
+ * (composer, Inline Improve, prompt refiner, skill wizard). Keeping the seam
+ * means a second route later is one edit, not four.
  */
 import type { AiProvider } from "./aiProviders";
 import { createProvider } from "./aiProviders";

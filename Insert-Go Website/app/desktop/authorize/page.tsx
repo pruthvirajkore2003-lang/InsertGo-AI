@@ -70,7 +70,10 @@ export default async function DesktopAuthorizePage({
               {valid ? (
                 <>
                   Approve to sign the InsertGo desktop app in as{" "}
-                  <strong className="text-ink">{session!.user.email}</strong>.
+                  <strong className="break-all text-ink">
+                    {session!.user.email}
+                  </strong>
+                  .
                 </>
               ) : (
                 "This sign-in link is malformed or incomplete. Start again from the desktop app."

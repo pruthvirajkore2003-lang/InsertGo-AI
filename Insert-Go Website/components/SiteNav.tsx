@@ -71,6 +71,7 @@ export function SiteNav() {
   return (
     <div className="pointer-events-none fixed inset-x-0 top-0 z-[500] flex flex-col items-center px-5 py-4">
       <nav
+        aria-label="Main"
         data-condensed={condensed}
         className="nav-shell animate-nav-enter ease-apple pointer-events-auto flex w-full max-w-[1000px] items-center justify-between gap-4 rounded-full py-2 pr-2 pl-4"
       >
@@ -81,7 +82,7 @@ export function SiteNav() {
               the link. */}
           <img
             src="/main-logo.png"
-            alt="InsertGo Logo"
+            alt=""
             className="block h-[26px] w-[26px] shrink-0 transition-transform duration-500 hover:rotate-[360deg] [filter:drop-shadow(0_0_5px_rgba(255,255,255,0.35))_drop-shadow(0_0_14px_rgba(47,107,255,0.55))]"
           />
           <span className="font-serif text-[17px] font-semibold tracking-[-0.01em]">
@@ -111,6 +112,7 @@ export function SiteNav() {
                 key={l.href}
                 href={l.href}
                 data-active={active}
+                aria-current={active ? "page" : undefined}
                 className={`ease-apple relative rounded-full px-[13px] py-2 text-sm font-medium whitespace-nowrap transition-colors duration-300 ${
                   active ? "text-ink" : "text-muted hover:text-ink"
                 }`}
@@ -155,7 +157,7 @@ export function SiteNav() {
           </div>
           <Link
             href="/download"
-            className="ease-apple inline-flex items-center gap-2 rounded-full bg-terracotta px-5 py-[11px] text-sm font-medium whitespace-nowrap text-on-accent transition-all duration-300 hover:-translate-y-px hover:shadow-cta-sm active:translate-y-0 active:scale-[0.97] active:duration-75"
+            className="ease-apple inline-flex items-center gap-2 rounded-full bg-terracotta px-5 py-[11px] text-sm font-medium whitespace-nowrap text-on-accent transition-[transform,box-shadow] duration-300 hover:-translate-y-px hover:shadow-cta-sm active:translate-y-0 active:scale-[0.97] active:duration-75"
           >
             <LinearWindows size={16} />
             <span className="hidden sm:inline">Download for Windows</span>
@@ -166,6 +168,7 @@ export function SiteNav() {
             type="button"
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
+            aria-controls="site-nav-menu"
             onClick={() => setOpen((v) => !v)}
             className="ease-apple flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-ink transition-[background-color,transform] duration-300 hover:bg-white/5 active:scale-95 active:duration-75 min-[901px]:hidden"
           >
@@ -191,6 +194,7 @@ export function SiteNav() {
       </nav>
 
       <div
+        id="site-nav-menu"
         aria-hidden={!open}
         className={`glass-floating mt-2 w-full max-w-[1000px] rounded-3xl p-2 transition-[opacity,transform,visibility] duration-[260ms] ease-standard min-[901px]:hidden ${
           open
@@ -207,6 +211,7 @@ export function SiteNav() {
               key={l.href}
               href={l.href}
               onClick={() => setOpen(false)}
+              aria-current={active ? "page" : undefined}
               className={`ease-apple block rounded-2xl px-4 py-3 text-[15px] font-medium transition-colors duration-300 ${
                 active
                   ? "bg-surface-hover text-ink"

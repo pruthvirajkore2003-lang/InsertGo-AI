@@ -13,8 +13,9 @@
  * never opens, and the selection is only replaced when the user hits Apply
  * there. The trailing "More" button is the same handoff with NO skill: the
  * floater opens in its skill-picker state for the same selection. With no
- * provider (i.e. logged out) it shows a login notice and never touches the
- * selection.
+ * provider (i.e. logged out) the bar shows a "Log in" button instead of the
+ * unclickable skills, so the auth state is visible up front; the login
+ * notice remains as a fallback inside the handoff.
  *
  * Deliberately does NOT import PromptPalette/ResultView or the prompt store:
  * this webview is a separate JS context and a separate surface. Show/hide is
@@ -54,6 +55,16 @@ export function SelectionBar() {
   const activeProvider = useSettingsStore((s) => s.activeProvider);
   const enabledSkillIds = useSettingsStore((s) => s.settings.enabledSkillIds);
   const customSkills = useSettingsStore((s) => s.settings.customSkills);
+
+  const signInWithBrowser = useAuthStore((s) => s.signInWithBrowser);
+  const authLoading = useAuthStore((s) => s.isLoading);
+  // Sign-in failures (timeout, browser blocked) land here — surfaced under
+  // the login button since this window has no AuthPanel to show them.
+  const authError = useAuthStore((s) => s.error);
+  // activeProvider() reads the token imperatively (getState), which is not
+  // reactive on its own — subscribing to the token makes a login/logout
+  // re-render the skills/login branch below.
+  const authToken = useAuthStore((s) => s.token);
 
   // Fresh JS context: providers/settings must be loaded here too (App.tsx
   // does the same for the palette window). Auth likewise — this window skips
@@ -212,6 +223,14 @@ export function SelectionBar() {
   // never sees the parked bar. (The backend also parks the window off-screen.)
   const idle = !notice && !text.trim();
 
+  // Logged out = no provider (the proxy provider is synthesized from the auth
+  // token). Recomputed on render; authToken is in the deps because
+  // activeProvider() reads it via getState() (not reactively).
+  const loggedOut = useMemo(
+    () => !activeProvider(),
+    [activeProvider, authToken]
+  );
+
   return (
     <div
       className={`ig-selbar-shell ig-selbar-shell--${placement}${idle ? " ig-selbar-shell--hidden" : ""}`}
@@ -225,6 +244,32 @@ export function SelectionBar() {
           >
             {notice.message}
           </span>
+        ) : loggedOut ? (
+          <div className="ig-selbar__login">
+            <span
+              className={`ig-selbar__note${authError ? " ig-selbar__note--error" : ""}`}
+              role="status"
+            >
+              {authError ?? "Log in to InsertGo to run skills"}
+            </span>
+            <button
+              className="ig-btn ig-btn--primary"
+              onClick={() => void signInWithBrowser()}
+              disabled={idle || authLoading}
+            >
+              {authLoading ? (
+                <>
+                  <span className="ig-btn__spinner" aria-hidden="true" />
+                  Waiting for browser…
+                </>
+              ) : (
+                <>
+                  <i className="fa-solid fa-lock" aria-hidden="true" />
+                  Log in
+                </>
+              )}
+            </button>
+          </div>
         ) : (
           <>
             {rankedWithIcons.map(({ skill, icon }) => (

@@ -42,7 +42,7 @@ export function SiteFooter() {
                 (see SiteNav). Decorative — the adjacent wordmark names the link. */}
             <img
               src="/main-logo.png"
-              alt="InsertGo Logo"
+              alt=""
               className="block h-[26px] w-[26px] shrink-0 [filter:drop-shadow(0_0_5px_rgba(255,255,255,0.3))_drop-shadow(0_0_14px_rgba(47,107,255,0.5))]"
             />
             <span className="font-serif text-[17px] font-semibold">

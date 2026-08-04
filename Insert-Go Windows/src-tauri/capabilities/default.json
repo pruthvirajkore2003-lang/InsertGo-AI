@@ -36,7 +36,7 @@
     },
     {
       "identifier": "http:default",
-      "comment": "BYOK provider hosts (src/services/providerCatalog.ts) + InsertGo.AI site + Google OAuth. Custom/SAP endpoints and non-default overrides of editable-baseUrl lanes (doubao/minimax/z.ai/self-hosted LiteLLM on a remote host) must add their host here.",
+      "comment": "Provider hosts + InsertGo.AI site + Google OAuth. Any endpoint the main window must reach directly needs its host listed here.",
       "allow": [
         { "url": "https://insertgo.ai/*" },
         { "url": "https://www.insertgo.ai/*" },

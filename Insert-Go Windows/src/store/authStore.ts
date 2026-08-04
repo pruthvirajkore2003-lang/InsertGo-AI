@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { emit, listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import * as bridge from "@/services/tauriBridge";
 import { toast } from "@/store/toastStore";
 import { API_URL } from "@/services/apiConfig";
@@ -366,9 +367,12 @@ async function handleCallback(rawUrl: string): Promise<void> {
     await useAuthStore.getState().refreshStatus();
     settlePending(true);
     toast.success("Signed in!");
-    // The palette hid when the browser took focus — bring it back so the
-    // signed-in account is what the user returns to.
-    void showWindow();
+    // Bring the palette back after the browser stole focus — but only when
+    // the palette started the flow. From the floating skillbar the user stays
+    // in their external app; showing the off-screen, non-focusable skillbar
+    // (or yanking the palette up) would be wrong — the bar simply flips to
+    // the skills via the token subscription.
+    if (getCurrentWindow().label === "main") void showWindow();
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     useAuthStore.setState({

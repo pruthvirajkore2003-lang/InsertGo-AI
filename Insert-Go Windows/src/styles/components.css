@@ -2541,6 +2541,32 @@ textarea.ig-input {
   color: var(--ig-danger);
 }
 
+/* Logged-out state: note + primary login button as one inline group. */
+.ig-selbar__login {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+}
+
+/* Button ring spinner — border ring rotating via transform only (composited,
+   no layout work, no jitter). Reduced-motion users get the global kill-switch
+   below, which parks it as a static ring. */
+.ig-btn__spinner {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: ig-btn-spin 0.7s linear infinite;
+}
+
+@keyframes ig-btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Accessibility guards. The 1px border stays on every surface: in
    forced-colors mode transparency is stripped and that border is the only
    visible edge. Surfaces are already near-opaque; the fully opaque fallback
@@ -3175,9 +3201,18 @@ textarea.ig-input {
   background: var(--ig-border);
 }
 
+/* Full-width sweep layer: framer-motion translates THIS with x (transform,
+   composited). The 6px right inset ends the sweep one dot-width before the
+   next node, matching the old left:0%→100% travel. */
+.ig-route__sweep {
+  position: absolute;
+  inset: 0 6px 0 0;
+}
+
 .ig-route__dot {
   position: absolute;
   top: 50%;
+  left: 0;
   width: 6px;
   height: 6px;
   margin-top: -3px;

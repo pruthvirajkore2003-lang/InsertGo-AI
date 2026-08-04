@@ -12,7 +12,7 @@ export function DownloadButton({
   return (
     <Link
       href="/download"
-      className="inline-flex h-12 items-center gap-2.5 rounded-btn bg-accent-primary px-7 text-base font-medium text-on-accent shadow-cta transition-all duration-200 ease-standard hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-cta-hover active:translate-y-0 active:scale-[0.97] active:shadow-cta-sm active:duration-75"
+      className="inline-flex h-12 items-center gap-2.5 rounded-btn bg-accent-primary px-7 text-base font-medium text-on-accent shadow-cta transition-[transform,background-color,box-shadow] duration-200 ease-standard hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-cta-hover active:translate-y-0 active:scale-[0.97] active:shadow-cta-sm active:duration-75"
     >
       <LinearWindows size={iconSize} />
       {children}

@@ -12,13 +12,16 @@
 import { motion, useReducedMotion } from "framer-motion";
 
 /** One packet-dot sweep along a track segment. `delay` phases the managed
- *  mode's second segment so the dot appears to hand off at the relay. */
+ *  mode's second segment so the dot appears to hand off at the relay.
+ *  The motion rides on a full-width wrapper's `x` (transform → composited):
+ *  animating the dot's `left` forced layout+paint on the main thread every
+ *  frame and stuttered under any streaming load. */
 function Dot({ duration, delay = 0 }: { duration: number; delay?: number }) {
   return (
     <motion.span
-      className="ig-route__dot"
-      initial={{ left: "0%", opacity: 0 }}
-      animate={{ left: ["0%", "100%"], opacity: [0, 1, 1, 0] }}
+      className="ig-route__sweep"
+      initial={{ x: "0%", opacity: 0 }}
+      animate={{ x: ["0%", "100%"], opacity: [0, 1, 1, 0] }}
       transition={{
         duration,
         delay,
@@ -27,7 +30,9 @@ function Dot({ duration, delay = 0 }: { duration: number; delay?: number }) {
         repeat: Infinity,
         repeatDelay: 1.35,
       }}
-    />
+    >
+      <span className="ig-route__dot" />
+    </motion.span>
   );
 }
 

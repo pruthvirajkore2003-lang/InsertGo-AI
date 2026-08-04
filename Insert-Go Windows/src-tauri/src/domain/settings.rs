@@ -445,21 +445,21 @@ mod tests {
     }
 
     #[test]
-    fn legacy_byok_fields_are_ignored_not_fatal() {
-        // Every installed copy has a settings.json still carrying the removed
-        // BYOK keys. Serde ignores unknown fields by default, so the file must
-        // keep loading AND the surviving fields must round-trip intact —
-        // that's the whole upgrade path for existing users.
+    fn legacy_fields_are_ignored_not_fatal() {
+        // Every installed copy has a settings.json still carrying keys from
+        // removed features. Serde ignores unknown fields by default, so the
+        // file must keep loading AND the surviving fields must round-trip
+        // intact — that's the whole upgrade path for existing users.
         let back: Settings = serde_json::from_str(
             r#"{
                 "theme":"dark",
                 "hotkey":"Alt+Space",
                 "defaultProviderId":null,
-                "byokLane":"anthropic",
-                "byokModel":"claude-haiku-4-5",
-                "byokBaseUrl":"",
-                "byokProfiles":[{"id":"p-abc","name":"Work key","lane":"openrouter","model":"meta/llama","baseUrl":""}],
-                "activeByokProfileId":"p-abc",
+                "legacyLane":"anthropic",
+                "legacyModel":"claude-haiku-4-5",
+                "legacyBaseUrl":"",
+                "legacyProfiles":[{"id":"p-abc","name":"Work key","lane":"openrouter","model":"meta/llama","baseUrl":""}],
+                "activeLegacyProfileId":"p-abc",
                 "improveModel":"gemini-2.5-flash-lite",
                 "improveHotkey":"Ctrl+Alt+I",
                 "enabledSkillIds":["summarize-this"]
@@ -476,8 +476,8 @@ mod tests {
         assert!(back.selection_bar);
         // Re-serializing drops the stale keys: the next save cleans the file.
         let json = serde_json::to_string(&back).unwrap();
-        assert!(!json.contains("byok"));
-        assert!(!json.contains("Byok"));
+        assert!(!json.contains("legacy"));
+        assert!(!json.contains("Legacy"));
     }
 
     #[test]

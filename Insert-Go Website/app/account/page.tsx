@@ -60,12 +60,20 @@ export default async function AccountPage() {
 
           <dl className="mt-6 flex flex-col gap-4">
             <div className="glass-chip flex items-center justify-between gap-4 rounded-2xl px-4 py-3">
-              <dt className="text-sm font-medium text-muted">Name</dt>
-              <dd className="text-[15px] text-ink">{user.name || "—"}</dd>
+              <dt className="shrink-0 text-sm font-medium text-muted">Name</dt>
+              {/* User-supplied, unbounded — let it wrap inside the chip rather
+                  than push the row wider than the card. */}
+              <dd className="min-w-0 text-right text-[15px] break-words text-ink">
+                {user.name || "—"}
+              </dd>
             </div>
             <div className="glass-chip flex items-center justify-between gap-4 rounded-2xl px-4 py-3">
-              <dt className="text-sm font-medium text-muted">Email</dt>
-              <dd className="text-[15px] text-ink">{user.email}</dd>
+              <dt className="shrink-0 text-sm font-medium text-muted">Email</dt>
+              {/* break-all, not break-words: an address has no spaces to break
+                  on, so anywhere-wrapping is the only thing that contains it. */}
+              <dd className="min-w-0 text-right text-[15px] break-all text-ink">
+                {user.email}
+              </dd>
             </div>
             <div className="glass-chip flex items-center justify-between gap-4 rounded-2xl px-4 py-3">
               <dt className="text-sm font-medium text-muted">Plan</dt>
@@ -140,7 +148,7 @@ export default async function AccountPage() {
           <div className="mt-6 flex flex-col gap-3">
             <Link
               href="/pricing"
-              className="flex h-11 items-center justify-center rounded-3xl bg-brand text-[15px] font-medium text-on-accent transition-all duration-200 hover:-translate-y-px hover:brightness-105"
+              className="flex h-11 items-center justify-center rounded-3xl bg-brand text-[15px] font-medium text-on-accent transition-[transform,filter] duration-200 hover:-translate-y-px hover:brightness-105"
             >
               {tier === "Free" ? "Upgrade plan" : "Manage plan & buy credits"}
             </Link>

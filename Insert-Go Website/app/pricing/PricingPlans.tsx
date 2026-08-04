@@ -159,7 +159,7 @@ export function PricingPlans({ currency }: { currency: Currency }) {
                     type="button"
                     disabled={busy !== null}
                     onClick={() => void checkout(p.tier!, { tier: p.tier! })}
-                    className={`mt-[22px] flex h-12 cursor-pointer items-center justify-center rounded-3xl text-[15px] font-medium transition-all duration-200 hover:-translate-y-px hover:brightness-105 disabled:cursor-wait disabled:opacity-70 ${
+                    className={`mt-[22px] flex h-12 cursor-pointer items-center justify-center rounded-3xl text-[15px] font-medium transition-[transform,filter,opacity,background-color] duration-200 hover:-translate-y-px hover:brightness-105 disabled:cursor-wait disabled:opacity-70 ${
                       p.dark ? "bg-brand text-on-accent" : "glass-chip text-ink"
                     }`}
                   >
@@ -168,7 +168,7 @@ export function PricingPlans({ currency }: { currency: Currency }) {
                 ) : (
                   <Link
                     href="/download"
-                    className="glass-chip mt-[22px] flex h-12 items-center justify-center rounded-3xl text-[15px] font-medium text-ink transition-all duration-200 hover:-translate-y-px hover:brightness-105"
+                    className="glass-chip mt-[22px] flex h-12 items-center justify-center rounded-3xl text-[15px] font-medium text-ink transition-[transform,filter] duration-200 hover:-translate-y-px hover:brightness-105"
                   >
                     {p.cta}
                   </Link>
@@ -245,7 +245,7 @@ export function PricingPlans({ currency }: { currency: Currency }) {
                         pack: pack.credits,
                       })
                     }
-                    className="glass-chip mt-4 flex h-10 w-full cursor-pointer items-center justify-center rounded-2xl text-sm font-medium text-ink transition-all duration-200 hover:-translate-y-px hover:brightness-105 disabled:cursor-wait disabled:opacity-70"
+                    className="glass-chip mt-4 flex h-10 w-full cursor-pointer items-center justify-center rounded-2xl text-sm font-medium text-ink transition-[transform,filter,opacity] duration-200 hover:-translate-y-px hover:brightness-105 disabled:cursor-wait disabled:opacity-70"
                   >
                     {busy === `pack-${pack.credits}` ? "Opening…" : "Buy pack"}
                   </button>

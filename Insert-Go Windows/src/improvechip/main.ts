@@ -15,8 +15,8 @@ type ChipPayload = {
   message: string;
 };
 
+// "working" has no glyph entry — it renders the ring spinner (.chip__icon--spin).
 const ICONS: Record<string, string> = {
-  working: "⟳",
   done: "✓",
   error: "✕",
   info: "ℹ",
@@ -39,22 +39,48 @@ style.textContent = `
     white-space: nowrap; overflow: hidden;
     user-select: none; cursor: default;
   }
-  .chip__icon { flex: none; width: 14px; text-align: center; }
-  .chip--working .chip__icon { animation: spin 0.9s linear infinite; }
+  .chip__icon { flex: none; width: 14px; height: 14px; text-align: center; }
+  /* Working state: border-ring spinner, NOT the old spinning ⟳ glyph — a
+     text glyph rotates around its em-box, not its ink centroid, so it wobbled
+     in a small orbit. The ring's center is exact, and the animation is a
+     composited transform (no layout work). */
+  .chip__icon--spin {
+    box-sizing: border-box;
+    width: 12px; height: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    border-top-color: #f2f2f5;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
   .chip--done .chip__icon { color: #6fdd8b; }
   .chip--error .chip__icon { color: #ff7d7d; }
   .chip__text { overflow: hidden; text-overflow: ellipsis; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .chip__icon--spin { animation: none; }
+  }
 `;
 document.head.appendChild(style);
 
+// Identical events must not rebuild the DOM: replaceChildren would restart
+// the spinner's CSS animation from 0deg on every repeat (visible stutter).
+let lastKey = "";
+
 function render({ state, message }: ChipPayload) {
+  const key = `${state} ${message}`;
+  if (key === lastKey) return;
+  lastKey = key;
+
   const chip = document.createElement("div");
   chip.className = `chip chip--${state}`;
 
   const icon = document.createElement("span");
-  icon.className = "chip__icon";
-  icon.textContent = ICONS[state] ?? ICONS.info;
+  if (state === "working") {
+    icon.className = "chip__icon chip__icon--spin";
+  } else {
+    icon.className = "chip__icon";
+    icon.textContent = ICONS[state] ?? ICONS.info;
+  }
 
   const text = document.createElement("span");
   text.className = "chip__text";

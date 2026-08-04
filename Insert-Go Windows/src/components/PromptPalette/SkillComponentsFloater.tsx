@@ -241,8 +241,11 @@ export function SkillComponentsFloater({ onRun, editorRef, autoHeight }: Props) 
       <div className="ig-skillfloater__skill">
         <i className={`fa-solid ${activeSkill.icon}`} aria-hidden="true" />
         <span>{activeSkill.label}</span>
-        {/* Result streaming in: small composing orb in the skill chip. */}
-        {isSending && result !== null && (
+        {/* Result streaming in: small composing orb in the skill chip. Gated
+            on hasDeliverable (not result !== null) so the transient "" gap
+            between </analysis> and the first <final> token doesn't
+            mount/unmount it. */}
+        {isSending && hasDeliverable && (
           <ThinkingOrb state="composing" size={20} />
         )}
       </div>
@@ -277,9 +280,11 @@ export function SkillComponentsFloater({ onRun, editorRef, autoHeight }: Props) 
         <div ref={autoHeight?.contentRef}>
           {hasDeliverable ? (
             <div className="ig-result__text">{result}</div>
-          ) : isSending && !thinking ? (
-            // Pre-analysis (or a run with no reasoning): the thinking orb.
-            // Once thinking streams, the reasoning area above is the cue.
+          ) : isSending ? (
+            // One persistent working orb for the whole pre-deliverable run —
+            // it must NOT unmount when `thinking` starts streaming: that swap
+            // restarted the orb's rAF loop (blink) and, during the transient
+            // result === "" gap, left this screen rendering nothing at all.
             <div className="ig-working" role="status" aria-label="Working">
               <ThinkingOrb state="working" size={64} />
             </div>

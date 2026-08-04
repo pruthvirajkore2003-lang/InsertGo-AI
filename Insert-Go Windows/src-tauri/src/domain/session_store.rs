@@ -4,11 +4,9 @@
 //! `keyring` crate), never in JSON files, `localStorage`, and never in logs.
 //! Exactly one credential: service `"InsertGo"` / account `"session"`.
 //!
-//! This replaces the lane-addressed `domain/secrets.rs` that went away with
-//! BYOK. That module took a caller-supplied account name (`byok:<lane>`) and
-//! format-validated it; with BYOK gone there is one fixed account, so the
-//! account name is a constant here and no longer part of the command surface —
-//! the validation that module needed is designed out rather than kept.
+//! The account name is a constant here and not part of the command surface, so
+//! no caller-supplied account name ever reaches the credential store and the
+//! validation such a surface would need is designed out rather than kept.
 
 use crate::error::{AppError, AppResult};
 

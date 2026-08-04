@@ -1,0 +1,158 @@
+name: release-windows
+
+# Builds the signed NSIS installer for the Insert-Go Windows desktop app.
+#
+# Signing is Azure Artifact Signing (formerly Trusted Signing). No PFX, no
+# base64 secret: the runner authenticates with a federated OIDC token, and
+# Tauri shells out to src-tauri/sign-windows.ps1 for every binary it bundles
+# plus the finished installer (bundle.windows.signCommand).
+#
+# One-time Azure setup:
+#   1. Artifact Signing account + identity validation + certificate profile.
+#   2. Entra app registration with a federated credential for this repo
+#      (entity type "Environment" -> release-windows, or "Branch"/"Tag").
+#   3. Grant that app the "Trusted Signing Certificate Profile Signer" role on
+#      the certificate profile (scope it to the profile, not the subscription).
+#   4. Repo variables: AZURE_SIGN_ENDPOINT (region URI, e.g.
+#      https://eus.codesigning.azure.net), AZURE_SIGN_ACCOUNT, AZURE_SIGN_PROFILE.
+#      Repo secrets: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: release-windows-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # required for the OIDC token azure/login exchanges
+
+jobs:
+  build:
+    runs-on: windows-latest
+    environment: release-windows
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: Insert-Go Windows
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.85.0'
+          targets: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: Insert-Go Windows/src-tauri -> target
+
+      # Root install: the repo is an npm workspace, so the lockfile lives at the root.
+      - name: Install dependencies
+        working-directory: .
+        run: npm ci
+
+      # .NET 8 runtime is a hard dependency of the Artifact Signing dlib that
+      # signtool loads. Installed machine-wide so the signtool child process finds it.
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Artifact Signing tooling
+        working-directory: .
+        env:
+          AZURE_SIGN_ENDPOINT: ${{ vars.AZURE_SIGN_ENDPOINT }}
+          AZURE_SIGN_ACCOUNT: ${{ vars.AZURE_SIGN_ACCOUNT }}
+          AZURE_SIGN_PROFILE: ${{ vars.AZURE_SIGN_PROFILE }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($v in 'AZURE_SIGN_ENDPOINT', 'AZURE_SIGN_ACCOUNT', 'AZURE_SIGN_PROFILE') {
+            if (-not (Get-Item "env:$v" -ErrorAction SilentlyContinue).Value) {
+              throw "Repository variable $v is not set."
+            }
+          }
+
+          $root = Join-Path $env:RUNNER_TEMP 'signing'
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+          Invoke-WebRequest -Uri https://dist.nuget.org/win-x86-commandline/latest/nuget.exe -OutFile "$root\nuget.exe"
+
+          # Windows SDK 20348 is explicitly unsupported by the dlib, so pull a
+          # known-good signtool from NuGet instead of trusting the runner image.
+          & "$root\nuget.exe" install Microsoft.Windows.SDK.BuildTools -x -OutputDirectory $root
+          & "$root\nuget.exe" install Microsoft.ArtifactSigning.Client   -x -OutputDirectory $root
+
+          $signtool = Get-ChildItem "$root\Microsoft.Windows.SDK.BuildTools" -Recurse -Filter signtool.exe |
+            Where-Object { $_.Directory.Name -eq 'x64' } | Select-Object -First 1 -ExpandProperty FullName
+          $dlib = Get-ChildItem "$root\Microsoft.ArtifactSigning.Client" -Recurse -Filter Azure.CodeSigning.Dlib.dll |
+            Where-Object { $_.Directory.Name -eq 'x64' } | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $signtool) { throw 'x64 signtool.exe not found in Microsoft.Windows.SDK.BuildTools.' }
+          if (-not $dlib)     { throw 'x64 Azure.CodeSigning.Dlib.dll not found in Microsoft.ArtifactSigning.Client.' }
+
+          # The dlib authenticates with DefaultAzureCredential. Everything except
+          # AzureCliCredential is excluded: azure/login leaves an az session, and
+          # letting the chain probe ManagedIdentity/IMDS first only adds timeouts.
+          $metadata = Join-Path $root 'metadata.json'
+          @{
+            Endpoint               = $env:AZURE_SIGN_ENDPOINT
+            CodeSigningAccountName = $env:AZURE_SIGN_ACCOUNT
+            CertificateProfileName = $env:AZURE_SIGN_PROFILE
+            CorrelationId          = "$env:GITHUB_REPOSITORY/$env:GITHUB_RUN_ID"
+            ExcludeCredentials     = @(
+              'EnvironmentCredential', 'ManagedIdentityCredential', 'WorkloadIdentityCredential',
+              'SharedTokenCacheCredential', 'VisualStudioCredential', 'VisualStudioCodeCredential',
+              'AzurePowerShellCredential', 'AzureDeveloperCliCredential', 'InteractiveBrowserCredential'
+            )
+          } | ConvertTo-Json -Depth 3 | Out-File -FilePath $metadata -Encoding utf8
+
+          Add-Content -Path $env:GITHUB_ENV -Encoding utf8 -Value @(
+            "IG_SIGNTOOL=$signtool"
+            "IG_SIGN_DLIB=$dlib"
+            "IG_SIGN_METADATA=$metadata"
+          )
+
+      # Fail in 30s instead of after a 20-minute Rust build if the federated
+      # credential, the role assignment, the endpoint region or the dlib is wrong.
+      - name: Verify signing works
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $probe = Join-Path $env:RUNNER_TEMP 'signing\probe.exe'
+          Copy-Item (Join-Path $env:RUNNER_TEMP 'signing\nuget.exe') $probe -Force
+          & "$env:GITHUB_WORKSPACE\Insert-Go Windows\src-tauri\sign-windows.ps1" $probe
+          & $env:IG_SIGNTOOL verify /pa /v $probe
+
+      # Frontend build is not duplicated here: tauri.conf.json's beforeBuildCommand
+      # already runs `npm run build` (tsc + vite) inside this workspace.
+      - name: Build and sign installer
+        run: npm run tauri:build -- --verbose
+
+      - name: Verify installer signature
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Get-ChildItem src-tauri\target\release\bundle\nsis\*-setup.exe |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $installer) { throw 'No NSIS installer produced.' }
+          & $env:IG_SIGNTOOL verify /pa /v $installer
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: InsertGo-windows-nsis
+          path: Insert-Go Windows/src-tauri/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+          retention-days: 30

@@ -111,7 +111,7 @@ async function DownloadCta() {
             <span className="text-[13px] text-muted">
               Version 2.4.1 · 14 MB · Windows 10 &amp; 11 (64-bit) · Signed
               installer · Sign in to the app as{" "}
-              <strong className="text-ink-soft">
+              <strong className="break-all text-ink-soft">
                 {session.user.email}
               </strong>
             </span>

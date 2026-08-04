@@ -64,14 +64,6 @@ effective network boundary.
 | `improvechip`   | `improvechip.json`   | none |
 | `floating-icon` | `floating-icon.json` | none |
 
-> **Open item (BYOK removal).** The broad `https://**` grant for `main` and
-> `selfloater` existed because BYOK let users point lanes at arbitrary vendor
-> URLs, so a URL allowlist would have broken the product. With BYOK removed,
-> every request goes to the first-party relay and that justification is gone —
-> these two windows should be narrowed to the `insertgo.ai` + localhost grant
-> `skillbar` already uses. Not done as part of the removal: it changes egress
-> policy and needs a packaged-build verification pass, not just unit tests.
-
 ## Secrets at rest
 
 - **The session token** lives in the OS credential store via the Rust

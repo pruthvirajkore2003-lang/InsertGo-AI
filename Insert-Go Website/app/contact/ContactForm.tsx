@@ -320,7 +320,7 @@ export function ContactForm() {
           <button
             type="submit"
             disabled={busy}
-            className="inline-flex h-12 cursor-pointer items-center justify-center gap-2.5 rounded-3xl border-none bg-terracotta text-[15px] font-medium text-on-accent shadow-cta transition-all duration-200 ease-standard hover:-translate-y-px hover:shadow-cta-hover active:translate-y-0 active:scale-[0.98] active:duration-75 disabled:cursor-wait disabled:opacity-70 disabled:hover:translate-y-0"
+            className="inline-flex h-12 cursor-pointer items-center justify-center gap-2.5 rounded-3xl border-none bg-terracotta text-[15px] font-medium text-on-accent shadow-cta transition-[transform,box-shadow,opacity] duration-200 ease-standard hover:-translate-y-px hover:shadow-cta-hover active:translate-y-0 active:scale-[0.98] active:duration-75 disabled:cursor-wait disabled:opacity-70 disabled:hover:translate-y-0"
           >
             {busy ? (
               <>

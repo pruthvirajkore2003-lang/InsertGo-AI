@@ -4,11 +4,9 @@
  * only entitlement questions left are "how many credits" and "is history
  * unlocked".
  *
- * BYOK ("bring your own key": device → provider) was removed, and with it the
- * second route, the credential-store plumbing, and the `free_byok`/`paid_byok`
- * tiers. What survives is the part that was never about routing: the tier is
- * DERIVED from the auth store's server-validated subscription (or a lifetime
- * license), never stored, so there is no second source of truth to drift.
+ * The tier is DERIVED from the auth store's server-validated subscription (or
+ * a lifetime license), never stored, so there is no second source of truth to
+ * drift.
  *
  * The managed session token lives in `authStore` under its own keyring
  * account ("session") — the app's only remaining secret.

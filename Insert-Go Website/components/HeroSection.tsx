@@ -13,8 +13,13 @@ export function HeroSection({ children }: { children: ReactNode }) {
     >
       {children}
 
-      {/* HERO MOCKUP */}
-      <div className="animate-hero-rise relative mt-[72px] w-full max-w-[920px]">
+      {/* HERO MOCKUP — a staged illustration, not real UI: the fake document
+          chrome and the looping prompt ticker are noise to a screen reader,
+          and nothing inside it is focusable. */}
+      <div
+        aria-hidden="true"
+        className="animate-hero-rise relative mt-[72px] w-full max-w-[920px]"
+      >
         <div className="glass-panel overflow-hidden">
           <div className="flex items-center gap-2 border-b border-line bg-muted/5 px-4 py-3">
             <span className="h-2.5 w-2.5 rounded-full bg-line" />

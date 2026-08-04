@@ -113,7 +113,12 @@ function drawDots(
   accent: RGB,
   rMin = 0.3,
 ) {
-  dots.sort((a, b) => a.z - b.z);
+  // Depth keys quantized to ~0.02 world units before the (stable) sort: two
+  // dots whose depths differ by less than that keep their generation order
+  // instead of swapping paint order frame-to-frame as their trig drift
+  // crosses. That swap was the visible "glitter" — a near-white front dot and
+  // a cobalt back dot flipping which one paints on top.
+  dots.sort((a, b) => Math.round(a.z * 50) - Math.round(b.z * 50));
   for (const d of dots) {
     const alpha = d.a ?? 1;
     if (alpha < 0.02) continue;
@@ -724,13 +729,15 @@ function resolveAccent(): RGB {
 
 /** Brand cobalt from the --ig-accent token, parsed + cached once and
  *  re-resolved when [data-theme] flips on <html> (same MutationObserver
- *  pattern as the source site's theme hook) — high-contrast re-skins the orb. */
+ *  pattern as the source site's theme hook) — high-contrast re-skins the orb.
+ *  The initial value is resolved LAZILY: starting from the fallback and fixing
+ *  it in an effect would change the main effect's `accent` dep one frame after
+ *  mount, clearing the canvas and restarting the rAF loop — a visible blink. */
 function useAccentColor(): RGB {
-  const [accent, setAccent] = useState<RGB>(FALLBACK_ACCENT);
+  const [accent, setAccent] = useState<RGB>(resolveAccent);
   useEffect(() => {
-    const update = () => setAccent(resolveAccent());
-    update();
     if (typeof MutationObserver === "undefined") return;
+    const update = () => setAccent(resolveAccent());
     const mo = new MutationObserver(update);
     mo.observe(document.documentElement, {
       attributes: true,
@@ -742,11 +749,16 @@ function useAccentColor(): RGB {
 }
 
 function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
+  // Lazy init for the same reason as the accent above — a post-mount flip
+  // from false → true restarts the draw loop and blinks the canvas.
+  const [reduced, setReduced] = useState(
+    () =>
+      typeof matchMedia !== "undefined" &&
+      matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
   useEffect(() => {
     if (typeof matchMedia === "undefined") return;
     const mq = matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
     const onChange = (e: MediaQueryListEvent) => setReduced(e.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
@@ -792,19 +804,31 @@ export function ThinkingOrb({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const accent = useAccentColor();
   const reducedMotion = usePrefersReducedMotion();
+  // Animation clock living OUTSIDE the draw effect: phase accumulates
+  // (dt × timeScale) instead of scaling wall-clock time, so swapping `state`
+  // on a mounted orb resumes at the same phase instead of jumping — the old
+  // absolute-time jump made every mode switch visibly snap.
+  const clockRef = useRef({ phase: 0, last: 0 });
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const preset = snapPreset(size);
     const dpr = Math.min(2, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1);
-    canvas.width = Math.round(preset * dpr);
-    canvas.height = Math.round(preset * dpr);
+    // Assigning canvas.width ALWAYS clears the bitmap — even to the same
+    // value. Guard it so a state/accent/paused change with an unchanged size
+    // doesn't blank the canvas mid-animation (the phase-swap flash).
+    const px = Math.round(preset * dpr);
+    if (canvas.width !== px || canvas.height !== px) {
+      canvas.width = px;
+      canvas.height = px;
+    }
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const { mode, speed: baseSpeed, opts } = resolveConfig(state, preset);
     const render = RENDERERS[mode];
     const timeScale = baseSpeed * speed;
+    const clock = clockRef.current;
     const drawFrame = (t: number) => {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, preset, preset);
@@ -818,19 +842,26 @@ export function ThinkingOrb({
     let rafId = 0;
     let running = false;
     const tick = () => {
-      drawFrame((performance.now() / 1000) * timeScale);
+      const now = performance.now() / 1000;
+      if (clock.last === 0) clock.last = now;
+      clock.phase += (now - clock.last) * timeScale;
+      clock.last = now;
+      drawFrame(clock.phase);
       if (running) rafId = requestAnimationFrame(tick);
     };
     const start = () => {
       if (running || paused) return;
       running = true;
+      // Re-baseline the clock: without this, a visibility-stop gap would be
+      // charged to the next frame as one huge phase jump.
+      clock.last = 0;
       rafId = requestAnimationFrame(tick);
     };
     const stop = () => {
       running = false;
       cancelAnimationFrame(rafId);
     };
-    drawFrame((performance.now() / 1000) * timeScale);
+    drawFrame(clock.phase);
     let visible = true;
     const io =
       typeof IntersectionObserver !== "undefined"

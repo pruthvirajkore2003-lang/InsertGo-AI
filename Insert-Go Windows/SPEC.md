@@ -255,8 +255,8 @@ InsertGo's roadmap is organized into progressive milestones. The current roadmap
     *   **I1 — capture/write-back core**: UIA + clipboard capture + replace + restore. *(Shipped)*
     *   **I2 — adapters + modes**: target profiles (claude-web, vscode, cursor, generic). *(Shipped)*
     *   **I3 — hardening**: latency optimization, settings UI overrides.
-*   **Phase 1: Local-First & Zero-Trust Architecture (Ollama)**: ~~**P1-BYOK**~~ *(removed — see §16)*.
-    *   **P1-Local**: Ollama auto-discovery and integration, local text processing for complete offline security. *(Backend command retained; no UI routes to it since the BYOK removal.)*
+*   **Phase 1: Local-First & Zero-Trust Architecture (Ollama)**:
+    *   **P1-Local**: Ollama auto-discovery and integration, local text processing for complete offline security. *(Backend command retained; no UI routes to it.)*
 *   **Phase 2: IDE & Terminal Workspace Context Scraper & Presets**:
     *   **P2-Context**: Rust backend scanners for active file path, active workspace directory, and local Git diffs.
     *   **P2-Terminal**: Scraping terminal error buffers (WT / PowerShell) for inline bug debugging.
@@ -327,25 +327,7 @@ Maintain a small fixture set per mode × profile (rough draft -> expected proper
 
 ---
 
-## 16. Bring Your Own Key (BYOK) — REMOVED / Local LLM Integration (Phase 1)
-
-### 16.1 BYOK Configuration & Routing — **REMOVED**
-
-BYOK was excised from the desktop client. Every request now goes through the
-managed relay (§5.4); the client holds no LLM key at all, and the only
-credential in the OS Credentials Manager is the session token
-(`domain/session_store.rs`).
-
-Removed with it: the ~35-lane provider catalog, the direct/enterprise provider
-transports, named BYOK profiles, the Provider Keys UI, the `byok_*` settings
-fields, and the lane-addressed `secret_*` commands. Existing `settings.json`
-files may still contain `byokLane` / `byokProfiles` / `activeByokProfileId`;
-serde ignores them and the next save drops them (test:
-`legacy_byok_fields_are_ignored_not_fatal`).
-
-Re-introducing BYOK means restoring a second route in `services/lanes.ts`, a
-credential-store surface, and the `byokAllowed` entitlement — none of which
-survive in the tree.
+## 16. Local LLM Integration (Phase 1)
 
 ### 16.2 Local LLM Integration (Ollama / Llama.cpp)
 *   **Auto-Discovery**: On startup, the Rust backend attempts to ping `http://localhost:11434/api/tags` to check for a running local Ollama instance. If found, Ollama models are made available in the model picker.
