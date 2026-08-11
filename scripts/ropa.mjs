@@ -230,8 +230,7 @@ function main() {
   }
 
   if (mode === "emit") {
-    const out = {
-      generatedAt: new Date().toISOString().slice(0, 10),
+    const body = {
       generatedBy: "scripts/ropa.mjs",
       basis: "DPDP Act 2023 §8(1); ISO/IEC 27001 A.5.34",
       note:
@@ -244,9 +243,27 @@ function main() {
       },
       columns: ropa,
     };
+
+    // The date is the date this RECORD changed, not the date the generator ran.
+    // Stamping the clock made the file differ from its committed copy on every
+    // day but the one it was committed on, which is the whole content of the
+    // "ropa.json is up to date" gate failing for no schema reason. Carry the
+    // previous date forward whenever nothing else moved.
+    const target = join(ROOT, "compliance/ropa.json");
+    let generatedAt = new Date().toISOString().slice(0, 10);
+    try {
+      const prev = JSON.parse(readFileSync(target, "utf8"));
+      const { generatedAt: prevAt, ...prevBody } = prev;
+      if (prevAt && JSON.stringify(prevBody) === JSON.stringify(body)) {
+        generatedAt = prevAt;
+      }
+    } catch {
+      // No previous record, or an unreadable one: today is correct.
+    }
+
     writeFileSync(
-      join(ROOT, "compliance/ropa.json"),
-      JSON.stringify(out, null, 2) + "\n",
+      target,
+      JSON.stringify({ generatedAt, ...body }, null, 2) + "\n",
     );
     console.log(`wrote compliance/ropa.json (${ropa.length} columns)`);
   }
