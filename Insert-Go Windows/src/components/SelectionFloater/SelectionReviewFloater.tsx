@@ -80,6 +80,9 @@ export function SelectionReviewFloater() {
   const initAuth = useAuthStore((s) => s.init);
   const enabledSkillIds = useSettingsStore((s) => s.settings.enabledSkillIds);
   const customSkills = useSettingsStore((s) => s.settings.customSkills);
+  const targetLanguage = useSettingsStore(
+    (s) => s.settings.defaultTranslationLanguage
+  );
 
   // Enabled skills (built-in + custom), the same set the bar shows — used for
   // the "More" picker and to resolve a custom-skill id in the handoff.
@@ -157,7 +160,7 @@ export function SelectionReviewFloater() {
         source: "selection",
       });
       void runProvider(
-        composeSkillPrompt(skill.template, text),
+        composeSkillPrompt(skill.template, text, { targetLanguage }),
         SKILL_SYSTEM,
         finalizeSkillOutput,
         visibleStreamText,
@@ -165,7 +168,7 @@ export function SelectionReviewFloater() {
         resolveSkillGrounding(skill)
       );
     },
-    [setActiveSkill, runProvider]
+    [setActiveSkill, runProvider, targetLanguage]
   );
 
   // Consume the staged handoff exactly once: a skill opens the card and

@@ -1,12 +1,17 @@
 /**
- * User settings (theme, hotkey, default provider) and provider configs.
- * Backend persists both; this store mirrors them and applies the theme to the
- * document so the palette restyles immediately.
+ * User settings (theme, hotkey, skills). The backend persists them; this store
+ * mirrors them and applies the theme to the document so the palette restyles
+ * immediately.
  */
 import { create } from "zustand";
 import { isTauri } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
-import { DEFAULT_SETTINGS, type ProviderConfig, type Settings } from "@/types";
+import {
+  DEFAULT_SETTINGS,
+  PROXY_CONFIG,
+  type ProviderConfig,
+  type Settings,
+} from "@/types";
 import * as bridge from "@/services/tauriBridge";
 import {
   BUILTIN_SKILL_IDS,
@@ -19,12 +24,6 @@ import {
 } from "@/services/skills";
 import { toast } from "@/store/toastStore";
 import { useAuthStore } from "@/store/authStore";
-import {
-  defaultProviderId as computeDefaultId,
-  removeProvider as removeFromList,
-  setDefaultProvider as setDefaultInList,
-  upsertProvider,
-} from "@/services/providerUtils";
 
 // WebView2 defaults to the Auto color scheme, so this media query tracks the
 // Windows appearance setting and fires `change` live when it flips.
@@ -83,9 +82,6 @@ export async function syncThemeFromBackend() {
 
 type SettingsState = {
   settings: Settings;
-  providers: ProviderConfig[];
-  /** Session-only override of which provider the composer sends to. */
-  selectedProviderId: string | null;
   isLoading: boolean;
   /** True once `load()` has settled (persisted values or the defaults
    *  fallback). Gates anything that must not act on the *pre-load* defaults,
@@ -95,12 +91,6 @@ type SettingsState = {
 
   load: () => Promise<void>;
   update: (patch: Partial<Settings>) => Promise<void>;
-
-  // Provider management (SPEC §13.3.2).
-  upsertProvider: (provider: ProviderConfig) => Promise<void>;
-  removeProvider: (id: string) => Promise<void>;
-  setDefaultProvider: (id: string) => Promise<void>;
-  setSelectedProvider: (id: string | null) => void;
 
   // Skill management (custom skills + skill-bar visibility). Each persists the
   // full settings via `update()`, so the change round-trips to settings.json
@@ -116,8 +106,8 @@ type SettingsState = {
   applySkillSetPreset: (id: string) => Promise<void>;
   removeSkillSetPreset: (id: string) => Promise<void>;
 
-  defaultProvider: () => ProviderConfig | null;
-  /** Provider the composer should use: explicit selection, else default. */
+  /** The lane the composer should use, or null when nobody is signed in.
+   *  One lane exists (the hosted relay), and it needs an InsertGo session. */
   activeProvider: () => ProviderConfig | null;
 };
 
@@ -198,8 +188,6 @@ async function flushSettingsUpdates(
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   settings: DEFAULT_SETTINGS,
-  providers: [],
-  selectedProviderId: null,
   isLoading: false,
   hasLoaded: false,
   error: null,
@@ -207,12 +195,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   load: async () => {
     set({ isLoading: true, error: null });
     try {
-      const [settings, providers] = await Promise.all([
-        bridge.loadSettings(),
-        bridge.loadProviders(),
-      ]);
+      const settings = await bridge.loadSettings();
       applyTheme(settings.theme);
-      set({ settings, providers, isLoading: false, hasLoaded: true });
+      set({ settings, isLoading: false, hasLoaded: true });
     } catch (e) {
       // Fall back to defaults so the UI still renders during dev / first run.
       applyTheme(DEFAULT_SETTINGS.theme);
@@ -221,26 +206,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   update: (patch) => enqueueSettingsUpdate(set, get, patch),
-
-  upsertProvider: async (provider) => {
-    const next = upsertProvider(get().providers, provider);
-    await persistProviders(set, get, next);
-    toast.success("Provider saved");
-  },
-
-  removeProvider: async (id) => {
-    const next = removeFromList(get().providers, id);
-    const wasSelected = get().selectedProviderId === id;
-    await persistProviders(set, get, next);
-    if (wasSelected) set({ selectedProviderId: null });
-  },
-
-  setDefaultProvider: async (id) => {
-    const next = setDefaultInList(get().providers, id);
-    await persistProviders(set, get, next);
-  },
-
-  setSelectedProvider: (id) => set({ selectedProviderId: id }),
 
   addCustomSkill: async (draft) => {
     const { customSkills, enabledSkillIds } = get().settings;
@@ -306,69 +271,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     await get().update({ skillSetPresets: removePresetPure(skillSetPresets, id) });
   },
 
-  defaultProvider: () => {
-    const { providers, settings } = get();
-    return (
-      providers.find((p) => p.id === settings.defaultProviderId) ??
-      providers.find((p) => p.isDefault) ??
-      providers[0] ??
-      null
-    );
-  },
-
-  activeProvider: () => {
-    // A user-configured provider (SPEC §13.3.2) is used as-is; falling back to
-    // the backend proxy needs an InsertGo session.
-    const auth = useAuthStore.getState();
-    const { providers, selectedProviderId } = get();
-    const existing =
-      providers.find((p) => p.id === selectedProviderId) ??
-      get().defaultProvider();
-    if (existing) return existing;
-
-    if (!auth.token) return null;
-    return {
-      id: "backend",
-      name: "Backend Proxy",
-      baseUrl: "https://generativelanguage.googleapis.com",
-      apiKey: "dummy",
-      isDefault: true,
-    };
-  },
+  activeProvider: () =>
+    useAuthStore.getState().token === null ? null : PROXY_CONFIG,
 }));
-
-/**
- * Record that Improve has worked at least once on this install — the app's
- * activation signal, written by `services/inlineImprove` when the hotkey
- * produces improved text. Idempotent and fire-and-forget: a failed write only
- * costs the signal, never the run.
- */
-export async function markFirstImproveDone(): Promise<void> {
-  const store = useSettingsStore.getState();
-  if (store.settings.firstImproveDone) return;
-  await store.update({ firstImproveDone: true });
-}
-
-/**
- * Persist a new provider list and keep `settings.defaultProviderId` in sync
- * with whichever provider is now marked default.
- */
-async function persistProviders(
-  set: (partial: Partial<SettingsState>) => void,
-  get: () => SettingsState,
-  next: ProviderConfig[]
-) {
-  set({ providers: next });
-  try {
-    const saved = await bridge.saveProviders(next);
-    set({ providers: saved, error: null });
-
-    const newDefaultId = computeDefaultId(saved);
-    if (newDefaultId !== get().settings.defaultProviderId) {
-      await get().update({ defaultProviderId: newDefaultId });
-    }
-  } catch (e) {
-    set({ error: String(e) });
-    toast.error(`Couldn't save providers: ${e}`);
-  }
-}

@@ -6,7 +6,12 @@ vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn() }));
 const httpMock = vi.fn();
 vi.mock("@/services/http", () => ({ http: (...a: unknown[]) => httpMock(...a) }));
 
-import { fetchPricing, formatUsd, planFor } from "@/services/billing";
+import {
+  detectCurrency,
+  fetchPricing,
+  formatMoney,
+  planFor,
+} from "@/services/billing";
 import { useMonetizationStore } from "@/store/monetizationStore";
 
 const PLAN = {
@@ -66,10 +71,49 @@ describe("fetchPricing", () => {
   });
 });
 
-describe("formatUsd", () => {
+describe("formatMoney", () => {
   it("shows decimals only when the price has them", () => {
-    expect(formatUsd(0)).toBe("$0");
-    expect(formatUsd(15)).toBe("$15");
-    expect(formatUsd(7.99)).toBe("$7.99");
+    expect(formatMoney(0, "USD")).toBe("$0");
+    expect(formatMoney(15, "USD")).toBe("$15");
+    expect(formatMoney(7.99, "USD")).toBe("$7.99");
+    expect(formatMoney(499, "INR")).toBe("₹499");
+  });
+});
+
+describe("detectCurrency", () => {
+  /** Stubs what `Intl.DateTimeFormat().resolvedOptions().timeZone` returns. */
+  const withZone = (timeZone: string | undefined, run: () => void) => {
+    const spy = vi
+      .spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions")
+      .mockReturnValue({ timeZone } as Intl.ResolvedDateTimeFormatOptions);
+    try {
+      run();
+    } finally {
+      spy.mockRestore();
+    }
+  };
+
+  it("returns INR for both Indian zone spellings", () => {
+    withZone("Asia/Kolkata", () => expect(detectCurrency()).toBe("INR"));
+    // Windows and older ICU builds still resolve the legacy alias.
+    withZone("Asia/Calcutta", () => expect(detectCurrency()).toBe("INR"));
+  });
+
+  it("falls back to USD for anything else", () => {
+    withZone("America/New_York", () => expect(detectCurrency()).toBe("USD"));
+    withZone("Asia/Tokyo", () => expect(detectCurrency()).toBe("USD"));
+    // No prefix matching: a zone that merely starts with "Asia/" is not India.
+    withZone("Asia/Kolkata_Bogus", () => expect(detectCurrency()).toBe("USD"));
+    withZone(undefined, () => expect(detectCurrency()).toBe("USD"));
+  });
+
+  it("falls back to USD when Intl throws", () => {
+    const spy = vi
+      .spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions")
+      .mockImplementation(() => {
+        throw new Error("no ICU data");
+      });
+    expect(detectCurrency()).toBe("USD");
+    spy.mockRestore();
   });
 });

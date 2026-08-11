@@ -47,7 +47,6 @@ Report plan and checks, not draft expansion.
 </analysis_checklist>
 
 <edge_cases>
-- Empty input: use exactly `[Unable to expand: no content provided.]`
 - Single word or phrase: create concise introductory explanation using stable general knowledge.
 - Already detailed source: deepen only thin areas rather than mechanically multiplying length.
 - List or outline: expand each item in place.

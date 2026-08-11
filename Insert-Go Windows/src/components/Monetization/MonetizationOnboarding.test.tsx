@@ -6,35 +6,55 @@ vi.mock("@/services/tauriBridge", () => ({
   isTauri: () => false,
   saveSettings: vi.fn(async (s: Settings) => s),
   loadSettings: vi.fn(),
-  loadProviders: vi.fn(),
   getHardwareId: vi.fn(async () => "hw"),
 }));
 import { useSettingsStore } from "@/store/settingsStore";
 import { useAuthStore } from "@/store/authStore";
-import { MonetizationOnboarding } from "./MonetizationOnboarding";
+import {
+  FALLBACK_PLANS,
+  MonetizationOnboarding,
+} from "./MonetizationOnboarding";
+
+/** The paid tiers, by the names the cards actually render (offline catalog —
+ *  the fetch is never resolved in these tests). */
+const PAID = FALLBACK_PLANS.filter((p) => p.tier);
 
 beforeEach(() => {
   useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS } });
 });
 
 describe("MonetizationOnboarding", () => {
-  it("presents the managed plan with the relay named in the data route", () => {
+  it("presents every tier with the relay named in the data route", () => {
     render(<MonetizationOnboarding />);
-    expect(screen.getByText("InsertGo Pro · Managed")).toBeInTheDocument();
+    for (const plan of FALLBACK_PLANS) {
+      expect(
+        screen.getByRole("list", { name: `What ${plan.name} includes` })
+      ).toBeInTheDocument();
+    }
     // The route diagram is the transparency promise — the relay must be in it.
     expect(
       screen.getByRole("img", { name: /through the InsertGo relay/i })
     ).toBeInTheDocument();
-    // setup.ts user is subscribed → already on this plan.
-    expect(screen.getByRole("button", { name: "Current plan" })).toBeDisabled();
+    // setup.ts user is subscribed → every plan CTA is already satisfied.
+    expect(screen.getByRole("button", { name: "Free tier" })).toBeDisabled();
+    const active = screen.getAllByRole("button", {
+      name: "Subscription active",
+    });
+    expect(active).toHaveLength(PAID.length);
+    active.forEach((cta) => expect(cta).toBeDisabled());
   });
 
   it("offers sign-in rather than checkout to a signed-out user", () => {
     useAuthStore.setState({ user: null });
     render(<MonetizationOnboarding />);
     expect(
-      screen.getByRole("button", { name: "Sign in for managed" })
+      screen.getByRole("button", { name: "Sign in to start free" })
     ).toBeEnabled();
+    for (const plan of PAID) {
+      expect(
+        screen.getByRole("button", { name: `Sign in for ${plan.name}` })
+      ).toBeEnabled();
+    }
   });
 
   it("offers the upgrade to a signed-in user without a subscription", () => {
@@ -47,8 +67,12 @@ describe("MonetizationOnboarding", () => {
       },
     });
     render(<MonetizationOnboarding />);
-    expect(
-      screen.getByRole("button", { name: "Upgrade to Pro" })
-    ).toBeEnabled();
+    // Already on Free; the paid tiers are the ones that go to checkout.
+    expect(screen.getByRole("button", { name: "Current plan" })).toBeDisabled();
+    for (const plan of PAID) {
+      expect(
+        screen.getByRole("button", { name: `Get ${plan.name}` })
+      ).toBeEnabled();
+    }
   });
 });

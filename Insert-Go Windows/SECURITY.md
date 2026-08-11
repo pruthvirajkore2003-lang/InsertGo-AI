@@ -3,18 +3,29 @@
 Security boundary decisions made during the 2026-07 remediation, with the
 reasoning. Update this file when any of these boundaries move.
 
-## ⚠️ ACTION REQUIRED — secret rotation (2026-07 audit)
+## Secret exposure (2026-07 audit) — one action outstanding
 
-The `JWT_SECRET` and `GEMINI_API_KEY` values that lived in `.env` must be
-treated as compromised: the pinned Vite 5.4.3 dev server was exposed to
-CVE-2026-39364 (directory traversal that can read `.env`) and
-CVE-2025-31125 (arbitrary file read) before this remediation.
+Any value that sat in this repo's `.env` during the 2026-07 window must be
+treated as disclosed: the pinned Vite 5.4.3 dev server was exposed to
+CVE-2026-39364 (directory traversal that can read `.env`) and CVE-2025-31125
+(arbitrary file read). Both are closed by the dependency floors below.
 
-1. Regenerate `JWT_SECRET` (server-side) and invalidate sessions signed with
-   the old one.
-2. Revoke the old Gemini key in Google AI Studio and issue a new one.
-3. Update `.env` with the new values. Never commit `.env`; never `VITE_`-prefix
-   a secret (see "Secrets at rest").
+- **`JWT_SECRET` — removed, not rotated (2026-08-06).** It signed a local auth
+  server that no longer exists. Verified unused before deletion: no
+  `jsonwebtoken`/`jose` dependency in either `package.json` and no signing code
+  in either tree. Sessions are issued and signed by the website's Better Auth
+  server (`BETTER_AUTH_SECRET`); this app only *stores* the resulting bearer
+  token. Do not reintroduce a secret into `.env` — the dev server can serve it.
+- **`GEMINI_API_KEY` — revoke and reissue still open.** It is no longer in this
+  repo (the website holds it server-side), but the exposed *value* may still be
+  the live one. Procedure: `compliance/secret-rotation.md` §3.1.
+- **`BETTER_AUTH_SECRET` — not part of this exposure.** It lives only in the
+  website's `.env.local`, which this dev server could not reach. Quarterly
+  rotation only.
+- `.env` was never committed in either repo — no history scrub needed.
+
+Full inventory, per-secret procedures, and the quarterly checklist live in
+`compliance/secret-rotation.md` (R-01).
 
 ## Dependency floors (CVE fixes)
 
@@ -31,6 +42,23 @@ CVE-2025-31125 (arbitrary file read) before this remediation.
 - `@tauri-apps/api` / `@tauri-apps/cli` ≥ 2.10.3 and the `tauri` crate in
   `src-tauri/Cargo.toml` ≥ 2.10.3 — CVE-2026-42184 (`is_local_url` bypass on
   Windows, fixed 2.10.3). Satisfied: `Cargo.lock` pins `tauri` 2.11.3.
+
+**These floors are now enforced, not remembered (R-07).**
+`.github/workflows/security.yml` runs `npm audit` and `cargo audit` on every PR
+and weekly, blocking on High/Critical. Neither tool holds its own ignore list:
+both read `compliance/vulnerability-exceptions.md` through
+`scripts/audit-gate.mjs`, so an advisory can only be carried with a written
+reason, an owner and a review date — and the build fails the day that date
+lapses. Run it locally the way CI does:
+
+```
+npm audit --json | node scripts/audit-gate.mjs npm
+cd "Insert-Go Windows/src-tauri" && cargo audit $(node ../../scripts/audit-gate.mjs cargo-ignores)
+```
+
+Carried today: postcss 8.4.31 and sharp 0.34.x (both pinned by `next` 15;
+build-time only), quick-xml 0.39.4 (compiles only inside a proc-macro), rkyv
+0.7.46 (never compiled). Reachability arguments are in the register.
 
 ## Content Security Policy — `style-src 'unsafe-inline'` (accepted risk)
 

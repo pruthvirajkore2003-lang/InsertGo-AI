@@ -40,8 +40,6 @@ pub struct PermissionReport {
     pub accessibility: String,
     /// The configured palette chord is registered with the OS.
     pub global_hotkey: String,
-    /// The configured Inline Improve chord is registered with the OS.
-    pub improve_hotkey: String,
     /// The clipboard can be opened (the fallback capture/paste tier).
     pub clipboard: String,
     /// Per-user autostart entry present (`granted`) or absent (`off`).
@@ -58,7 +56,6 @@ pub async fn check_permissions(app: AppHandle) -> AppResult<PermissionReport> {
     Ok(PermissionReport {
         accessibility: imp::probe_accessibility(),
         global_hotkey: hotkey_status(&app, &settings.hotkey),
-        improve_hotkey: hotkey_status(&app, &settings.improve_hotkey),
         clipboard: imp::probe_clipboard(),
         autostart: imp::probe_autostart(),
         elevated: imp::is_elevated(),
@@ -219,7 +216,6 @@ mod tests {
         let report = PermissionReport {
             accessibility: GRANTED.into(),
             global_hotkey: BLOCKED.into(),
-            improve_hotkey: GRANTED.into(),
             clipboard: GRANTED.into(),
             autostart: OFF.into(),
             elevated: false,
@@ -227,7 +223,6 @@ mod tests {
         let json = serde_json::to_string(&report).unwrap();
         // The TS `PermissionReport` reads these exact keys.
         assert!(json.contains("\"globalHotkey\""));
-        assert!(json.contains("\"improveHotkey\""));
         assert!(json.contains("\"elevated\""));
         let back: PermissionReport = serde_json::from_str(&json).unwrap();
         assert_eq!(back, report);

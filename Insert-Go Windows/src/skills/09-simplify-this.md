@@ -49,7 +49,6 @@ Report decisions and checks, not draft simplification.
 </analysis_checklist>
 
 <edge_cases>
-- Empty input: use exactly `[Unable to simplify: no content provided.]`
 - Already plain text: return unchanged or make only small clarity edits.
 - Safety-critical medical, legal, financial, or operational text: retain every warning and threshold.
 - Unclear technical term: keep it and add cautious plain gloss rather than guessing.

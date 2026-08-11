@@ -10,6 +10,7 @@
  *   subscription.active | renewed | plan_changed  → tier from metadata.planTier
  *   subscription.cancelled | expired | failed | on_hold → tier 'free'
  *   payment.succeeded with metadata.packCredits   → addOnCredits += pack
+ *   refund.succeeded | dispute.lost with the same → addOnCredits -= pack
  * Tier writes are plain idempotent UPDATEs, so Dodo's retries (same
  * webhook-id redelivered) are naturally safe. Pack grants are increments, so
  * they dedup through a "creditLedger" row keyed `dodo:<webhook-id>` — a
@@ -20,11 +21,13 @@
  */
 import { pool } from "@/lib/pgPool";
 import { alertOps } from "@/lib/alert";
+import { audit } from "@/lib/auditLog";
 import { BodyTooLargeError, readBodyCapped } from "@/lib/httpBody";
 import {
   eventTimestampSeconds,
   extractUserRef,
   packCreditsForEvent,
+  packCreditsReversedForEvent,
   tierForSubscriptionEvent,
   verifyWebhookSignature,
   type DodoWebhookPayload,
@@ -76,6 +79,16 @@ export async function POST(req: Request): Promise<Response> {
     secret,
   });
   if (!ok) {
+    // CERT-In Annexure I: unauthorised access / data tampering. A forged
+    // billing event is an attempt to grant itself a paid tier, so this is the
+    // single highest-signal unauthenticated event the app can observe — it is
+    // never noise, and a burst of it is a 6-hour filing (R-03).
+    audit("billing.webhook.signature_invalid", {
+      outcome: "denied",
+      severity: "critical",
+      req,
+      detail: { webhookId: webhookId || "(absent)" },
+    });
     return Response.json({ error: "Invalid signature." }, { status: 401 });
   }
 
@@ -89,7 +102,8 @@ export async function POST(req: Request): Promise<Response> {
   const eventType = typeof payload.type === "string" ? payload.type : "";
   const nextTier = tierForSubscriptionEvent(eventType, payload);
   const packCredits = packCreditsForEvent(eventType, payload);
-  if (nextTier === null && packCredits === null) {
+  const reversedCredits = packCreditsReversedForEvent(eventType, payload);
+  if (nextTier === null && packCredits === null && reversedCredits === null) {
     // Not an event we act on — acknowledge so it isn't retried.
     console.log(`[billing] ignoring unhandled event type: ${eventType}`);
     return Response.json({ received: true });
@@ -98,6 +112,13 @@ export async function POST(req: Request): Promise<Response> {
   const { userId, email } = extractUserRef(payload);
   if (!userId && !email) {
     console.error(`[billing] ${eventType} event carried no user reference`);
+    // Money may have moved with nothing to attribute it to. Event type only —
+    // the payload's email is personal data and never reaches a log (SPEC §10).
+    audit("billing.webhook.unmatched_user", {
+      outcome: "failure",
+      req,
+      detail: { eventType },
+    });
     return Response.json({ received: true });
   }
 
@@ -175,6 +196,43 @@ export async function POST(req: Request): Promise<Response> {
       } else {
         console.log(`[billing] ${eventType} → +${packCredits} add-on credits`);
       }
+    }
+
+    if (reversedCredits !== null) {
+      // Same ledger-dedup shape as the grant, with the signs flipped: a
+      // reversal is its own webhook event, so `dodo:<webhook-id>` can never
+      // collide with the grant's key, and a redelivered reversal still deducts
+      // exactly once. `greatest(0, …)` because the credits may already be spent
+      // — a chargeback must not push the balance negative and quietly eat the
+      // user's next purchase.
+      const reversalKey = `dodo:${webhookId}`;
+      const result = await pool.query(
+        `with target as (
+           select "id" from "user"
+            where ($2::text is not null and "id" = $2)
+               or ($2::text is null and "email" = $3)
+            limit 1
+         ),
+         ins as (
+           insert into "creditLedger" ("idempotencyKey", "userId", "amount")
+           select $1, "id", $4 from target
+           on conflict ("idempotencyKey") do nothing
+           returning "userId"
+         )
+         update "user" u
+            set "addOnCredits" = greatest(0, u."addOnCredits" - $4),
+                "updatedAt" = now()
+           from ins
+          where u."id" = ins."userId"`,
+        [reversalKey, userId, email, reversedCredits],
+      );
+      // Unlike a lost grant, a reversal that matches nobody costs the customer
+      // nothing — log it, don't page.
+      console.log(
+        result.rowCount === 0
+          ? `[billing] ${eventType}: reversal no-op (redelivery or unmatched user)`
+          : `[billing] ${eventType} → -${reversedCredits} add-on credits`,
+      );
     }
   } catch (e) {
     // Never dump the raw pg error: its `detail`/`where` fields echo the failing

@@ -16,6 +16,7 @@ import type {
   ProviderRequest,
   ProviderResponse,
 } from "@/types";
+import { PROXY_CONFIG } from "@/types";
 import { enforcePromptLimit, isGeminiProvider } from "./providerUtils";
 import { readSseStream, SseIdleTimeoutError } from "./sse";
 import { isTauri } from "./tauriBridge";
@@ -143,9 +144,8 @@ const GEMINI_RETRYABLE_STATUSES = new Set([503]);
  *  backoff guidance ("retry no more than two times, minimum delay one
  *  second"); keeps worst-case added latency under ~4s so the palette spinner
  *  never feels hung. Exported for tests. */
-// NOT higher: worst-case backoff must stay under improve.rs's 20s
-// RUN_WATCHDOG_MS and the §5.6.3 15s frontend timeout (5 attempts ≈ 19s of
-// sleep alone → spurious "timed out" chips + late write-backs).
+// NOT higher: 5 attempts would be ~19s of sleep alone, long past the point a
+// stalled run reads as hung.
 export const GEMINI_MAX_ATTEMPTS = 3;
 const GEMINI_BACKOFF_BASE_MS = 1000;
 
@@ -500,4 +500,21 @@ export function createProvider(config: ProviderConfig): AiProvider {
     `Provider "${config.name}": only Gemini ` +
       `(${GEMINI_HOST}) is supported - set the Base URL to https://${GEMINI_HOST}.`
   );
+}
+
+export type ResolvedLane = {
+  provider: AiProvider;
+  /** The hosted relay always needs an InsertGo session. */
+  requiresLogin: boolean;
+};
+
+/**
+ * Resolve the provider for a request. `purpose` is accepted (and ignored) so
+ * the call sites keep documenting intent; the hosted lane serves every request
+ * from one server-side model config.
+ */
+export async function resolveActiveProvider(
+  _purpose: "chat" = "chat"
+): Promise<ResolvedLane> {
+  return { provider: createProvider(PROXY_CONFIG), requiresLogin: true };
 }

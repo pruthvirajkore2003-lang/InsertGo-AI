@@ -6,9 +6,10 @@ import {
   finalizeSkillOutput,
   visibleStreamText,
 } from "@/services/skills";
-import { DEFAULT_SETTINGS, type ProviderConfig, type Skill } from "@/types";
+import { DEFAULT_SETTINGS, type Skill } from "@/types";
 import { usePromptStore } from "@/store/promptStore";
 import { useSettingsStore } from "@/store/settingsStore";
+import { useAuthStore } from "@/store/authStore";
 import { useToastStore } from "@/store/toastStore";
 import { SkillButtons } from "./SkillButtons";
 
@@ -17,14 +18,6 @@ vi.mock("@/services/tauriBridge", async (orig) => {
   const actual = await orig<typeof import("@/services/tauriBridge")>();
   return { ...actual, saveSettings: vi.fn(async (s) => s) };
 });
-
-const provider: ProviderConfig = {
-  id: "p1",
-  name: "Gemini",
-  baseUrl: "https://generativelanguage.googleapis.com",
-  apiKey: "g-test",
-  isDefault: true,
-};
 
 const customSkill: Skill = {
   id: "custom-friendly",
@@ -41,11 +34,8 @@ const skillChips = () =>
 
 beforeEach(() => {
   usePromptStore.setState({ body: "", isSending: false });
-  useSettingsStore.setState({
-    settings: { ...DEFAULT_SETTINGS },
-    providers: [],
-    selectedProviderId: null,
-  });
+  useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS } });
+  useAuthStore.setState({ token: null });
   useToastStore.setState({ toasts: [] });
 });
 
@@ -87,7 +77,7 @@ describe("SkillButtons", () => {
 
   it("runs the composed prompt with the skill system message and transform", () => {
     usePromptStore.setState({ body: "my draft" });
-    useSettingsStore.setState({ providers: [provider] });
+    useAuthStore.setState({ token: "test-token" });
     const onRun = vi.fn();
     render(<SkillButtons onRun={onRun} />);
 
@@ -110,8 +100,8 @@ describe("SkillButtons", () => {
         enabledSkillIds: ["custom-friendly"],
         customSkills: [customSkill],
       },
-      providers: [provider],
     });
+    useAuthStore.setState({ token: "test-token" });
     const onRun = vi.fn();
     render(<SkillButtons onRun={onRun} />);
 

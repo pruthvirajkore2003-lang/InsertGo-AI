@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { pool } from "@/lib/pgPool";
+import { currentConsent, needsConsentGate } from "@/lib/consent";
 import { SignOutButton } from "./SignOutButton";
 
 export const metadata: Metadata = {
@@ -21,6 +22,28 @@ const TIER_LABELS: Record<string, string> = {
 export default async function AccountPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
+
+  // The consent gate (R-09). Placed here rather than in middleware on purpose:
+  // middleware runs on every request including static assets, and answering
+  // "has this user consented?" costs a database round trip. This is the first
+  // authenticated surface anyone lands on, and it is also what re-consents
+  // existing users after a NOTICE_VERSION bump — no backfill migration needed.
+  //
+  // Deliberately NOT gating /api/ai/generate: a desktop client mid-generation
+  // cannot render a consent form, so gating there would return an error the
+  // user has no way to act on. Consent is collected where it can be given.
+  try {
+    if (needsConsentGate(await currentConsent(session.user.id))) {
+      redirect("/consent");
+    }
+  } catch (e) {
+    // `redirect()` throws by design — never swallow it.
+    if (e && typeof e === "object" && "digest" in e) throw e;
+    // A consent-store outage must not lock people out of their own account
+    // page. The gate re-asserts on the next load; failing closed here would
+    // turn a database blip into a total lockout for a check that is not a
+    // security boundary.
+  }
 
   // customSession (lib/auth.ts) stamps the tier + credit fields onto the
   // session user — the same server-authoritative values the desktop reads.
@@ -151,6 +174,15 @@ export default async function AccountPage() {
               className="flex h-11 items-center justify-center rounded-3xl bg-brand text-[15px] font-medium text-on-accent transition-[transform,filter] duration-200 hover:-translate-y-px hover:brightness-105"
             >
               {tier === "Free" ? "Upgrade plan" : "Manage plan & buy credits"}
+            </Link>
+            {/* R-10: withdrawal has to be reachable from the account surface,
+                not only from a policy page — §6(4)'s "as easy as" is measured
+                from where the user actually is. */}
+            <Link
+              href="/account/privacy"
+              className="glass-chip flex h-11 items-center justify-center rounded-2xl text-[15px] font-medium text-ink transition-colors duration-200 hover:bg-muted/10"
+            >
+              Privacy choices &amp; your data
             </Link>
             <SignOutButton />
           </div>

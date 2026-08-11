@@ -31,12 +31,12 @@ describe("overlapping settings writes", () => {
 
     const first = useSettingsStore
       .getState()
-      .update({ firstImproveDone: true });
+      .update({ hasCompletedOnboarding: true });
     const second = useSettingsStore.getState().update({ theme: "light" });
 
     expect(saveSettings).toHaveBeenCalledTimes(1);
     expect(useSettingsStore.getState().settings).toMatchObject({
-      firstImproveDone: true,
+      hasCompletedOnboarding: true,
       theme: "light",
     });
 
@@ -45,11 +45,11 @@ describe("overlapping settings writes", () => {
 
     expect(saveSettings).toHaveBeenCalledTimes(2);
     expect(saveSettings.mock.calls[1][0]).toMatchObject({
-      firstImproveDone: false,
+      hasCompletedOnboarding: false,
       theme: "light",
     });
     expect(useSettingsStore.getState().settings).toMatchObject({
-      firstImproveDone: false,
+      hasCompletedOnboarding: false,
       theme: "light",
     });
   });

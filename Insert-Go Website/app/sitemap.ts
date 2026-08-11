@@ -27,6 +27,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/download",
     "/faq",
     "/contact",
+    "/terms",
+    "/privacy",
   ].map((path) => ({
     url: `https://insertgo.ai${path}`,
     ...(updatedPaths.has(path) ? { lastModified: updated } : {}),

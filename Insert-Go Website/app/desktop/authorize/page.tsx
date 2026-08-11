@@ -3,6 +3,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { LinearMonitor } from "@/components/icons/LinearMonitor";
 import {
   DESKTOP_CLIENT_ID,
   DESKTOP_REDIRECT_URI,
@@ -63,6 +64,11 @@ export default async function DesktopAuthorizePage({
       <div className="w-full max-w-[420px]">
         <div className="glass-panel rounded-[28px] p-8 sm:p-10">
           <div className="mb-6 text-center">
+            {/* Monitor tile — same icon/tile grammar as the marketing pages,
+                so the hand-off reads as one product with the login card. */}
+            <span className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-tile-sky text-brand">
+              <LinearMonitor size={24} />
+            </span>
             <h1 className="font-serif text-[26px] font-semibold tracking-[-0.01em] text-ink">
               Connect your desktop
             </h1>

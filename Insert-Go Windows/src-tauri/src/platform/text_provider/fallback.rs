@@ -3,7 +3,7 @@
 //! §4.1, §5.5).
 //!
 //! Platforms plug in through [`FallbackOps`]: chord synthesis (copy /
-//! select-all / terminal-aware paste) and an optional clipboard change token
+//! terminal-aware paste) and an optional clipboard change token
 //! (Windows: `GetClipboardSequenceNumber`; macOS: `NSPasteboard.changeCount`;
 //! Linux: none portable → fixed-sleep waits). Everything else — caching the
 //! user's clipboard, the copy-equals-cache ambiguity rule, the post-paste
@@ -26,24 +26,12 @@ use super::TargetApp;
 pub trait FallbackOps {
     /// Synthesize the platform copy chord (`Ctrl+C` / `Cmd+C`).
     fn send_copy(&self) -> Result<(), String>;
-    /// Synthesize the platform select-all chord (`Ctrl+A` / `Cmd+A`).
-    fn send_select_all(&self) -> Result<(), String>;
     /// Synthesize the paste chord for `target` — terminals take
     /// `Ctrl+Shift+V` on Windows/Linux, plain `Cmd+V` on macOS.
     fn send_paste(&self, target: &TargetApp) -> Result<(), String>;
     /// Token that changes whenever the OS clipboard content changes, or
     /// `None` when the platform can't say (waits degrade to a fixed sleep).
     fn clipboard_change_token(&self) -> Option<u64>;
-}
-
-/// What a clipboard capture should read.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CaptureScope {
-    /// The current selection (`copy` only).
-    Selection,
-    /// The whole focused field (`select-all` then `copy`). Leaves the field
-    /// with an active select-all — callers replace or abort right after.
-    WholeField,
 }
 
 /// How a paste attempt failed.
@@ -57,8 +45,6 @@ pub enum PasteFailure {
     Staged(String),
 }
 
-/// Let the target apply a select-all before the follow-up chord lands.
-const SELECT_ALL_SETTLE: Duration = Duration::from_millis(60);
 /// Cap on waiting for the target to service the copy and publish.
 const COPY_WAIT_CAP: Duration = Duration::from_millis(180);
 /// Post-paste settle before the original clipboard is restored. Generous on
@@ -67,26 +53,18 @@ const COPY_WAIT_CAP: Duration = Duration::from_millis(180);
 /// clipboard open and silently drops the paste.
 const PASTE_CONSUME: Duration = Duration::from_millis(500);
 
-/// Capture text via the clipboard: cache → (select-all →) synthetic copy →
-/// bounded wait for the target to publish → read → restore the cache.
+/// Capture the selection via the clipboard: cache → synthetic copy → bounded
+/// wait for the target to publish → read → restore the cache.
 ///
 /// Returns `None` when nothing landed (no selection, or the target blocked
 /// the chord — typical cause on Windows: UIPI vs. an elevated target) and
 /// when the copy yields exactly the cached clipboard: that is ambiguous —
 /// most likely the chord was a no-op and we re-read our own cache — so it is
 /// treated as no capture rather than acting on stale data.
-pub fn capture_text(
-    app: &AppHandle,
-    ops: &dyn FallbackOps,
-    scope: CaptureScope,
-) -> Option<String> {
+pub fn capture_text(app: &AppHandle, ops: &dyn FallbackOps) -> Option<String> {
     // Cache first. Best-effort: a non-text clipboard simply won't be restored.
     let original = app.clipboard().read_text().ok();
 
-    if scope == CaptureScope::WholeField {
-        ops.send_select_all().ok()?;
-        std::thread::sleep(SELECT_ALL_SETTLE);
-    }
     // Sampled after caching (a read never bumps the token) and before the copy.
     let before = ops.clipboard_change_token();
     ops.send_copy().ok()?;
@@ -116,21 +94,17 @@ pub fn capture_text(
 }
 
 /// Inject `text` into a target via the clipboard: cache → stage the payload →
-/// `prepare()` → (select-all →) synthetic paste → wait for consumption →
-/// restore the cache. Never synthesizes Enter.
+/// `prepare()` → synthetic paste → wait for consumption → restore the cache.
+/// Never synthesizes Enter.
 ///
 /// `prepare` is the caller's focus dance (hide own window, restore focus to
 /// the target, VERIFY it really is foreground) and returns the verified
 /// [`TargetApp`]. It runs after staging so its failure still leaves the
 /// payload on the clipboard — the fallback deliverable ([`PasteFailure::Staged`]).
-///
-/// `select_all_first` gives replace semantics: the whole field is selected in
-/// the verified-foreground window immediately before the paste overwrites it.
 pub fn paste_text(
     app: &AppHandle,
     ops: &dyn FallbackOps,
     text: String,
-    select_all_first: bool,
     prepare: impl FnOnce() -> Result<TargetApp, String>,
 ) -> Result<(), PasteFailure> {
     // Cache the user's clipboard so it can be restored after the paste.
@@ -144,10 +118,6 @@ pub fn paste_text(
 
     let target = prepare().map_err(PasteFailure::Staged)?;
 
-    if select_all_first {
-        ops.send_select_all()
-            .map_err(|e| PasteFailure::Staged(format!("select-all chord failed: {e}")))?;
-    }
     // Typical failure cause on Windows: UIPI blocking SendInput into an
     // elevated window.
     ops.send_paste(&target)

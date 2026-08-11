@@ -43,7 +43,6 @@ This is complete correction audit, not draft text.
 </analysis_checklist>
 
 <edge_cases>
-- Empty input: use exactly `[Unable to proofread: no text provided.]`
 - Error-free input: return it unchanged and state “no errors found” in work summary.
 - Factually dubious but grammatically valid claim: leave unchanged and mark `[VERIFY]` only in work summary.
 - Ambiguous possible error: preserve source unless grammar clearly requires change.

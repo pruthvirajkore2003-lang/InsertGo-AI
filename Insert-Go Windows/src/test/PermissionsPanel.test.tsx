@@ -14,7 +14,6 @@ const setAutostartMock = vi.fn(async (enabled: boolean) => enabled);
 vi.mock("@/services/tauriBridge", () => ({
   isTauri: () => false,
   loadSettings: vi.fn(),
-  loadProviders: vi.fn(),
   saveSettings: vi.fn(async (s: Settings) => s),
   sessionTokenSet: vi.fn(async () => {}),
   sessionTokenGet: vi.fn(async () => null),
@@ -38,7 +37,6 @@ beforeEach(() => {
   permissionReport.mockReset().mockResolvedValue({
     accessibility: "granted",
     globalHotkey: "granted",
-    improveHotkey: "granted",
     clipboard: "granted",
     autostart: "off",
     elevated: false,
@@ -56,30 +54,29 @@ describe("Settings › Access", () => {
       "unknown",
       "unknown",
       "unknown",
-      "unknown",
     ]);
     expect(permissionReport).not.toHaveBeenCalled();
   });
 
-  it("shows all five capabilities with why hidden behind Learn more and no audio card", () => {
+  it("shows all four capabilities with why hidden behind Learn more and no audio card", () => {
     render(<PermissionsPanel />);
 
-    // One Check button per card — five cards, no microphone among them.
-    expect(screen.getAllByRole("button", { name: "Check" })).toHaveLength(5);
-    expect(screen.getAllByText("Not checked")).toHaveLength(5);
+    // One Check button per card — four cards, no microphone among them.
+    expect(screen.getAllByRole("button", { name: "Check" })).toHaveLength(4);
+    expect(screen.getAllByText("Not checked")).toHaveLength(4);
     expect(screen.queryByText(/microphone|audio|voice/i)).toBeNull();
     // The verbose "why" is hidden by default to reduce cognitive load.
     expect(
-      screen.queryByText(/only at the moment you press the chord/)
+      screen.queryByText(/only at the moment you select it/)
     ).not.toBeInTheDocument();
     // It is reachable through the Learn-more control.
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Learn more about Read the field you're typing in",
+        name: "Learn more about Read the text you select",
       })
     );
     expect(
-      screen.getByText(/only at the moment you press the chord/)
+      screen.getByText(/only at the moment you select it/)
     ).toBeInTheDocument();
   });
 
@@ -87,7 +84,6 @@ describe("Settings › Access", () => {
     permissionReport.mockResolvedValue({
       accessibility: "granted",
       globalHotkey: "blocked",
-      improveHotkey: "granted",
       clipboard: "granted",
       autostart: "off",
       elevated: false,
@@ -124,8 +120,7 @@ describe("Settings › Access", () => {
   it("coerces an unrecognized backend status to unavailable, not garbage", async () => {
     permissionReport.mockResolvedValue({
       accessibility: "something-new",
-      globalHotkey: "granted",
-      improveHotkey: "blocked",
+      globalHotkey: "blocked",
       clipboard: "granted",
       autostart: "off",
       elevated: true,
@@ -134,7 +129,7 @@ describe("Settings › Access", () => {
 
     const state = usePermissionsStore.getState();
     expect(state.permissions.accessibility).toBe("unavailable");
-    expect(state.permissions.improveHotkey).toBe("blocked");
+    expect(state.permissions.globalHotkey).toBe("blocked");
     expect(state.elevated).toBe(true);
   });
 

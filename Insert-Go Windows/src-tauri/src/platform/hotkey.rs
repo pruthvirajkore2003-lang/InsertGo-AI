@@ -149,14 +149,6 @@ pub fn register(app: &AppHandle, hotkey: &str) -> AppResult<()> {
     let shortcut = parse_shortcut(hotkey)
         .ok_or_else(|| AppError::Config(format!("invalid hotkey: {hotkey}")))?;
     ensure_not_reserved(hotkey)?;
-    // Two actions on one chord would be routed first-match-wins by the shared
-    // dispatcher, silently killing the other action. save_settings rejects new
-    // duplicates; this guards configs saved before that validation existed.
-    if app.global_shortcut().is_registered(shortcut) {
-        return Err(AppError::Config(format!(
-            "hotkey '{hotkey}' is already bound to another InsertGo action"
-        )));
-    }
     app.global_shortcut()
         .register(shortcut)
         .map_err(|e| AppError::Os(format!("register hotkey '{hotkey}': {e}")))?;

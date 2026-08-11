@@ -54,6 +54,12 @@ pub struct Settings {
     pub theme: String,
     pub hotkey: String,
     pub default_provider_id: Option<String>,
+    /// Target language "Translate This" uses when the source names none and is
+    /// already English (the skill bar is one click — nowhere to type one at run
+    /// time). `default` keeps pre-feature settings.json files loading. Mirrors
+    /// DEFAULT_TRANSLATION_LANGUAGE on the TS side.
+    #[serde(default = "default_translation_language")]
+    pub default_translation_language: String,
     /// In-situ selection skill bar on/off (privacy kill switch for the
     /// selection watcher; the palette is unaffected). `default` keeps
     /// pre-existing settings.json files loading.
@@ -76,17 +82,6 @@ pub struct Settings {
     /// trailing `*` wildcard (e.g. `keepass*.exe`).
     #[serde(default = "default_selection_bar_blocklist")]
     pub selection_bar_blocklist: Vec<String>,
-    /// Inline Improve hotkey (SPEC §4.4). `default` keeps pre-existing
-    /// settings.json files loading.
-    #[serde(default = "default_improve_hotkey")]
-    pub improve_hotkey: String,
-    /// Inline Improve undo hotkey — restores the pre-improve snapshot.
-    #[serde(default = "default_improve_undo_hotkey")]
-    pub improve_undo_hotkey: String,
-    /// Inline Improve model override (SPEC §5.6.3): "" = the hosted lane's
-    /// fastest default.
-    #[serde(default)]
-    pub improve_model: String,
     /// Ids of the skills shown on the skill bar, in display order. `default`
     /// seeds the full built-in set so a pre-feature settings.json upgrades to
     /// the whole bar; an explicit empty list is the "user cleared the bar"
@@ -118,11 +113,6 @@ pub struct Settings {
     /// only to order starter prompts and the skill bar — it gates nothing.
     #[serde(default)]
     pub writing_segment: Option<String>,
-    /// True once one Improve run has produced improved text. The composer's
-    /// first-run card stays pinned until this flips, so an onboarding that
-    /// never reached the payoff resumes on the next launch.
-    #[serde(default)]
-    pub first_improve_done: bool,
 }
 
 /// The 10 vendored skill slugs in repo order. Must mirror BUILTIN_SKILL_IDS /
@@ -144,16 +134,12 @@ fn default_enabled_skill_ids() -> Vec<String> {
     .to_vec()
 }
 
-fn default_improve_hotkey() -> String {
-    "Ctrl+Alt+Enter".into()
-}
-
-fn default_improve_undo_hotkey() -> String {
-    "Ctrl+Alt+Z".into()
-}
-
 fn default_selection_bar() -> bool {
     true
+}
+
+fn default_translation_language() -> String {
+    "Hindi".into()
 }
 
 fn default_selection_bar_scope() -> String {
@@ -228,20 +214,17 @@ impl Default for Settings {
             theme: "system".into(),
             hotkey: "Ctrl+`".into(),
             default_provider_id: None,
+            default_translation_language: default_translation_language(),
             selection_bar: default_selection_bar(),
             selection_bar_apps: default_selection_bar_apps(),
             selection_bar_scope: default_selection_bar_scope(),
             selection_bar_blocklist: default_selection_bar_blocklist(),
-            improve_hotkey: default_improve_hotkey(),
-            improve_undo_hotkey: default_improve_undo_hotkey(),
-            improve_model: String::new(),
             enabled_skill_ids: default_enabled_skill_ids(),
             custom_skills: Vec::new(),
             skill_set_presets: Vec::new(),
             has_completed_onboarding: false,
             accepted_terms_version: None,
             writing_segment: None,
-            first_improve_done: false,
         }
     }
 }
@@ -257,63 +240,17 @@ pub fn load_settings(app: AppHandle) -> AppResult<Settings> {
 
 #[tauri::command]
 pub fn save_settings(app: AppHandle, settings: Settings) -> AppResult<Settings> {
-    validate_hotkey_uniqueness(&settings)?;
     // Reserved chords are refused here as well as at registration: `register`
     // only runs at launch, so otherwise the UI accepts a hotkey that silently
     // never fires until the next restart.
-    for chord in [
-        &settings.hotkey,
-        &settings.improve_hotkey,
-        &settings.improve_undo_hotkey,
-    ] {
-        crate::platform::hotkey::ensure_not_reserved(chord.trim())?;
-    }
+    crate::platform::hotkey::ensure_not_reserved(settings.hotkey.trim())?;
     write_json(&app, FILE, &settings)?;
     Ok(settings)
-}
-
-/// Global hotkeys must be pairwise distinct: the shared dispatcher routes a
-/// press by chord (first match wins), so two actions on one chord means one
-/// of them silently never fires. Rejecting at save time surfaces the
-/// conflict in the settings UI instead of resolving it by registration order.
-fn validate_hotkey_uniqueness(settings: &Settings) -> AppResult<()> {
-    let chords = [
-        ("Open palette", &settings.hotkey),
-        ("Improve", &settings.improve_hotkey),
-        ("Improve undo", &settings.improve_undo_hotkey),
-    ];
-    for (i, (name_a, a)) in chords.iter().enumerate() {
-        let a = a.trim();
-        if a.is_empty() {
-            continue;
-        }
-        for (name_b, b) in &chords[i + 1..] {
-            if a.eq_ignore_ascii_case(b.trim()) {
-                return Err(crate::error::AppError::Config(format!(
-                    "'{name_a}' and '{name_b}' share the hotkey '{a}' — pick distinct chords"
-                )));
-            }
-        }
-    }
-    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn duplicate_hotkeys_are_rejected() {
-        let mut s = Settings::default();
-        assert!(validate_hotkey_uniqueness(&s).is_ok());
-        // Case-insensitive collision with the palette chord.
-        s.improve_hotkey = "ctrl+`".into();
-        assert!(validate_hotkey_uniqueness(&s).is_err());
-        // Empty chords never collide with each other.
-        s.improve_hotkey = String::new();
-        s.improve_undo_hotkey = String::new();
-        assert!(validate_hotkey_uniqueness(&s).is_ok());
-    }
 
     #[test]
     fn default_settings_are_sane() {
@@ -331,15 +268,10 @@ mod tests {
         assert!(s
             .selection_bar_blocklist
             .contains(&"1password.exe".to_string()));
-        assert_eq!(s.improve_hotkey, "Ctrl+Alt+Enter");
-        assert_eq!(s.improve_undo_hotkey, "Ctrl+Alt+Z");
-        assert_eq!(s.improve_model, "");
-        // Fresh install: onboarding pending, no consent recorded, and the
-        // first-run card still owed a successful Improve.
+        // Fresh install: onboarding pending, no consent recorded.
         assert!(!s.has_completed_onboarding);
         assert!(s.accepted_terms_version.is_none());
         assert!(s.writing_segment.is_none());
-        assert!(!s.first_improve_done);
     }
 
     #[test]
@@ -348,13 +280,11 @@ mod tests {
             theme: "dark".into(),
             hotkey: "Alt+Space".into(),
             default_provider_id: Some("p1".into()),
+            default_translation_language: "Marathi".into(),
             selection_bar: false,
             selection_bar_apps: vec!["claude.exe".into()],
             selection_bar_scope: "all".into(),
             selection_bar_blocklist: vec!["1password.exe".into()],
-            improve_hotkey: "Ctrl+Alt+I".into(),
-            improve_undo_hotkey: "Ctrl+Alt+U".into(),
-            improve_model: "claude-haiku-4-5".into(),
             enabled_skill_ids: vec!["summarize-this".into(), "custom-my-skill".into()],
             custom_skills: vec![CustomSkill {
                 id: "custom-my-skill".into(),
@@ -374,15 +304,12 @@ mod tests {
             has_completed_onboarding: true,
             accepted_terms_version: Some("1.0.0".into()),
             writing_segment: Some("code".into()),
-            first_improve_done: true,
         };
         let json = serde_json::to_string(&s).unwrap();
         assert!(json.contains("\"defaultProviderId\""));
         assert!(json.contains("\"selectionBarApps\""));
         assert!(json.contains("\"selectionBarScope\""));
         assert!(json.contains("\"selectionBarBlocklist\""));
-        assert!(json.contains("\"improveHotkey\""));
-        assert!(json.contains("\"improveModel\""));
         assert!(json.contains("\"enabledSkillIds\""));
         assert!(json.contains("\"customSkills\""));
         // CustomSkill fields serialize camelCase (isCustom, not is_custom).
@@ -391,6 +318,8 @@ mod tests {
         assert_eq!(back.theme, "dark");
         assert_eq!(back.hotkey, "Alt+Space");
         assert_eq!(back.default_provider_id.as_deref(), Some("p1"));
+        assert!(json.contains("\"defaultTranslationLanguage\""));
+        assert_eq!(back.default_translation_language, "Marathi");
         assert!(!back.selection_bar);
         assert_eq!(back.enabled_skill_ids.len(), 2);
         assert_eq!(back.custom_skills.len(), 1);
@@ -406,11 +335,9 @@ mod tests {
         assert!(json.contains("\"hasCompletedOnboarding\""));
         assert!(json.contains("\"acceptedTermsVersion\""));
         assert!(json.contains("\"writingSegment\""));
-        assert!(json.contains("\"firstImproveDone\""));
         assert!(back.has_completed_onboarding);
         assert_eq!(back.accepted_terms_version.as_deref(), Some("1.0.0"));
         assert_eq!(back.writing_segment.as_deref(), Some("code"));
-        assert!(back.first_improve_done);
     }
 
     #[test]
@@ -425,9 +352,9 @@ mod tests {
         // New scope fields default to the privacy-preserving allowlist mode.
         assert_eq!(back.selection_bar_scope, "allowlist");
         assert!(!back.selection_bar_blocklist.is_empty());
-        assert_eq!(back.improve_hotkey, "Ctrl+Alt+Enter");
-        assert_eq!(back.improve_undo_hotkey, "Ctrl+Alt+Z");
-        assert_eq!(back.improve_model, "");
+        // No translate target in a pre-feature file: without the default the
+        // skill would have nowhere to send English text and would refuse.
+        assert_eq!(back.default_translation_language, "Hindi");
         // A pre-feature file has no skill fields: the bar defaults to the full
         // built-in set (never an empty bar on upgrade), customs default empty.
         assert_eq!(back.enabled_skill_ids.len(), 10);
@@ -441,7 +368,6 @@ mod tests {
         // ...and an upgrade from before the first-run card is owed one too, so
         // the card appears once for existing installs rather than never.
         assert!(back.writing_segment.is_none());
-        assert!(!back.first_improve_done);
     }
 
     #[test]
@@ -462,22 +388,23 @@ mod tests {
                 "activeLegacyProfileId":"p-abc",
                 "improveModel":"gemini-2.5-flash-lite",
                 "improveHotkey":"Ctrl+Alt+I",
+                "improveUndoHotkey":"Ctrl+Alt+Z",
+                "firstImproveDone":true,
                 "enabledSkillIds":["summarize-this"]
             }"#,
         )
         .unwrap();
         assert_eq!(back.theme, "dark");
         assert_eq!(back.hotkey, "Alt+Space");
-        assert_eq!(back.improve_hotkey, "Ctrl+Alt+I");
-        assert_eq!(back.improve_model, "gemini-2.5-flash-lite");
         assert_eq!(back.enabled_skill_ids, vec!["summarize-this".to_string()]);
         // Absent fields still take their defaults alongside the ignored ones.
-        assert_eq!(back.improve_undo_hotkey, "Ctrl+Alt+Z");
         assert!(back.selection_bar);
         // Re-serializing drops the stale keys: the next save cleans the file.
         let json = serde_json::to_string(&back).unwrap();
         assert!(!json.contains("legacy"));
         assert!(!json.contains("Legacy"));
+        assert!(!json.contains("improve"));
+        assert!(!json.contains("Improve"));
     }
 
     #[test]

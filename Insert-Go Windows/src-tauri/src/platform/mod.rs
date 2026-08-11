@@ -5,7 +5,6 @@ pub mod bounds;
 pub mod clipboard;
 pub mod foreground;
 pub mod hotkey;
-pub mod improve;
 pub mod permissions;
 pub mod selection;
 pub mod selection_floater;

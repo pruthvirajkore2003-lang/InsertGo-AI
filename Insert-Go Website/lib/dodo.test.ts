@@ -1,11 +1,13 @@
 import { createHmac } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CREDIT_PACKS,
   dodoProductId,
   eventTimestampSeconds,
   extractUserRef,
   packCreditsForEvent,
+  packCreditsReversedForEvent,
+  tierForProductId,
   tierForSubscriptionEvent,
   verifyWebhookSignature,
 } from "./dodo";
@@ -119,6 +121,83 @@ describe("tierForSubscriptionEvent", () => {
   it("ignores unrelated events", () => {
     expect(tierForSubscriptionEvent("payment.succeeded", {})).toBeNull();
     expect(tierForSubscriptionEvent("", {})).toBeNull();
+  });
+
+  describe("plan changes (product id beats stale checkout metadata)", () => {
+    afterEach(() => vi.unstubAllEnvs());
+
+    function withPlans() {
+      vi.stubEnv("DODO_PRODUCT_ID_PLUS", "prod_plus");
+      vi.stubEnv("DODO_PRODUCT_ID_PRO", "prod_pro");
+    }
+
+    it("upgrades on plan_changed even though metadata still says plus", () => {
+      withPlans();
+      // metadata.planTier is stamped at the ORIGINAL checkout and never
+      // rewritten, so this is exactly what a portal upgrade delivers.
+      expect(
+        tierForSubscriptionEvent("subscription.plan_changed", {
+          data: { product_id: "prod_pro", metadata: { planTier: "plus" } },
+        }),
+      ).toBe("pro");
+    });
+
+    it("downgrades on plan_changed even though metadata still says pro", () => {
+      withPlans();
+      expect(
+        tierForSubscriptionEvent("subscription.plan_changed", {
+          data: { product_id: "prod_plus", metadata: { planTier: "pro" } },
+        }),
+      ).toBe("plus");
+    });
+
+    it("reads the cart when the event carries no bare product_id", () => {
+      withPlans();
+      expect(
+        tierForSubscriptionEvent("subscription.active", {
+          data: { product_cart: [{ product_id: "prod_pro" }] },
+        }),
+      ).toBe("pro");
+    });
+
+    it("falls back to metadata for a product this app doesn't sell", () => {
+      withPlans();
+      expect(
+        tierForSubscriptionEvent("subscription.active", {
+          data: { product_id: "prod_someone_else", metadata: { planTier: "pro" } },
+        }),
+      ).toBe("pro");
+    });
+
+    it("never matches on unconfigured plan ids", () => {
+      vi.stubEnv("DODO_PRODUCT_ID_PLUS", "");
+      vi.stubEnv("DODO_PRODUCT_ID_PRO", "");
+      expect(tierForProductId("")).toBeNull();
+      expect(tierForProductId(undefined)).toBeNull();
+      // An empty env must not turn every product id into a plan.
+      expect(tierForProductId("prod_pro")).toBeNull();
+    });
+  });
+});
+
+describe("packCreditsReversedForEvent", () => {
+  const refund = (packCredits: unknown) => ({ data: { metadata: { packCredits } } });
+
+  it("claws back a valid pack on refund and lost dispute", () => {
+    expect(packCreditsReversedForEvent("refund.succeeded", refund("150"))).toBe(150);
+    expect(packCreditsReversedForEvent("dispute.lost", refund(500))).toBe(500);
+  });
+
+  it("ignores the purchase event and everything else", () => {
+    expect(packCreditsReversedForEvent("payment.succeeded", refund("150"))).toBeNull();
+    expect(packCreditsReversedForEvent("dispute.won", refund("150"))).toBeNull();
+    expect(packCreditsReversedForEvent("", refund("150"))).toBeNull();
+  });
+
+  it("reverses nothing for an amount outside the catalog", () => {
+    expect(packCreditsReversedForEvent("refund.succeeded", refund("999999"))).toBeNull();
+    expect(packCreditsReversedForEvent("refund.succeeded", refund("abc"))).toBeNull();
+    expect(packCreditsReversedForEvent("refund.succeeded", {})).toBeNull();
   });
 });
 

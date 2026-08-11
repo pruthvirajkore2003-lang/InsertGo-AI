@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LinearKeyboard } from "@/components/icons/LinearKeyboard";
@@ -14,6 +13,8 @@ import { LinearMessageText } from "@/components/icons/LinearMessageText";
 import { LinearSms } from "@/components/icons/LinearSms";
 import { LinearMonitor } from "@/components/icons/LinearMonitor";
 import { Reveal, FadeUp } from "@/components/Reveal";
+import { AppChip } from "@/components/AppChip";
+import { WindowsLogo } from "@/components/icons/WindowsLogo";
 import { HeroSection } from "@/components/HeroSection";
 import { DownloadButton, GhostButton } from "@/components/Buttons";
 import { FaqBlocks, JsonLd } from "@/components/SeoContent";
@@ -168,22 +169,6 @@ const workflowLinks = [
   },
 ];
 
-function AppChip({ name, icon }: { name: string; icon: string }) {
-  return (
-    <span className="glass-chip inline-flex items-center gap-[9px] rounded-full py-[9px] pr-[18px] pl-3.5 text-sm font-medium whitespace-nowrap text-ink">
-      <img
-        src={`/app-icons/${icon}.svg`}
-        alt=""
-        width={18}
-        height={18}
-        loading="lazy"
-        className="block h-[18px] w-[18px] object-contain"
-      />
-      {name}
-    </span>
-  );
-}
-
 export default function Home() {
   return (
     <main className="relative overflow-hidden">
@@ -253,8 +238,10 @@ export default function Home() {
                 </span>
               ))}
             </span>
-            <span className="text-[13px] text-muted">
-              in any app · Windows 10 &amp; 11
+            <span className="inline-flex items-center gap-1.5 text-[13px] text-muted">
+              in any app ·
+              <WindowsLogo size={12} className="opacity-90" />
+              Windows 10 &amp; 11
             </span>
           </div>
         </FadeUp>
@@ -295,8 +282,8 @@ export default function Home() {
         </Reveal>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-[18px]">
           {steps.map((s, i) => (
-            <Reveal key={s.num} delay={i * 0.1}>
-              <div className="glass-card flex h-full flex-col gap-3.5 p-7 hover:-translate-y-1">
+            <Reveal key={s.num} delay={i * 0.1} hoverLift>
+              <div className="glass-card flex h-full flex-col gap-3.5 p-7">
                 <span
                   className="flex h-11 w-11 items-center justify-center rounded-xl text-ink"
                   style={{ background: s.tile }}
@@ -341,8 +328,8 @@ export default function Home() {
           </Reveal>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-[18px]">
             {features.map((f, i) => (
-              <Reveal key={f.title} delay={(i % 3) * 0.08}>
-                <div className="glass-card group flex h-full flex-col gap-3 p-7 hover:-translate-y-1">
+              <Reveal key={f.title} delay={(i % 3) * 0.08} hoverLift>
+                <div className="glass-card group flex h-full flex-col gap-3 p-7">
                   <span
                     className="flex h-11 w-11 items-center justify-center rounded-xl text-ink transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6"
                     style={{ background: f.tile }}
@@ -387,8 +374,8 @@ export default function Home() {
         </Reveal>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-[18px]">
           {categories.map((c, i) => (
-            <Reveal key={c.name} delay={(i % 3) * 0.08}>
-              <div className="glass-card flex h-full flex-col gap-3.5 p-6 hover:-translate-y-1">
+            <Reveal key={c.name} delay={(i % 3) * 0.08} hoverLift>
+              <div className="glass-card flex h-full flex-col gap-3.5 p-6">
                 <div className="flex items-center gap-3">
                   <span
                     className="flex h-9 w-9 items-center justify-center rounded-[10px] text-ink"

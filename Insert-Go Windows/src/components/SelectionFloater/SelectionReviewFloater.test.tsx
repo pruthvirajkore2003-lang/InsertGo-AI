@@ -23,7 +23,7 @@ import { usePromptStore } from "@/store/promptStore";
 import { useHistoryStore } from "@/store/historyStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useAuthStore } from "@/store/authStore";
-import { DEFAULT_SETTINGS, type ProviderConfig } from "@/types";
+import { DEFAULT_SETTINGS } from "@/types";
 
 // Hoisted so the vi.mock factories (themselves hoisted) can close over them.
 const { sendMock, hideFloaterMock, reviewListeners } = vi.hoisted(() => ({
@@ -34,6 +34,10 @@ const { sendMock, hideFloaterMock, reviewListeners } = vi.hoisted(() => ({
 
 vi.mock("@/services/aiProviders", () => ({
   createProvider: () => ({ send: sendMock }),
+  resolveActiveProvider: async () => ({
+    provider: { send: sendMock },
+    requiresLogin: true,
+  }),
 }));
 vi.mock("@/services/selectionBar", () => ({
   onSelectionReview: (cb: (p: SelectionReviewPayload) => void) => {
@@ -46,7 +50,6 @@ vi.mock("@/services/selectionBar", () => ({
 vi.mock("@/services/tauriBridge", () => ({
   isTauri: () => true,
   loadSettings: vi.fn().mockRejectedValue(new Error("no tauri in tests")),
-  loadProviders: vi.fn().mockRejectedValue(new Error("no tauri in tests")),
   getHardwareId: vi.fn().mockResolvedValue("hw"),
 }));
 // The insert:fallback listener attaches directly via the Tauri event API.
@@ -56,13 +59,6 @@ vi.mock("@tauri-apps/api/event", () => ({
 
 import { SelectionReviewFloater } from "./SelectionReviewFloater";
 
-const provider: ProviderConfig = {
-  id: "p1",
-  name: "Gemini",
-  baseUrl: "https://generativelanguage.googleapis.com",
-  apiKey: "g-test",
-  isDefault: true,
-};
 
 beforeEach(() => {
   sendMock.mockReset();
@@ -75,6 +71,7 @@ beforeEach(() => {
       subscriptionStatus: "subscribed",
       credits: 100,
     },
+    token: "test-token",
     hardwareId: "test-hw-id",
   });
   usePromptStore.setState({
@@ -90,8 +87,6 @@ beforeEach(() => {
     pendingSelectionReview: null,
   });
   useSettingsStore.setState({
-    providers: [provider],
-    selectedProviderId: null,
     // Fresh skills baseline each test — the custom-skill case below mutates
     // this and zustand's shallow merge would otherwise leak it into siblings.
     settings: {

@@ -1,0 +1,8 @@
+# Authoring-time tooling that `next build` never reads. Excluding it keeps the
+# deployment upload to what actually serves traffic — nothing here is imported
+# by app/, components/ or lib/, and the two entry points (`npm run remotion`,
+# the google-video MCP server) are run locally, never on Vercel.
+remotion/
+remotion.config.ts
+scripts/
+out/

@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import Link from "next/link";
-import { LinearWindows } from "./icons/LinearWindows";
+import { WindowsLogo } from "./icons/WindowsLogo";
 import { HOTKEYS } from "@/lib/constants/hotkeys";
 
 const productLinks = [
@@ -22,6 +22,11 @@ const learnLinks = [
 const supportLinks = [
   { label: "Contact", href: "/contact" },
   { label: "Release notes", href: "/download" },
+];
+
+const legalLinks = [
+  { label: "Terms & Conditions", href: "/terms" },
+  { label: "Privacy Policy", href: "/privacy" },
 ];
 
 export function SiteFooter() {
@@ -110,6 +115,21 @@ export function SiteFooter() {
           ))}
         </nav>
 
+        <nav aria-label="Legal" className="flex flex-col gap-3">
+          <span className="text-xs font-medium tracking-[0.12em] text-muted uppercase">
+            Legal
+          </span>
+          {legalLinks.map((l) => (
+            <Link
+              key={l.label}
+              href={l.href}
+              className="text-sm text-muted transition-colors duration-200 hover:text-accent-primary"
+            >
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+
         <div className="flex flex-col gap-3">
           <span className="text-xs font-medium tracking-[0.12em] text-muted uppercase">
             Get started
@@ -118,7 +138,7 @@ export function SiteFooter() {
             href="/download"
             className="inline-flex items-center justify-center gap-2 self-start rounded-full bg-terracotta px-[22px] py-3 text-sm font-medium text-on-accent transition-transform duration-200 hover:-translate-y-px"
           >
-            <LinearWindows size={16} />
+            <WindowsLogo size={16} />
             Download for Windows
           </Link>
           <span className="text-xs text-muted">

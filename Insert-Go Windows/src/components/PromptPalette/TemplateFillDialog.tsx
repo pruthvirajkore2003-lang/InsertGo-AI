@@ -109,6 +109,11 @@ export function TemplateFillDialog({ template, onInsert, onCancel }: Props) {
     <div className="ig-modal" onClick={onCancel}>
       <form
         className="ig-modal__card"
+        role="dialog"
+        aria-modal="true"
+        // The template's own name is the only meaningful label here — the
+        // dialog exists to fill THAT template.
+        aria-label={template.name}
         onClick={(e) => e.stopPropagation()}
         onSubmit={submit}
       >

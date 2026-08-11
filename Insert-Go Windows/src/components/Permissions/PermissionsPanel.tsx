@@ -8,11 +8,11 @@
  * user check it on demand, and hand them a fix when a check comes back bad.
  *
  * This was a mandatory first-run step. It is not one any more, for the same
- * reason it can't be: with nothing to grant, the step was five explanations
+ * reason it can't be: with nothing to grant, the step was explanations
  * delivered before the user had a reason to care about any of them, and the
- * only moment they do care — Improve silently doing nothing in some app — was
- * days later with the panel nowhere in sight. A permanent home in Settings is
- * both where it belongs and where the recovery copy can actually be found.
+ * only moment they do care — the skill bar silently doing nothing in some app
+ * — was days later with the panel nowhere in sight. A permanent home in
+ * Settings is both where it belongs and where the recovery copy can be found.
  *
  * Two rules survive the move:
  *  - No bulk sweep. One shared probe exists, but only a card's own Check button
@@ -42,15 +42,15 @@ const COPY: Record<
 > = {
   accessibility: {
     icon: "fa-universal-access",
-    title: "Read the field you're typing in",
+    title: "Read the text you select",
     why:
-      "Improve uses the Windows accessibility API to read the text box you " +
-      "are focused on, and only at the moment you press the chord. Password " +
-      "fields are always refused — their contents are never read.",
+      "The skill bar uses the Windows accessibility API to read the text you " +
+      "have selected, and only at the moment you select it. Password fields " +
+      "are always refused — their contents are never read.",
     recovery: [
       "Sign out and back in — the accessibility service occasionally needs a fresh session.",
       "If a screen reader or automation tool is running, restart it; two clients can fight over the tree.",
-      "Improve still works without it: InsertGo falls back to a save-and-restore clipboard read.",
+      "The bar still works without it: InsertGo falls back to a save-and-restore clipboard read.",
     ],
   },
   globalHotkey: {
@@ -63,18 +63,6 @@ const COPY: Record<
     recovery: [
       "Another app already owns this chord — close it, or pick a different chord in Settings › Hotkeys.",
       "Common culprits: Windows Terminal's quake mode, Everything, PowerToys Run, and vendor tray utilities.",
-    ],
-  },
-  improveHotkey: {
-    icon: "fa-wand-magic-sparkles",
-    title: "Improve in place",
-    why:
-      "The chord that rewrites the prompt in the field you're already typing " +
-      "in. It's a separate registration from the palette chord, so one can " +
-      "work while the other clashes.",
-    recovery: [
-      "Change the Improve chord in Settings › Hotkeys to one nothing else claims.",
-      "IDEs are the usual clash — VS Code and JetBrains both bind several Ctrl+Alt combinations.",
     ],
   },
   clipboard: {
@@ -100,11 +88,10 @@ const COPY: Record<
   },
 };
 
-/** Display order: capability first, chords next, optional last. */
+/** Display order: capability first, the chord next, optional last. */
 const ORDER: readonly PermissionId[] = [
   "accessibility",
   "globalHotkey",
-  "improveHotkey",
   "clipboard",
   "autostart",
 ];
@@ -115,11 +102,10 @@ export function PermissionsPanel() {
   const probeError = usePermissionsStore((s) => s.probeError);
   const checkPermissions = usePermissionsStore((s) => s.checkPermissions);
   const setAutostart = usePermissionsStore((s) => s.setAutostart);
-  const { hotkey, improveHotkey } = useSettingsStore((s) => s.settings);
+  const hotkey = useSettingsStore((s) => s.settings.hotkey);
 
   const chords: Partial<Record<PermissionId, string>> = {
     globalHotkey: hotkey,
-    improveHotkey: improveHotkey,
   };
 
   const anyChecked = ORDER.some((id) => permissions[id] !== "unknown");
@@ -201,9 +187,9 @@ export function PermissionsPanel() {
           >
             <i className="fa-solid fa-shield-halved" aria-hidden="true" />
             InsertGo runs without admin rights, which is the safer default. If
-            Improve does nothing in an app you launched as administrator, that
-            is Windows blocking it — right-click InsertGo and choose &quot;Run
-            as administrator&quot; to use it there.
+            it does nothing in an app you launched as administrator, that is
+            Windows blocking it — right-click InsertGo and choose &quot;Run as
+            administrator&quot; to use it there.
           </motion.p>
         )}
       </AnimatePresence>

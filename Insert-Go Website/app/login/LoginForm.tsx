@@ -33,6 +33,25 @@ function GoogleMark() {
   );
 }
 
+/** Per-lane heading — the form is a two-step flow, so the card header swaps
+ *  with the lane to make progress explicit ("Sign in" then "Check your
+ *  inbox"). Lives here, not in page.tsx, because the lane is client state. */
+const LANE_HEADING: Record<Lane, { title: string; sub: string }> = {
+  menu: {
+    title: "Welcome back",
+    sub: "Sign in to sync your templates, manage your plan and activate the desktop app.",
+  },
+  "otp-email": { title: "", sub: "" }, // declared in the Lane union, never entered
+  "otp-code": {
+    title: "Check your inbox",
+    sub: "", // otp lane renders its own explainer with the target address
+  },
+  sso: {
+    title: "Company SSO",
+    sub: "Enter your work email — we'll route you to your organization's identity provider.",
+  },
+};
+
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -44,6 +63,10 @@ export function LoginForm() {
   const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Field-level validation (format problems we can catch without a server
+  // round-trip) renders inline under the input; `error` above stays reserved
+  // for server/global failures in the banner.
+  const [fieldError, setFieldError] = useState<string | null>(null);
   // Codes get filtered, delayed, or typo'd into the wrong inbox. Without a
   // resend the only way out of this lane was to abandon it.
   const [cooldown, setCooldown] = useState(0);
@@ -60,6 +83,19 @@ export function LoginForm() {
     setBusy(false);
   };
 
+  const switchLane = (to: Lane) => {
+    setError(null);
+    setFieldError(null);
+    setLane(to);
+  };
+
+  /** Blur validation — catch a malformed address while the field still has
+   *  the user's attention, not after a failed submit. */
+  const validateEmailBlur = () => {
+    if (email && !EMAIL_RE.test(email))
+      setFieldError("Enter a valid email address.");
+  };
+
   async function continueWithGoogle() {
     setBusy(true);
     setError(null);
@@ -73,7 +109,10 @@ export function LoginForm() {
 
   async function sendOtp(e: React.FormEvent) {
     e.preventDefault();
-    if (!EMAIL_RE.test(email)) return fail("Enter a valid email address.");
+    if (!EMAIL_RE.test(email)) {
+      setFieldError("Enter a valid email address.");
+      return;
+    }
     setBusy(true);
     setError(null);
     const { error } = await authClient.emailOtp.sendVerificationOtp({
@@ -84,7 +123,7 @@ export function LoginForm() {
       return fail(error.message ?? "Couldn't send the code. Try again.");
     setBusy(false);
     setCooldown(30);
-    setLane("otp-code");
+    switchLane("otp-code");
   }
 
   /** Re-issue the code for the address already entered. Rate-limited client
@@ -106,7 +145,10 @@ export function LoginForm() {
 
   async function verifyOtp(e: React.FormEvent) {
     e.preventDefault();
-    if (otp.length !== 6) return fail("The code is 6 digits.");
+    if (otp.length !== 6) {
+      setFieldError("The code is 6 digits.");
+      return;
+    }
     setBusy(true);
     setError(null);
     const { error } = await authClient.signIn.emailOtp({ email, otp });
@@ -120,7 +162,10 @@ export function LoginForm() {
 
   async function continueWithSso(e: React.FormEvent) {
     e.preventDefault();
-    if (!EMAIL_RE.test(email)) return fail("Enter your work email address.");
+    if (!EMAIL_RE.test(email)) {
+      setFieldError("Enter your work email address.");
+      return;
+    }
     setBusy(true);
     setError(null);
     const { error } = await authClient.signIn.sso({
@@ -134,8 +179,12 @@ export function LoginForm() {
       );
   }
 
+  const heading = LANE_HEADING[lane];
+
+  const labelCls = "mb-1.5 block text-[13px] font-medium text-ink-soft";
   const inputCls =
-    "glass-chip h-12 w-full rounded-2xl px-4 text-[15px] text-ink placeholder:text-muted focus:outline-none focus:ring-4 focus:ring-focus-ring";
+    "glass-chip h-12 w-full rounded-2xl px-4 text-[15px] text-ink placeholder:text-muted focus:outline-none focus:ring-4 focus:ring-focus-ring aria-invalid:border-danger/50 aria-invalid:ring-4 aria-invalid:ring-danger/20";
+  const fieldErrorCls = "mt-1.5 text-[13px] text-danger";
   const primaryBtn =
     "inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-2xl bg-terracotta px-6 text-[15px] font-medium text-on-accent shadow-cta-sm transition-[transform,box-shadow,opacity] duration-200 hover:-translate-y-px hover:shadow-cta-hover disabled:cursor-not-allowed disabled:opacity-60";
   const laneBtn =
@@ -154,18 +203,44 @@ export function LoginForm() {
           transition={{ duration: 0.18, ease: [0.2, 0.7, 0.2, 1] }}
           className="flex flex-col gap-3"
         >
+          <div className="mb-5 text-center">
+            <h1 className="font-serif text-[28px] font-semibold tracking-[-0.01em] text-ink">
+              {heading.title}
+            </h1>
+            {heading.sub && (
+              <p className="mt-2 text-[15px] text-muted">{heading.sub}</p>
+            )}
+          </div>
+
           {lane === "menu" && (
             <>
-              <form onSubmit={sendOtp} className="flex flex-col gap-3">
-                <input
-                  type="email"
-                  autoComplete="email"
-                  placeholder="name@work-email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={inputCls}
-                  required
-                />
+              <form onSubmit={sendOtp} className="flex flex-col gap-3" noValidate>
+                <div>
+                  <label htmlFor="login-email" className={labelCls}>
+                    Email
+                  </label>
+                  <input
+                    id="login-email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="name@work-email.com"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setFieldError(null);
+                    }}
+                    onBlur={validateEmailBlur}
+                    aria-invalid={fieldError ? true : undefined}
+                    aria-describedby={fieldError ? "login-email-error" : undefined}
+                    className={inputCls}
+                    required
+                  />
+                  {fieldError && (
+                    <p id="login-email-error" className={fieldErrorCls}>
+                      {fieldError}
+                    </p>
+                  )}
+                </div>
                 <button type="submit" disabled={busy} className={primaryBtn}>
                   {busy ? "Sending code…" : "Continue with email"}
                 </button>
@@ -192,10 +267,7 @@ export function LoginForm() {
               <button
                 type="button"
                 className={backBtn}
-                onClick={() => {
-                  setError(null);
-                  setLane("sso");
-                }}
+                onClick={() => switchLane("sso")}
                 disabled={busy}
               >
                 Continue with company SSO
@@ -204,26 +276,52 @@ export function LoginForm() {
           )}
 
           {lane === "otp-code" && (
-            <form onSubmit={verifyOtp} className="flex flex-col gap-3">
+            <form onSubmit={verifyOtp} className="flex flex-col gap-3" noValidate>
               <p className="text-center text-sm text-muted">
                 We sent a 6-digit code to{" "}
-                <strong className="break-all text-ink">{email}</strong>. It
-                expires in 5
-                minutes.
+                <strong className="break-all text-ink">{email}</strong>
+                <button
+                  type="button"
+                  className="ml-1.5 font-medium text-brand underline-offset-2 hover:underline"
+                  onClick={() => {
+                    setOtp("");
+                    setResent(false);
+                    switchLane("menu");
+                  }}
+                >
+                  Change
+                </button>
+                <span className="block mt-1">It expires in 5 minutes.</span>
               </p>
-              <input
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                placeholder="123456"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                className={`${inputCls} text-center font-mono text-xl tracking-[0.4em]`}
-                autoFocus
-                required
-              />
+              <div>
+                <label htmlFor="otp-code" className={labelCls}>
+                  Code
+                </label>
+                <input
+                  id="otp-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  placeholder="123456"
+                  value={otp}
+                  onChange={(e) => {
+                    setOtp(e.target.value.replace(/\D/g, ""));
+                    setFieldError(null);
+                  }}
+                  aria-invalid={fieldError ? true : undefined}
+                  aria-describedby={fieldError ? "otp-code-error" : undefined}
+                  className={`${inputCls} text-center font-mono text-xl tracking-[0.4em]`}
+                  autoFocus
+                  required
+                />
+                {fieldError && (
+                  <p id="otp-code-error" className={fieldErrorCls}>
+                    {fieldError}
+                  </p>
+                )}
+              </div>
               <button
                 type="submit"
                 disabled={busy || otp.length !== 6}
@@ -260,9 +358,8 @@ export function LoginForm() {
                 className={backBtn}
                 onClick={() => {
                   setOtp("");
-                  setError(null);
                   setResent(false);
-                  setLane("menu");
+                  switchLane("menu");
                 }}
               >
                 Use a different email or method
@@ -271,31 +368,41 @@ export function LoginForm() {
           )}
 
           {lane === "sso" && (
-            <form onSubmit={continueWithSso} className="flex flex-col gap-3">
-              <p className="text-center text-sm text-muted">
-                Enter your work email — we&apos;ll route you to your
-                organization&apos;s identity provider.
-              </p>
-              <input
-                type="email"
-                autoComplete="email"
-                placeholder="you@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={inputCls}
-                autoFocus
-                required
-              />
+            <form onSubmit={continueWithSso} className="flex flex-col gap-3" noValidate>
+              <div>
+                <label htmlFor="sso-email" className={labelCls}>
+                  Work email
+                </label>
+                <input
+                  id="sso-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setFieldError(null);
+                  }}
+                  onBlur={validateEmailBlur}
+                  aria-invalid={fieldError ? true : undefined}
+                  aria-describedby={fieldError ? "sso-email-error" : undefined}
+                  className={inputCls}
+                  autoFocus
+                  required
+                />
+                {fieldError && (
+                  <p id="sso-email-error" className={fieldErrorCls}>
+                    {fieldError}
+                  </p>
+                )}
+              </div>
               <button type="submit" disabled={busy} className={primaryBtn}>
                 {busy ? "Looking up your org…" : "Continue with SSO"}
               </button>
               <button
                 type="button"
                 className={backBtn}
-                onClick={() => {
-                  setError(null);
-                  setLane("menu");
-                }}
+                onClick={() => switchLane("menu")}
               >
                 Back to all sign-in options
               </button>

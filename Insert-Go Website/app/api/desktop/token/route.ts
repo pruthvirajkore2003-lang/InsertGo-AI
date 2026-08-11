@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { BodyTooLargeError, readBodyCapped } from "@/lib/httpBody";
+import { withinIpRateLimit } from "@/lib/ipRateLimit";
 import {
   DESKTOP_CLIENT_ID,
   codeIdentifier,
@@ -33,7 +34,25 @@ const fail = (error: string, description: string, status = 400) =>
     { status, headers: noStore },
   );
 
+/** Per-IP ceiling. A real desktop sign-in exchanges ONE code and retries at
+ *  most a couple of times; this is a load bound on a route that runs an
+ *  unauthenticated DB write (`consumeVerificationValue`) per POST, which Better
+ *  Auth's `/api/auth/*`-only limiter never sees. Fail-open (lib/ipRateLimit). */
+const TOKEN_MAX_PER_MINUTE = Number(process.env.DESKTOP_TOKEN_MAX_PER_MIN ?? 20);
+
 export async function POST(req: Request) {
+  if (
+    !(await withinIpRateLimit(req, {
+      action: "desktop:token",
+      max: TOKEN_MAX_PER_MINUTE,
+      windowSecs: 60,
+    }))
+  ) {
+    // `slow_down` is the OAuth-family code for "you are polling too fast"
+    // (RFC 8628 §3.5); the body shape stays the one the client already parses.
+    return fail("slow_down", "Too many attempts. Please wait and try again.", 429);
+  }
+
   let body: Record<string, unknown> | null;
   try {
     body = JSON.parse(await readBodyCapped(req, MAX_TOKEN_BYTES));

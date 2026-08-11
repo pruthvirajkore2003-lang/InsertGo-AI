@@ -5,19 +5,8 @@ mod error;
 mod platform;
 
 use tauri::Manager;
-use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
+use tauri_plugin_global_shortcut::ShortcutState;
 use tauri_plugin_log::{Target, TargetKind};
-
-/// Managed state: which parsed shortcut belongs to which surface, so the
-/// plugin's single shared handler can route a press. `None` = that hotkey
-/// failed to parse/register (surface disabled, app still runs). Anything not
-/// matching Improve/Undo falls through to the palette toggle — the pre-Improve
-/// behavior, kept as the default arm.
-#[derive(Default)]
-pub struct RegisteredHotkeys {
-    pub improve: Option<Shortcut>,
-    pub improve_undo: Option<Shortcut>,
-}
 
 /// Managed state: the window that was foreground when the palette hotkey
 /// fired — the injection target for `insert_text` (SPEC §4.1, §7.1). Stored
@@ -82,7 +71,6 @@ pub fn run() {
     builder
         .manage(PriorWindow::default())
         .manage(SelectionTarget::default())
-        .manage(platform::improve::ImproveState::default())
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(log::LevelFilter::Info)
@@ -102,22 +90,10 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(|app, shortcut, event| {
+                .with_handler(|app, _shortcut, event| {
                     // Act on key-down only (ignore the release event).
                     if event.state() != ShortcutState::Pressed {
                         return;
-                    }
-                    // Route by shortcut: Improve / Undo are headless
-                    // pipelines; everything else is the palette toggle.
-                    if let Some(hotkeys) = app.try_state::<RegisteredHotkeys>() {
-                        if hotkeys.improve.as_ref() == Some(shortcut) {
-                            platform::improve::on_improve_hotkey(app);
-                            return;
-                        }
-                        if hotkeys.improve_undo.as_ref() == Some(shortcut) {
-                            platform::improve::on_undo_hotkey(app);
-                            return;
-                        }
                     }
                     if let Err(e) = platform::window::toggle_palette(app) {
                         log::error!("toggle_palette failed: {e}");
@@ -173,36 +149,6 @@ pub fn run() {
                     }
                 }
             }
-            // Inline Improve + Undo hotkeys (SPEC §4.4). Each is independent
-            // log-and-continue: a bad/occupied chord disables only that
-            // surface. The parsed shortcuts go into managed state so the
-            // shared handler above can route presses.
-            let mut hotkeys = RegisteredHotkeys::default();
-            for (name, chord, slot) in [
-                ("improve", &settings.improve_hotkey, 0),
-                ("improve undo", &settings.improve_undo_hotkey, 1),
-            ] {
-                match platform::hotkey::parse_shortcut(chord) {
-                    Some(shortcut) => {
-                        if let Err(e) = platform::hotkey::register(app.handle(), chord) {
-                            log::error!("{name} hotkey registration failed: {e}");
-                        } else {
-                            match slot {
-                                0 => hotkeys.improve = Some(shortcut),
-                                _ => hotkeys.improve_undo = Some(shortcut),
-                            }
-                        }
-                    }
-                    None => log::error!("{name} hotkey is invalid: {chord}"),
-                }
-            }
-            app.manage(hotkeys);
-            // Improve progress chip: hidden non-activating window, same
-            // log-and-continue degradation as the skill bar (a failure means
-            // "no chip", never a broken pipeline).
-            if let Err(e) = platform::improve::create_improve_chip(app.handle()) {
-                log::error!("improve chip window creation failed: {e}");
-            }
             // Tray icon: the only on-screen sign the app is running (the palette
             // is hidden + skipTaskbar). Log-and-continue like the hotkey.
             if let Err(e) = platform::tray::create_tray(app.handle()) {
@@ -234,17 +180,12 @@ pub fn run() {
             domain::prompts::delete_prompt,
             domain::settings::load_settings,
             domain::settings::save_settings,
-            domain::providers::load_providers,
-            domain::providers::save_providers,
             domain::session_store::session_token_set,
             domain::session_store::session_token_get,
             domain::session_store::session_token_delete,
-            domain::ollama::ollama_list_models,
             domain::logs::export_logs,
             platform::bounds::resize_within_work_area,
             platform::clipboard::insert_text,
-            platform::clipboard::replace_text,
-            platform::improve::improve_status,
             platform::permissions::check_permissions,
             platform::permissions::set_autostart,
             platform::skillbar_window::apply_to_selection,

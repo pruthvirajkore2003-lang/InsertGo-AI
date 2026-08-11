@@ -28,7 +28,7 @@ import { canUseHistory } from "@/store/monetizationStore";
 import { useHistoryStore } from "@/store/historyStore";
 import { useAuthStore } from "@/store/authStore";
 import { useProviderRun } from "@/hooks/useProviderRun";
-import { startProCheckout } from "@/services/billing";
+import { startCheckout } from "@/services/billing";
 import { ProxyOverloadCard, isOverloadError } from "./ProxyOverloadCard";
 
 type Props = {
@@ -94,7 +94,7 @@ export function PromptPalette({ editorRef }: Props) {
 
   const hasText = body.trim().length > 0;
 
-  const handleCheckout = () => void startProCheckout();
+  const handleCheckout = () => void startCheckout({ tier: "pro" });
 
   useEffect(() => () => clearTimeout(copyTimerRef.current), []);
 

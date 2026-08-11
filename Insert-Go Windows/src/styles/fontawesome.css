@@ -75,6 +75,9 @@
 .fa-arrow-left::before { content: "\f060"; }
 .fa-arrow-right::before { content: "\f061"; }
 .fa-arrow-up-right-from-square::before { content: "\f08e"; }
+.fa-arrow-right-to-bracket::before { content: "\f2f6"; }
+.fa-right-from-bracket::before { content: "\f2f5"; }
+.fa-shield-halved::before { content: "\f3ed"; }
 .fa-desktop::before { content: "\f390"; }
 .fa-cloud::before { content: "\f0c2"; }
 .fa-microchip::before { content: "\f2db"; }

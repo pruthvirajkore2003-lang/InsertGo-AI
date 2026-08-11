@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readNdjsonStream, readSseStream, SseIdleTimeoutError } from "./sse";
+import { readSseStream, SseIdleTimeoutError } from "./sse";
 
 /** Byte stream from pre-encoded chunks (lets tests split multi-byte chars). */
 function byteStream(chunks: Uint8Array[]): ReadableStream<Uint8Array> {
@@ -131,42 +131,5 @@ describe("readSseStream", () => {
 
     expect(seen).toEqual(["boom"]);
     expect(cancelled).toHaveBeenCalled();
-  });
-});
-
-describe("readNdjsonStream", () => {
-  async function collectLines(
-    ...chunks: string[]
-  ): Promise<string[]> {
-    const enc = new TextEncoder();
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        for (const c of chunks) controller.enqueue(enc.encode(c));
-        controller.close();
-      },
-    });
-    const lines: string[] = [];
-    await readNdjsonStream(stream, (l) => lines.push(l));
-    return lines;
-  }
-
-  it("emits each non-empty line and skips blank lines", async () => {
-    const lines = await collectLines('{"a":1}\n{"b":2}\n\n{"c":3}\n');
-    expect(lines).toEqual(['{"a":1}', '{"b":2}', '{"c":3}']);
-  });
-
-  it("buffers a line split across reads", async () => {
-    const lines = await collectLines('{"resp":"Hel', 'lo"}\n');
-    expect(lines).toEqual(['{"resp":"Hello"}']);
-  });
-
-  it("flushes a trailing unterminated line", async () => {
-    const lines = await collectLines('{"done":true}');
-    expect(lines).toEqual(['{"done":true}']);
-  });
-
-  it("parses CRLF the same as LF", async () => {
-    const lines = await collectLines('{"a":1}\r\n{"b":2}\r\n');
-    expect(lines).toEqual(['{"a":1}', '{"b":2}']);
   });
 });

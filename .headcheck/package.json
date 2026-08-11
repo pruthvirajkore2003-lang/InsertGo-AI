@@ -1,0 +1,16 @@
+{
+  "name": "insertgo-ai",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "Insert-Go Website",
+    "Insert-Go Windows"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w insertgo-ai-website",
+    "build:web": "npm run build -w insertgo-ai-website",
+    "dev:win": "npm run tauri:dev -w insertgo",
+    "build:win": "npm run tauri:build -w insertgo",
+    "test": "npm run test --workspaces --if-present"
+  }
+}

@@ -1,12 +1,12 @@
-//! App-level domain logic: prompts, settings, providers, and active-app context.
+//! App-level domain logic: prompts, settings, and active-app context.
 //! Persistence is local-first JSON under the OS app-data dir (SPEC §8.2, §10).
 
 pub mod context;
 pub mod device;
 pub mod logs;
-pub mod ollama;
+// `ollama` (local-model auto-discovery) was deleted 2026-08-08: BYOK and local
+// models are a decided non-feature (R-15). Nothing in the UI ever routed to it.
 pub mod prompts;
-pub mod providers;
 pub mod session_store;
 pub mod settings;
 

@@ -1160,6 +1160,11 @@
   border-radius: var(--ig-radius-pill);
   background: var(--ig-accent);
   box-shadow: 0 0 6px var(--ig-accent-glow);
+  /* Hardware acceleration: composited GPU layer bypasses WebView2
+     sub-pixel rasterization jitter during scale. */
+  backface-visibility: hidden;
+  transform-origin: center;
+  will-change: transform;
   animation: ig-working-pulse 1.2s var(--ig-ease) infinite;
 }
 
@@ -1176,12 +1181,12 @@
   0%,
   100% {
     opacity: 0.25;
-    transform: scale(0.85);
+    transform: translateZ(0) scale(0.85);
   }
 
   40% {
     opacity: 1;
-    transform: scale(1);
+    transform: translateZ(0) scale(1);
   }
 }
 
@@ -1199,13 +1204,6 @@
   padding-top: var(--ig-space-3);
   display: flex;
   flex-direction: column;
-  gap: var(--ig-space-2);
-}
-
-.ig-result__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: var(--ig-space-2);
 }
 
@@ -1481,8 +1479,7 @@
   color: var(--ig-faint);
 }
 
-.ig-input,
-.ig-select {
+.ig-input {
   background: var(--ig-field-bg);
   color: var(--ig-fg);
   border: 1px solid var(--ig-border);
@@ -1502,8 +1499,7 @@
   color: var(--ig-faint);
 }
 
-.ig-input:focus,
-.ig-select:focus {
+.ig-input:focus {
   border-color: var(--ig-accent);
   box-shadow:
     var(--ig-inset-well),
@@ -1517,48 +1513,6 @@ textarea.ig-input {
   padding: var(--ig-space-2) var(--ig-space-3);
 }
 
-/* Custom chevron so the native arrow doesn't break the glass look. Neutral
-   gray encodes legibly on both themes; CSP allows data: images. */
-.ig-select {
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: var(--ig-space-8);
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23909098' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right var(--ig-space-3) center;
-  cursor: pointer;
-}
-
-.ig-select:hover {
-  border-color: var(--ig-border-strong);
-}
-
-/* Native popup list: Chromium propagates the select's own translucent
-   background/color to the option list, so the near-transparent field fill
-   composites to white and the light --ig-fg text vanishes on it. Pin OPAQUE
-   theme colors on option/optgroup so both themes stay legible. */
-.ig-select option,
-.ig-select optgroup {
-  background: var(--ig-bg-opaque);
-  color: var(--ig-fg);
-}
-
-.ig-select optgroup {
-  color: var(--ig-muted);
-  font-weight: 600;
-  font-style: normal;
-}
-
-.ig-select option {
-  padding: var(--ig-space-1) var(--ig-space-2);
-  font-weight: 400;
-}
-
-.ig-select option:checked {
-  background: var(--ig-accent);
-  color: var(--ig-accent-fg);
-}
-
 /* Combobox (SearchableSelect.tsx). Field chrome comes from .ig-input; the
    popup is glass — a SINGLE flat translucent fill + backdrop-filter (never a
    gradient over near-opaque: WebView2 compositing bug, see .ig-panel note).
@@ -1570,7 +1524,7 @@ textarea.ig-input {
 .ig-combobox__input {
   width: 100%;
   padding-right: var(--ig-space-8);
-  /* room for the chevron, mirrors .ig-select */
+  /* room for the chevron */
   cursor: pointer;
 }
 
@@ -1638,91 +1592,6 @@ textarea.ig-input {
   padding: var(--ig-space-2) var(--ig-space-3);
   font-size: var(--ig-text-sm);
   color: var(--ig-muted);
-}
-
-/* Prompt picker — the composer's visual library browser (replaces the native
-   select). Popover fill is a single FLAT opaque color: layering a gradient
-   over a near-opaque fill on this transparent window punches the desktop
-   through (WebView2 compositing bug — see .ig-panel note). */
-.ig-picker {
-  position: relative;
-}
-
-.ig-picker__trigger {
-  display: flex;
-  align-items: center;
-  gap: var(--ig-space-2);
-  width: 100%;
-  background: var(--ig-field-bg);
-  color: var(--ig-muted);
-  border: 1px solid var(--ig-border);
-  border-radius: var(--ig-radius-btn);
-  min-height: var(--ig-control-lg);
-  padding: var(--ig-space-1) var(--ig-space-3);
-  font-size: var(--ig-text-sm);
-  text-align: left;
-  box-shadow: var(--ig-inset-well);
-  cursor: pointer;
-  transition:
-    border-color var(--ig-fast) ease,
-    box-shadow var(--ig-fast) ease;
-}
-
-.ig-picker__trigger .fa-solid {
-  font-size: var(--ig-text-xs);
-  color: var(--ig-accent);
-}
-
-.ig-picker__trigger:hover {
-  border-color: var(--ig-border-strong);
-}
-
-.ig-picker__trigger:focus-visible,
-.ig-picker__trigger[aria-expanded="true"] {
-  border-color: var(--ig-accent);
-  box-shadow:
-    var(--ig-inset-well),
-    0 0 0 3px var(--ig-accent-soft);
-  outline: none;
-}
-
-.ig-picker__chevron {
-  margin-left: auto;
-}
-
-.ig-picker__trigger .ig-picker__chevron {
-  font-size: var(--ig-text-2xs);
-  color: var(--ig-faint);
-}
-
-/* Inline variant — the same browser rendered flat inside the Create tab
-   (no popover). Flat opaque-ish fill for the same WebView2 reason as above. */
-.ig-picker__pop {
-  position: absolute;
-  top: calc(100% + var(--ig-space-1));
-  left: 0;
-  right: 0;
-  z-index: 40;
-  display: flex;
-  flex-direction: column;
-  background: var(--ig-bg-opaque);
-  border: 1px solid var(--ig-border-strong);
-  border-radius: var(--ig-radius-card);
-  box-shadow: var(--ig-shadow-float);
-  overflow: hidden;
-  animation: ig-picker-pop var(--ig-fast) var(--ig-ease-pop);
-}
-
-@keyframes ig-picker-pop {
-  from {
-    opacity: 0;
-    transform: translateY(-4px) scale(0.985);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 /* Off-screen but announced — for explicit <label>s on icon-only inputs. */
@@ -1971,20 +1840,6 @@ textarea.ig-input {
   transform: translateY(-1px);
 }
 
-/* Accent "hero" variant — fully opaque fill (alpha = 1), so no translucency
-   rules apply; the masked rim + shadow still carry the glass read. Frost is
-   invisible behind an opaque fill — drop it, it would be pure GPU cost. */
-.ig-glass-card--accent {
-  background: var(--ig-accent);
-  color: var(--ig-accent-fg);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-.ig-glass-card--accent:hover {
-  background: var(--ig-accent);
-}
-
 /* No-blur engines: solid surface fill stands in for the frost (mirror of the
    .ig-modal fallback pattern; placed after :hover so it wins the cascade).
    Query names the -webkit- spelling too — WKWebView lacks unprefixed
@@ -1996,11 +1851,6 @@ textarea.ig-input {
 
   .ig-glass-card:hover {
     background: var(--ig-surface-3);
-  }
-
-  .ig-glass-card--accent,
-  .ig-glass-card--accent:hover {
-    background: var(--ig-accent);
   }
 }
 
@@ -2558,12 +2408,17 @@ textarea.ig-input {
   border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
   border-top-color: currentColor;
   border-radius: 50%;
+  /* Hardware acceleration: composited GPU layer bypasses WebView2
+     sub-pixel rasterization jitter during rotation. */
+  backface-visibility: hidden;
+  transform-origin: center;
+  will-change: transform;
   animation: ig-btn-spin 0.7s linear infinite;
 }
 
 @keyframes ig-btn-spin {
   to {
-    transform: rotate(360deg);
+    transform: translateZ(0) rotate(360deg);
   }
 }
 
@@ -2603,13 +2458,6 @@ textarea.ig-input {
   .ig-glass-card::before {
     background: var(--ig-border);
   }
-
-  /* Accent variant is already fully opaque — keep its solid fill (this rule
-     follows the fallback above, so the cascade restores it). */
-  .ig-glass-card--accent,
-  .ig-glass-card--accent:hover {
-    background: var(--ig-accent);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2622,139 +2470,12 @@ textarea.ig-input {
   }
 }
 
-/* Providers tab: browsable catalog grid */
-.ig-provider-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ig-space-2);
-}
-
-.ig-provider-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: var(--ig-space-2);
-}
-
-.ig-provider-card {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--ig-space-2);
-  /* Grid items default to min-width:auto — without this a long label or the
-     badge row forces the card wider than its track and text escapes the box. */
-  min-width: 0;
-  overflow: hidden;
-  padding: var(--ig-space-3);
-  text-align: left;
-  border: 1px solid var(--ig-border-subtle);
-  border-radius: var(--ig-radius-card);
-  background: var(--ig-surface-1);
-  box-shadow: inset 0 1px 0 var(--ig-highlight);
-  cursor: pointer;
-  transition:
-    background var(--ig-fast) ease,
-    border-color var(--ig-fast) ease,
-    box-shadow var(--ig-fast) ease,
-    transform var(--ig-fast) var(--ig-ease);
-}
-
-.ig-provider-card:hover {
-  background: var(--ig-surface-2);
-  border-color: var(--ig-border);
-  transform: translateY(-1px);
-  box-shadow:
-    inset 0 1px 0 var(--ig-highlight),
-    var(--ig-shadow-raise);
-}
-
-.ig-provider-card__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ig-space-2);
-  /* Keeps the row height stable whether or not badges are present. */
-  min-height: 26px;
-}
-
-.ig-provider-card__badges {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 4px;
-  min-width: 0;
-}
-
-.ig-provider-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  flex: 1;
-}
-
-.ig-provider-card__label {
-  font-size: var(--ig-text-sm);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ig-provider-card__group {
-  font-size: var(--ig-text-2xs);
-  color: var(--ig-faint);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ig-provider-card__badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex: 0 0 auto;
-  font-size: var(--ig-text-2xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 1px var(--ig-space-2);
-  border-radius: 999px;
-  color: var(--ig-faint);
-  background: var(--ig-surface-2);
-  border: 1px solid var(--ig-border-subtle);
-}
-
-.ig-provider-card__badge--active {
-  color: var(--ig-accent);
-  border-color: var(--ig-accent);
-  background: var(--ig-accent-tint);
-}
-
-.ig-provider-card__badge--pro {
-  color: var(--ig-warn);
-  border-color: var(--ig-warn);
-  background: var(--ig-warn-soft);
-}
-
-/* Lettered fallback when a provider ships no logo (or the img fails). */
-.ig-provider-logo--fallback {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  border-radius: 7px;
-  background: var(--ig-surface-2);
-  border: 1px solid var(--ig-border-subtle);
-  color: var(--ig-faint);
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-/* ── Auth — sign-in / device-code / account stages. One frosted stage card
-   (reuses the .ig-glass-card material), strict 4px rhythm, hierarchy from
-   the type ramp + color. Stage swaps animate via framer AnimatePresence in
-   AuthPanel.tsx; CSS keeps only the ambient details (pulse dot, hairlines). */
+/* ── Auth — sign-in / waiting / account stages, mirroring the website login:
+   Fraunces step headings, cobalt icon tiles, tick-circle trust bullets. One
+   frosted stage card (reuses the .ig-glass-card material), strict 4px rhythm,
+   hierarchy from the type ramp + color. Stage swaps animate via framer
+   AnimatePresence in AuthPanel.tsx; CSS keeps only the ambient details
+   (pulse dot, hairlines). */
 .ig-body--center {
   justify-content: center;
 }
@@ -2795,6 +2516,42 @@ textarea.ig-input {
   text-wrap: balance;
 }
 
+/* Trust bullets — the gate's compact echo of the website login's brand
+   pane: tick-circle icons in a cobalt tile wash, one reassurance per row. */
+.ig-auth__trust {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+}
+
+.ig-auth__trust li {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-2);
+  font-size: var(--ig-text-sm);
+  color: var(--ig-muted);
+}
+
+.ig-auth__tick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: var(--ig-control-sm);
+  height: var(--ig-control-sm);
+  border-radius: var(--ig-radius-pill);
+  color: var(--ig-accent);
+  background: var(--ig-accent-tint);
+  border: 1px solid var(--ig-accent-soft);
+}
+
+.ig-auth__tick .fa-solid {
+  font-size: var(--ig-text-2xs);
+}
+
 /* Stage — the keyed AnimatePresence child: card + its sibling action
    (Cancel / account buttons) travel as one unit. */
 .ig-auth__stage {
@@ -2831,6 +2588,42 @@ textarea.ig-input {
   text-align: left;
 }
 
+/* Staged icon tile — cobalt tile-wash rounded square at the card top, the
+   desktop echo of the website login's icon-tile grammar. */
+.ig-auth__tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ig-space-10);
+  height: var(--ig-space-10);
+  border-radius: var(--ig-radius-card);
+  color: var(--ig-accent);
+  background: var(--ig-accent-tint);
+  border: 1px solid var(--ig-accent-soft);
+  box-shadow: var(--ig-glass-specular-set);
+}
+
+.ig-auth__tile .fa-solid {
+  font-size: var(--ig-text-lg);
+}
+
+/* Staged card header — Fraunces step title over the explainer lede. */
+.ig-auth__cardhead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-2);
+}
+
+.ig-auth__cardtitle {
+  margin: 0;
+  font-family: var(--ig-font-serif);
+  /* 18px — display step between --ig-text-xl and the 22px auth hero */
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: var(--ig-leading-tight);
+  letter-spacing: -0.01em;
+}
+
 .ig-auth-card__lede {
   margin: 0;
   font-size: var(--ig-text-sm);
@@ -2857,18 +2650,6 @@ textarea.ig-input {
   justify-content: center;
   min-height: var(--ig-control-lg);
   font-weight: 600;
-}
-
-/* Device code — hero glyphs of the pairing stage. Letter-spacing trails a
-   gap after the last glyph; padding-left recenters the run. */
-.ig-auth__code {
-  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  font-size: 1.75rem;
-  font-weight: 700;
-  letter-spacing: 0.25em;
-  padding-left: 0.25em;
-  line-height: var(--ig-leading-tight);
-  user-select: text;
 }
 
 .ig-auth__copyrow {
@@ -2942,16 +2723,6 @@ textarea.ig-input {
   font-size: var(--ig-text-2xs);
   color: var(--ig-warn);
   margin-right: var(--ig-space-1);
-}
-
-/* Account actions (Log Out only — the upgrade CTA lives in the plan card).
-   Trailing-aligned and wrapping, so a narrow window pushes buttons onto a new
-   line instead of into the section below. */
-.ig-auth__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--ig-space-2);
 }
 
 /* The panel had no box of its own: as an unstyled block its stage collapsed
@@ -3048,16 +2819,6 @@ textarea.ig-input {
   margin: 0;
   font-size: var(--ig-text-xs);
   color: var(--ig-faint);
-}
-
-.ig-plan-card__list {
-  margin: 0;
-  padding-left: var(--ig-space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--ig-space-1);
-  font-size: var(--ig-text-xs);
-  line-height: 1.45;
 }
 
 .ig-plan-card__cta {
@@ -3413,11 +3174,6 @@ textarea.ig-input {
   padding: var(--ig-space-3) 0;
 }
 
-.ig-skillpanel__footer {
-  border-top: 1px solid var(--ig-border-subtle);
-  padding-top: var(--ig-space-3);
-}
-
 /* ── Toggle switch (skill cards) ──────────────────────────────────────────── */
 .ig-switch {
   position: relative;
@@ -3469,81 +3225,6 @@ textarea.ig-input {
 
 .ig-switch input:focus-visible + .ig-switch__track {
   box-shadow: 0 0 0 3px var(--ig-accent-soft);
-}
-
-/* ── Skill-set presets bar ────────────────────────────────────────────────── */
-.ig-presets {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ig-space-2);
-}
-
-.ig-presets__label {
-  font-size: var(--ig-text-2xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ig-faint);
-}
-
-.ig-presets__row {
-  display: flex;
-  align-items: center;
-  gap: var(--ig-space-2);
-  flex-wrap: wrap;
-}
-
-.ig-presets__empty {
-  font-size: var(--ig-text-xs);
-}
-
-.ig-preset {
-  display: inline-flex;
-  align-items: stretch;
-  border: 1px solid var(--ig-border-subtle);
-  border-radius: var(--ig-radius-pill);
-  background: var(--ig-surface-1);
-  overflow: hidden;
-}
-
-.ig-preset__apply {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ig-space-1);
-  padding: var(--ig-space-1) var(--ig-space-3);
-  font-size: var(--ig-text-xs);
-  color: var(--ig-fg);
-  cursor: pointer;
-}
-
-.ig-preset__apply:hover {
-  background: var(--ig-accent-tint);
-  color: var(--ig-accent-hover);
-}
-
-.ig-preset__del {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 var(--ig-space-2);
-  border-left: 1px solid var(--ig-border-subtle);
-  color: var(--ig-muted);
-  cursor: pointer;
-  font-size: var(--ig-text-2xs);
-}
-
-.ig-preset__del:hover {
-  color: var(--ig-danger);
-  background: var(--ig-danger-soft);
-}
-
-.ig-preset__add {
-  border-style: dashed;
-}
-
-.ig-presets__save {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ig-space-2);
 }
 
 /* ── Create Skill wizard ──────────────────────────────────────────────────── */
@@ -3653,12 +3334,6 @@ textarea.ig-input {
   }
 }
 
-.ig-onb__card {
-  /* Wider than the 560px Create Skill wizard: the welcome screen carries the
-     two move tiles and the legal reader in one column. */
-  width: min(640px, 100%);
-}
-
 .ig-onb__step {
   display: flex;
   flex-direction: column;
@@ -3677,113 +3352,6 @@ textarea.ig-input {
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: var(--ig-leading-tight);
-}
-
-.ig-onb__actions {
-  justify-content: flex-end;
-}
-
-/* ── Welcome: the two moves ── */
-.ig-onb__moves {
-  display: grid;
-  gap: var(--ig-space-3);
-}
-
-.ig-onb__move {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--ig-space-3);
-  padding: var(--ig-space-4);
-}
-
-.ig-onb__move-icon {
-  color: var(--ig-accent);
-  font-size: var(--ig-text-lg);
-  margin-top: 2px;
-}
-
-.ig-onb__move-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ig-space-1);
-  min-width: 0;
-}
-
-.ig-onb__move-title {
-  display: flex;
-  align-items: center;
-  gap: var(--ig-space-2);
-  font-size: var(--ig-text-md);
-  font-weight: 600;
-}
-
-/* ── Welcome: legal ── */
-.ig-onb__legal {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ig-space-2);
-}
-
-.ig-onb__legal-tabs {
-  display: flex;
-  gap: var(--ig-space-2);
-}
-
-.ig-onb__legal-tab--active {
-  border-color: var(--ig-accent);
-  color: var(--ig-fg);
-}
-
-/* Scroll region for the agreement text. Fixed height, not max-height: the box
-   must LOOK scrollable so it's obvious there is more to read. overscroll
-   containment stops the panel behind it from scrolling at the ends. */
-.ig-onb__legal-body {
-  height: 220px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  background: var(--ig-surface-1);
-  border: 1px solid var(--ig-border-subtle);
-  border-radius: var(--ig-radius-btn);
-  padding: var(--ig-space-3);
-  font-size: var(--ig-text-sm);
-  line-height: var(--ig-leading-relaxed);
-  color: var(--ig-muted);
-  user-select: text;
-}
-
-.ig-onb__legal-body:focus-visible {
-  outline: none;
-  border-color: var(--ig-accent);
-  box-shadow: 0 0 0 3px var(--ig-accent-soft);
-}
-
-.ig-onb__legal-title {
-  font-size: var(--ig-text-md);
-  font-weight: 600;
-  color: var(--ig-fg);
-  margin-bottom: var(--ig-space-2);
-}
-
-.ig-onb__legal-section + .ig-onb__legal-section {
-  margin-top: var(--ig-space-3);
-}
-
-.ig-onb__legal-heading {
-  font-size: var(--ig-text-sm);
-  font-weight: 600;
-  color: var(--ig-fg);
-  margin-bottom: var(--ig-space-1);
-}
-
-/* The consent control is the gate: give it more presence than a list row. */
-.ig-onb__consent {
-  gap: var(--ig-space-3);
-  padding: var(--ig-space-3);
-  background: var(--ig-accent-tint);
-  border: 1px solid var(--ig-border);
-  border-radius: var(--ig-radius-btn);
-  font-weight: 500;
-  cursor: pointer;
 }
 
 /* ── Settings › Access: permission tiles ── */
@@ -3933,87 +3501,3 @@ textarea.ig-input {
   margin: 0 0 var(--ig-space-2);
 }
 
-/* The privacy line sits leading while Start stays trailing. */
-.ig-onb__privacy {
-  margin-right: auto;
-}
-
-.ig-onb__legal-version {
-  margin-left: auto;
-}
-
-/* ── First-run card (composer, not a modal) ──────────────────────────────
-   Pinned above the Improvise zone until Improve has worked once. It reads as
-   a card rather than a banner because it holds a live control (the chips, or
-   the sandbox textarea), and the accent rim is what separates "still setting
-   up" from the composer's own surfaces underneath. */
-.ig-firstrun {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ig-space-3);
-  padding: var(--ig-space-4);
-  border-color: var(--ig-accent);
-  overflow: hidden; /* the exit animation collapses height */
-}
-
-/* Informational, not clickable — suppress .ig-glass-card's hover lift. */
-.ig-firstrun:hover {
-  transform: none;
-}
-
-.ig-firstrun__head {
-  display: flex;
-  align-items: center;
-  gap: var(--ig-space-2);
-}
-
-.ig-firstrun__close {
-  margin-left: auto;
-}
-
-.ig-firstrun__title {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--ig-space-2);
-  font-family: var(--ig-font-serif);
-  font-size: var(--ig-text-lg);
-  font-weight: 600;
-  line-height: var(--ig-leading-tight);
-}
-
-.ig-firstrun__chips {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--ig-space-2);
-}
-
-.ig-firstrun__chip {
-  justify-content: flex-start;
-  gap: var(--ig-space-2);
-}
-
-/* Skip is a real answer, so it stays a button — just a quieter one that never
-   competes with the four chips above it. */
-.ig-firstrun__skip {
-  align-self: flex-start;
-  background: none;
-  border-color: transparent;
-  color: var(--ig-muted);
-}
-
-.ig-firstrun__input {
-  resize: vertical;
-  line-height: var(--ig-leading-normal);
-}
-
-.ig-firstrun__result {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ig-space-2);
-}
-
-.ig-firstrun__result .ig-modal__preview {
-  max-height: 180px;
-  color: var(--ig-fg);
-}

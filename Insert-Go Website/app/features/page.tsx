@@ -8,14 +8,15 @@ import { LinearSend2 } from "@/components/icons/LinearSend2";
 import { LinearGlobal } from "@/components/icons/LinearGlobal";
 import { LinearShieldTick } from "@/components/icons/LinearShieldTick";
 import { Reveal } from "@/components/Reveal";
+import { FeatureAnimatedDemo } from "@/components/FeatureAnimatedDemo";
 import { PageHero, GlowBackdrop } from "@/components/PageHero";
 import { DownloadButton, GhostButton } from "@/components/Buttons";
 import { HOTKEYS } from "@/lib/constants/hotkeys";
 
 export const metadata: Metadata = {
-  title: "Features — AI Prompt Library & Inline Improve",
+  title: "Features — Prompt Library, Skill Bar & Auto-Insert",
   description:
-    "Save reusable prompt templates, run dynamic prompts with fill-in forms, and rewrite any focused field in place — global hotkey, OS-level insertion, managed AI with no API key setup.",
+    "Save reusable prompt templates, run dynamic prompts with fill-in forms, and transform selected text with the Skill Bar — global hotkey, OS-level insertion, managed AI with no API key setup.",
   alternates: { canonical: "/features" },
 };
 
@@ -25,16 +26,14 @@ const blocks = [
     tile: "var(--color-tile-sand)",
     kicker: "Global hotkey",
     title: "Summoned in a keystroke, gone in one more",
-    desc: `${HOTKEYS.primary.label} records the active Windows app, then opens InsertGo above it. Press Esc to close and return focus. Two more system-wide shortcuts rewrite the field you are typing in without opening the palette.`,
+    desc: `${HOTKEYS.primary.label} records the active Windows app, then opens InsertGo above it. Press Esc to close and InsertGo hands focus straight back to what you were doing.`,
     points: [
       "Customizable shortcut",
       "Focus restored on close",
       "Launches at startup",
-      `${HOTKEYS.improve.name} — ${HOTKEYS.improve.label}`,
-      `${HOTKEYS.undo.name} — ${HOTKEYS.undo.label}`,
     ],
     chip: HOTKEYS.primary.label,
-    demo: "waiting for your prompt…",
+    demoId: "hotkey",
     href: "/features/desktop-assistant",
   },
   {
@@ -45,18 +44,18 @@ const blocks = [
     desc: "Save the prompts you reach for every day, group them by category, and turn changing details into fill-in forms. Text fields, paragraphs, menus, toggles, and clipboard values expand before the AI call.",
     points: ["Categories", "Dynamic form commands", "Local prompt storage"],
     chip: "templates",
-    demo: "/rewrite-politely {clipboard}",
+    demoId: "templates",
     href: "/features/prompt-library",
   },
   {
     icon: LinearMouse,
     tile: "var(--color-tile-sky)",
-    kicker: "Selection actions",
-    title: "Act on the text already in front of you",
-    desc: "Highlight text to open a small contextual action surface. Refine, translate, summarize, or run another skill, review the result, then apply it back over the original selection.",
-    points: ["Contextual skill picker", "Review before apply", "No auto-submit"],
-    chip: "selection",
-    demo: "selected text → summarize → review",
+    kicker: "Skill Bar",
+    title: "A floating toolbar for the text in front of you",
+    desc: "Highlight text anywhere and the Skill Bar appears beside your selection — an in-situ floating toolbar of one-click prompt chips. Refine, translate, summarize, or run another skill, review the result, then apply it back over the original selection.",
+    points: ["Chips appear on selection", "Review before apply", "No auto-submit"],
+    chip: "skill bar",
+    demoId: "skillbar",
     href: "/features/auto-text-insert",
   },
   {
@@ -71,7 +70,7 @@ const blocks = [
       "Manual-paste fallback",
     ],
     chip: "auto-insert",
-    demo: "inserted into VS Code ✓",
+    demoId: "insert",
     href: "/features/auto-text-insert",
   },
   {
@@ -82,7 +81,7 @@ const blocks = [
     desc: "InsertGo runs at the Windows operating-system level, not as a plugin. If an application accepts Ctrl+V, it's compatible — browsers, editors, chat apps, email, terminals, all of it.",
     points: ["No plugins needed", "No per-app setup", "Windows 10 & 11"],
     chip: "os-level",
-    demo: "target: any focused window",
+    demoId: "os",
     href: "/features/desktop-assistant",
   },
   {
@@ -93,10 +92,10 @@ const blocks = [
     desc: "Prompt templates and settings live in local application data. The app holds no AI key — only your InsertGo session token, in the Windows credential store. Requests leave the device only when you explicitly run a prompt.",
     points: ["Local prompt storage", "No AI key on device", "Explicit AI calls"],
     chip: "private",
-    demo: "prompt library: local app data",
+    demoId: "privacy",
     href: "/faq",
   },
-];
+] as const;
 
 export default function FeaturesPage() {
   return (
@@ -165,14 +164,7 @@ export default function FeaturesPage() {
                       {b.chip}
                     </span>
                   </div>
-                  <div className="flex flex-col gap-[9px] p-3.5">
-                    <span className="text-xs leading-normal text-on-accent">
-                      {b.demo}
-                      <span className="ml-0.5 inline-block h-3 w-0.5 animate-blink bg-accent-hover align-[-1px]" />
-                    </span>
-                    <span className="h-2 w-[88%] rounded bg-dark-2" />
-                    <span className="h-2 w-[64%] rounded bg-dark-2" />
-                  </div>
+                  <FeatureAnimatedDemo demoId={b.demoId} />
                 </div>
               </div>
             </div>

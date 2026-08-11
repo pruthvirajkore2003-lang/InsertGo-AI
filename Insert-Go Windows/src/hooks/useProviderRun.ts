@@ -7,7 +7,7 @@
  * (stores are per-JS-context, i.e. per window).
  */
 import { useCallback, useEffect, useRef } from "react";
-import { resolveActiveProvider } from "@/services/lanes";
+import { resolveActiveProvider } from "@/services/aiProviders";
 import { usePromptStore } from "@/store/promptStore";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";

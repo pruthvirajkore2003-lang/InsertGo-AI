@@ -107,12 +107,10 @@ export function AuthPanel() {
               {/* Account actions only. The upgrade CTA lives in
                   MonetizationOnboarding — one authoritative Pro button on the
                   Profile tab, never a second one competing with it here. */}
-              <div className="ig-auth__actions">
-                <button className="ig-btn" onClick={() => void logout()}>
-                  <i className="fa-solid fa-right-from-bracket" aria-hidden="true" />
-                  Log Out
-                </button>
-              </div>
+              <button className="ig-btn" onClick={() => void logout()}>
+                <i className="fa-solid fa-right-from-bracket" aria-hidden="true" />
+                Log Out
+              </button>
             </motion.div>
           ) : browserPrompt ? (
             <motion.div
@@ -124,20 +122,23 @@ export function AuthPanel() {
               exit="exit"
             >
               <div className="ig-glass-card ig-auth-card">
-                <h3 className="ig-section-label ig-auth__label">
-                  Finish signing in
-                </h3>
-                <p
-                  className={
-                    browserPrompt.browserOpenFailed
-                      ? "ig-auth-card__lede ig-auth-card__lede--error"
-                      : "ig-auth-card__lede"
-                  }
-                >
-                  {browserPrompt.browserOpenFailed
-                    ? "We couldn't open your browser. Open this link manually to approve:"
-                    : "A browser window opened. Approve there and you'll land back here — nothing to type."}
-                </p>
+                <span className="ig-auth__tile" aria-hidden="true">
+                  <i className="fa-solid fa-arrow-up-right-from-square" />
+                </span>
+                <div className="ig-auth__cardhead">
+                  <h3 className="ig-auth__cardtitle">Finish signing in</h3>
+                  <p
+                    className={
+                      browserPrompt.browserOpenFailed
+                        ? "ig-auth-card__lede ig-auth-card__lede--error"
+                        : "ig-auth-card__lede"
+                    }
+                  >
+                    {browserPrompt.browserOpenFailed
+                      ? "We couldn't open your browser. Open this link manually to approve:"
+                      : "A browser window opened. Approve there and you'll land back here — nothing to type."}
+                  </p>
+                </div>
                 {/* Copyable URL — the manual fallback path. Read-only input so
                     the user can select/copy it (plain text isn't selectable
                     reliably), paired with a Copy button using the OS clipboard. */}
@@ -173,11 +174,17 @@ export function AuthPanel() {
               exit="exit"
             >
               <div className="ig-glass-card ig-auth-card">
-                <p className="ig-auth-card__lede">
-                  Sign in securely in your browser — with Google, your
-                  organization&apos;s SSO, or a one-time email code. No
-                  password needed.
-                </p>
+                <span className="ig-auth__tile" aria-hidden="true">
+                  <i className="fa-solid fa-shield-halved" />
+                </span>
+                <div className="ig-auth__cardhead">
+                  <h3 className="ig-auth__cardtitle">Welcome to InsertGo</h3>
+                  <p className="ig-auth-card__lede">
+                    Sign in securely in your browser — with Google, your
+                    organization&apos;s SSO, or a one-time email code. No
+                    password needed.
+                  </p>
+                </div>
                 <AnimatePresence initial={false}>
                   {error && (
                     <motion.div

@@ -10,7 +10,6 @@ Vault: C:\whole data\All data\InsertGo\. Read only notes matching task:
 | Task touches | Read |
 | --- | --- |
 | First work in this repo | InsertGo Hub.md, then Desktop App (Tauri).md |
-| Improve hotkey, capture/paste-back, skills.ts prompts | Inline Improve Pipeline.md |
 | AI calls, keys, lanes.ts/providers | Provider Lanes.md |
 | Sibling extension or cross-project behavior | Extension (MV3).md, Ecosystem & Conventions.md |
 
@@ -44,11 +43,10 @@ Vault: C:\whole data\All data\InsertGo\. Read only notes matching task:
 ## Architecture and control flow
 
 - src-tauri/src/platform: Windows integration, foreground focus, hotkeys, clipboard, selection, windows.
-- src-tauri/src/domain: settings, prompts, providers, session storage, logs, local model support.
+- src-tauri/src/domain: settings, prompts, providers, session storage, logs, device id.
 - src/components and src/hooks: React UI and orchestration.
 - src/store: Zustand state.
 - src/services: provider lanes, prompt hardening, auth/API clients, Tauri bridge.
-- Inline Improve: global hotkey captures focused field in Rust, frontend calls managed AI lane, Rust re-verifies target and replaces text, then restores clipboard.
 - Desktop auth: system browser uses Authorization Code + PKCE; insertgo:// callback returns code only; session token stays in OS credential storage.
 
 ## Commands

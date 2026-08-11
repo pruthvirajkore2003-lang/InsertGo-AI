@@ -1,15 +1,18 @@
 /**
- * Settings: theme, hotkeys, Inline Improve overrides, Provider Keys
- * (SPEC §5.2, §5.4, §5.6.3). Account lives in the Profile tab (§16.1).
+ * Settings: theme, hotkeys, selection bar, access (SPEC §5.2, §5.4).
+ * Account lives in the Profile tab (§16.1).
  * Options are grouped into internal tabs; inactive panels unmount
  * (conditional render) so TabPanel's framer-motion enter animation runs.
  */
 import { useEffect, useState, type ReactNode } from "react";
 import type { ThemePreference } from "@/types";
+import { DEFAULT_TRANSLATION_LANGUAGE } from "@/types";
 import { useSettingsStore } from "@/store/settingsStore";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { Tabs, TabPanel, type TabDef } from "@/components/ui/Tabs";
 import { PermissionsPanel } from "@/components/Permissions/PermissionsPanel";
+import { PrivacyIndicator } from "@/components/Monetization/PrivacyIndicator";
+import { openExternal } from "@/services/openExternal";
 
 const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "system", label: "system" },
@@ -23,23 +26,23 @@ const SCOPE_OPTIONS = [
 ];
 
 const SETTINGS_TABS: TabDef[] = [
-  { id: "theme", label: "Theme", icon: "fa-palette" },
+  { id: "theme", label: "General", icon: "fa-palette" },
   { id: "hotkeys", label: "Hotkeys", icon: "fa-keyboard" },
-  { id: "improve", label: "Inline Improve", icon: "fa-wand-magic-sparkles" },
   { id: "selection", label: "Selection Bar", icon: "fa-highlighter" },
-  // Was a mandatory onboarding step; lives here because "why isn't Improve
+  // Was a mandatory onboarding step; lives here because "why isn't the bar
   // doing anything in this app" is a question asked on day 30, not day 0.
   { id: "access", label: "Access", icon: "fa-universal-access" },
 ];
 
 /**
- * A chord is typed one character at a time, so persisting on every keystroke
- * writes half-finished chords: typing "Ctrl+Shift+Tab" stores "Ctrl+Shift"
- * along the way, and that's what registration reads at the next launch
- * ("invalid hotkey: Ctrl+Shift"). Edit locally, persist on blur or Enter —
- * the same pattern the app-list textareas below use.
+ * Text field that persists on blur or Enter rather than on every keystroke.
+ * A chord is typed one character at a time, so a per-keystroke save writes
+ * half-finished chords: typing "Ctrl+Shift+Tab" stores "Ctrl+Shift" along the
+ * way, and that's what registration reads at the next launch ("invalid hotkey:
+ * Ctrl+Shift"). Same reason applies to a typed language name. The app-list
+ * textareas below use the same pattern.
  */
-function HotkeyField({
+function CommitField({
   id,
   label,
   hint,
@@ -75,6 +78,44 @@ function HotkeyField({
         placeholder={placeholder}
       />
       <span className="ig-muted">{hint}</span>
+    </div>
+  );
+}
+
+/**
+ * R-15: the data-flow notice, shown where provider settings used to live.
+ *
+ * DPDP §5 wants the disclosure at the point of collection, and the point of
+ * collection is this app, not a web page read once at sign-up. It names the
+ * actual destination — our relay, then Google's Gemini API, outside India —
+ * because "hosted proxy" told a user nothing about where their text ends up.
+ *
+ * There is deliberately no provider picker beside it: BYOK is a decided
+ * non-feature (R-15, 2026-08-08), so this route is the only one that exists
+ * and the notice can state it flatly rather than conditionally.
+ */
+function DataFlowNotice() {
+  return (
+    <div className="ig-field">
+      <PrivacyIndicator providerLabel="Google Gemini" />
+      <span className="ig-muted" style={{ fontSize: 12 }}>
+        Every AI request runs through your InsertGo account: the text you invoke
+        InsertGo on is sent to our service and on to Google&apos;s Gemini API,
+        which is outside India. We record token counts, never the text. InsertGo
+        cannot be pointed at your own API key or at a model on your machine.{" "}
+        <a
+          className="ig-linkbtn"
+          href="https://insertgo.ai/privacy"
+          onClick={(e) => {
+            // System browser, never this webview (same rule as grounded-run
+            // citations in SkillComponentsFloater).
+            e.preventDefault();
+            void openExternal("https://insertgo.ai/privacy");
+          }}
+        >
+          Read the privacy policy
+        </a>
+      </span>
     </div>
   );
 }
@@ -137,12 +178,25 @@ export function SettingsPanel() {
               onChange={(v) => void update({ theme: v as ThemePreference })}
             />
           </div>
+
+          <CommitField
+            id="defaultTranslationLanguage"
+            label="Default translation target"
+            value={settings.defaultTranslationLanguage}
+            onCommit={(v) =>
+              void update({
+                defaultTranslationLanguage: v || DEFAULT_TRANSLATION_LANGUAGE,
+              })
+            }
+            placeholder={DEFAULT_TRANSLATION_LANGUAGE}
+            hint="Where “Translate This” sends English text that doesn't name a target of its own. Any language name works. Starting the text with “Target language: X” still overrides this."
+          />
         </TabPanel>
       )}
 
       {activeTab === "hotkeys" && (
         <TabPanel id="hotkeys" idBase="settings">
-          <HotkeyField
+          <CommitField
             id="hotkey"
             label="Global hotkey"
             value={settings.hotkey}
@@ -150,42 +204,6 @@ export function SettingsPanel() {
             placeholder="Ctrl+`"
             hint="Takes effect after restart in v1. Format: Ctrl+` (the backquote/~ key under Esc). Ctrl+Tab and Ctrl+Shift+Tab are reserved by Windows and can't be used."
           />
-
-          <HotkeyField
-            id="improveHotkey"
-            label="Improve hotkey"
-            value={settings.improveHotkey}
-            onCommit={(v) => void update({ improveHotkey: v })}
-            placeholder="Ctrl+Alt+Enter"
-            hint="Rewrites the focused field in place. Takes effect after restart."
-          />
-
-          <HotkeyField
-            id="improveUndoHotkey"
-            label="Improve undo hotkey"
-            value={settings.improveUndoHotkey}
-            onCommit={(v) => void update({ improveUndoHotkey: v })}
-            placeholder="Ctrl+Alt+Z"
-            hint="Restores the pre-improve text. Takes effect after restart."
-          />
-        </TabPanel>
-      )}
-
-      {activeTab === "improve" && (
-        <TabPanel id="improve" idBase="settings">
-          <div className="ig-field">
-            <label htmlFor="improveModel">Improve model override</label>
-            <input
-              id="improveModel"
-              className="ig-input"
-              value={settings.improveModel}
-              onChange={(e) => void update({ improveModel: e.target.value })}
-              placeholder="(lane's fastest model)"
-            />
-            <span className="ig-muted">
-              Leave blank to use the active lane's fastest model.
-            </span>
-          </div>
         </TabPanel>
       )}
 
@@ -266,12 +284,7 @@ export function SettingsPanel() {
         </TabPanel>
       )}
 
-      <div className="ig-field">
-        <span className="ig-muted" style={{ fontSize: 12 }}>
-          Active provider: <strong>InsertGo Proxy (hosted)</strong>. Requests
-          run through your InsertGo account.
-        </span>
-      </div>
+      <DataFlowNotice />
     </div>
   );
 }

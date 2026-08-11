@@ -1,5 +1,6 @@
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import * as bridge from "@/services/tauriBridge";
+import { API_URL } from "@/services/apiConfig";
 import { getFreshToken } from "@/store/authStore";
 
 /**
@@ -18,6 +19,18 @@ import { getFreshToken } from "@/store/authStore";
  */
 const SIGNED_OUT_PATHS = ["/api/auth/", "/api/desktop/"];
 
+/** Exempt only when the request's PATH starts with one of the namespaces above.
+ *  A substring test over the whole URL matched a query string or a host that
+ *  merely contained the text, which is the wrong shape of check for a gate. */
+function isSignedOutPath(url: string): boolean {
+  try {
+    const { pathname } = new URL(url, API_URL);
+    return SIGNED_OUT_PATHS.some((p) => pathname.startsWith(p));
+  } catch {
+    return false; // unparseable target: gate it
+  }
+}
+
 export const http: typeof globalThis.fetch = async (input, init) => {
   const url =
     typeof input === "string"
@@ -25,10 +38,7 @@ export const http: typeof globalThis.fetch = async (input, init) => {
       : input instanceof URL
         ? input.href
         : input.url;
-  if (
-    !SIGNED_OUT_PATHS.some((p) => url.includes(p)) &&
-    !(await getFreshToken())
-  ) {
+  if (!isSignedOutPath(url) && !(await getFreshToken())) {
     return new Response(null, { status: 401, statusText: "Unauthorized" });
   }
   return bridge.isTauri()

@@ -1,4 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "//crons": "R-03: CERT-In Direction 2 runs 6 hours from NOTICING, so something has to look. Every 5 minutes is immaterial against that deadline and needs no new service. Vercel sends `Authorization: Bearer $CRON_SECRET` when that env var is set; the route fails closed without it. REQUIRES a plan with minute-level crons — Hobby coerces every expression to once a day, which turns a 6-hour obligation into a ~24-hour one.",
+  "crons": [
+    {
+      "path": "/api/internal/detect",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

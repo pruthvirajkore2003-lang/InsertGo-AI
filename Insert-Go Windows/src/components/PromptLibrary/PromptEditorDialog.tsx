@@ -44,7 +44,13 @@ export function PromptEditorDialog({
 
   return (
     <div className="ig-modal" onClick={onCancel}>
-      <div className="ig-modal__card" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="ig-modal__card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Save prompt"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="ig-modal__title">Save prompt</div>
 
         <div className="ig-field">

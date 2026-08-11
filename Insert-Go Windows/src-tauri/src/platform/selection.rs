@@ -51,28 +51,14 @@ pub struct SelectionRead {
     pub source_hwnd: isize,
 }
 
-/// Whole-field snapshot for Inline Improve (SPEC §4.4/§5.6.1): the ENTIRE
-/// content of the focused text control, not just the selected range.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FieldRead {
-    /// Full field text. Empty when `is_password` — password fields are never
-    /// captured (SPEC §4.4 guard).
-    pub text: String,
-    /// Raw HWND of the owning (foreground) window (`HWND: !Send` convention).
-    pub source_hwnd: isize,
-    /// UIA `IsPassword` on the focused element: the caller must refuse to
-    /// improve/replace and surface a toast instead.
-    pub is_password: bool,
-}
-
 #[cfg(target_os = "windows")]
 mod imp {
-    use super::{FieldRead, ScreenRect, SelectionRead};
+    use super::{ScreenRect, SelectionRead};
     use crate::platform::foreground;
-    use crate::platform::text_provider::{fallback, CaptureScope, WinFallbackOps};
+    use crate::platform::text_provider::{fallback, WinFallbackOps};
     use std::cell::RefCell;
     use tauri::AppHandle;
-    use uiautomation::patterns::{UITextPattern, UIValuePattern};
+    use uiautomation::patterns::UITextPattern;
     use uiautomation::UIAutomation;
     use windows::Win32::System::Ole::{SafeArrayDestroy, SafeArrayGetElement, SafeArrayGetUBound};
     use windows::Win32::UI::Accessibility::IUIAutomationTextRange;
@@ -154,138 +140,6 @@ mod imp {
             rect: None,
             source_hwnd,
         })
-    }
-
-    /// Read the ENTIRE content of the focused text control (Inline Improve
-    /// capture, SPEC §5.6.1).
-    ///
-    /// Primary: UIA `ValuePattern.get_value()` on the focused element — the
-    /// whole field, non-destructive, instant (the documented UIA way to read
-    /// a text box's content). The `IsPassword` property is read first; a
-    /// password/PIN field returns immediately with `is_password: true` and
-    /// NO text, so secrets never enter process memory.
-    ///
-    /// Fallback (Chromium/web composers such as Claude.ai's ProseMirror,
-    /// where the UIA value is unreliable): synthetic `Ctrl+A` + `Ctrl+C`,
-    /// read the clipboard, restore it — the same cache/restore machinery as
-    /// [`clipboard_selection`]. It runs ONLY once UIA has reached the focused
-    /// element and confirmed it is not a password (`IsPassword == false`); if
-    /// UIA can't identify the element at all, the read fails closed (`None`)
-    /// rather than blind-copying a possible credential. Gated additionally by
-    /// `allow_clipboard_fallback` for the
-    /// same reason as `read_selection`: stray chords must only fire on an
-    /// explicit user gesture (the Improve hotkey). The field is left with an
-    /// active select-all after this path; the subsequent replace re-selects
-    /// anyway, and abort paths only occur when the field held nothing worth
-    /// keeping selected.
-    pub fn read_focused_value(
-        app: &AppHandle,
-        allow_clipboard_fallback: bool,
-    ) -> Option<FieldRead> {
-        let source_hwnd = foreground::capture()?;
-
-        match uia_focused_value() {
-            UiaFieldRead::Password => {
-                return Some(FieldRead {
-                    text: String::new(),
-                    source_hwnd,
-                    is_password: true,
-                });
-            }
-            UiaFieldRead::Value(text) => {
-                return Some(FieldRead {
-                    text,
-                    source_hwnd,
-                    is_password: false,
-                });
-            }
-            // Focused element reached and confirmed non-password, but no UIA
-            // value (Chromium a11y not yet materialized) — fall through to the
-            // synthetic-copy fallback below.
-            UiaFieldRead::NoValue => {}
-            // UIA never identified the focused element, so a password field
-            // can't be ruled out. Fail closed rather than blind-copy it: the
-            // caller surfaces "couldn't read the field" and the user retries
-            // (the a11y tree usually materializes on a second attempt). This
-            // is the SPEC §4.4 credential guard extended to the fallback path.
-            UiaFieldRead::Uncertain => return None,
-        }
-        if !allow_clipboard_fallback {
-            return None;
-        }
-        clipboard_field(app).map(|text| FieldRead {
-            text,
-            source_hwnd,
-            is_password: false,
-        })
-    }
-
-    /// Outcome of the UIA whole-field read. "UIA can't say" is split in two so
-    /// the credential guard also covers the clipboard fallback:
-    /// - `NoValue`: the focused element was reached and its `IsPassword` read
-    ///   as `false` (confirmed NOT a password), but it exposed no value —
-    ///   safe to fall back to a synthetic-copy read.
-    /// - `Uncertain`: UIA never identified the focused element, so its
-    ///   password state is unknown. A synthetic `Ctrl+A`+`Ctrl+C` there could
-    ///   copy a password field's contents, so the caller fails closed instead
-    ///   of capturing blind.
-    enum UiaFieldRead {
-        Password,
-        Value(String),
-        NoValue,
-        Uncertain,
-    }
-
-    /// UIA path: focused element → `IsPassword` guard → ValuePattern value.
-    /// Only the *focused element* is read — never the app's wider
-    /// accessibility tree (SPEC §10 privacy scope).
-    fn uia_focused_value() -> UiaFieldRead {
-        AUTOMATION.with(|slot| {
-            let mut slot = slot.borrow_mut();
-            if slot.is_none() {
-                *slot = UIAutomation::new()
-                    .or_else(|_| UIAutomation::new_direct())
-                    .ok();
-            }
-            let Some(automation) = slot.as_ref() else {
-                return UiaFieldRead::Uncertain;
-            };
-            let Ok(element) = automation.get_focused_element() else {
-                return UiaFieldRead::Uncertain;
-            };
-            // Fail CLOSED: the guard's whole job is that secrets never enter
-            // process memory, so an *errored* IsPassword query is treated as a
-            // password field (refuse), never as "safe to read". `unwrap_or(false)`
-            // would leak the field's plaintext to the AI provider whenever the
-            // COM property read hiccups. A rare false refusal (a benign field
-            // flagged, user retries) is the correct trade for never exfiltrating
-            // a credential. Note this only refuses when a focused element exists
-            // but its IsPassword read fails; a fully unavailable UIA tree is
-            // caught above and still reaches the Chromium clipboard fallback.
-            match element.is_password() {
-                Ok(true) | Err(_) => return UiaFieldRead::Password,
-                Ok(false) => {}
-            }
-            let value = element
-                .get_pattern::<UIValuePattern>()
-                .and_then(|p| p.get_value());
-            match value {
-                // An empty UIA value on Chromium usually means the a11y tree
-                // never materialized, not an empty field — let the clipboard
-                // fallback decide. A truly empty field yields nothing there
-                // too, so the caller's empty-guard still fires. `IsPassword`
-                // already read `false` above, so `NoValue` (not `Uncertain`)
-                // permits that fallback.
-                Ok(text) if !text.trim().is_empty() => UiaFieldRead::Value(text),
-                _ => UiaFieldRead::NoValue,
-            }
-        })
-    }
-
-    /// Clipboard fallback for the whole field: the shared cache → `Ctrl+A` +
-    /// `Ctrl+C` → read → restore lifecycle in `text_provider::fallback`.
-    fn clipboard_field(app: &AppHandle) -> Option<String> {
-        fallback::capture_text(app, &WinFallbackOps::new(false), CaptureScope::WholeField)
     }
 
     /// UIA path: focused element → TextPattern → first selected range.
@@ -479,11 +333,7 @@ mod imp {
     /// restore lifecycle in `text_provider::fallback`. Returns `None` when
     /// nothing landed (no selection, or the target blocked the copy).
     fn clipboard_selection(app: &AppHandle, terminal: bool) -> Option<String> {
-        fallback::capture_text(
-            app,
-            &WinFallbackOps::new(terminal),
-            CaptureScope::Selection,
-        )
+        fallback::capture_text(app, &WinFallbackOps::new(terminal))
     }
 }
 
@@ -491,7 +341,7 @@ mod imp {
 /// installs, the bar never shows.
 #[cfg(not(target_os = "windows"))]
 mod imp {
-    use super::{FieldRead, SelectionRead};
+    use super::SelectionRead;
     use tauri::AppHandle;
 
     pub fn read_selection(
@@ -501,14 +351,6 @@ mod imp {
     ) -> Option<SelectionRead> {
         None
     }
-
-    pub fn read_focused_value(
-        _app: &AppHandle,
-        _allow_clipboard_fallback: bool,
-    ) -> Option<FieldRead> {
-        None
-    }
-
 }
 
-pub use imp::{read_focused_value, read_selection};
+pub use imp::read_selection;

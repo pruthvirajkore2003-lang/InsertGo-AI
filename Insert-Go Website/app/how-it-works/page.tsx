@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { LinearKeyboard } from "@/components/icons/LinearKeyboard";
-import { LinearMicrophone2 } from "@/components/icons/LinearMicrophone2";
+import { LinearFlash } from "@/components/icons/LinearFlash";
+import { LinearMessageText } from "@/components/icons/LinearMessageText";
 import { LinearMagicStar } from "@/components/icons/LinearMagicStar";
 import { LinearSend2 } from "@/components/icons/LinearSend2";
 import { LinearCpu } from "@/components/icons/LinearCpu";
 import { LinearMouse } from "@/components/icons/LinearMouse";
 import { LinearCopy } from "@/components/icons/LinearCopy";
 import { Reveal } from "@/components/Reveal";
+import { AnimatedDemo } from "@/components/AnimatedDemo";
 import { PageHero, GlowBackdrop } from "@/components/PageHero";
 import { DownloadButton, GhostButton } from "@/components/Buttons";
 import { HOTKEYS } from "@/lib/constants/hotkeys";
@@ -26,16 +28,14 @@ const steps = [
     line: true,
     title: "Press the global hotkey",
     desc: `Wherever you are — drafting an email, deep in code, mid-chat — press ${HOTKEYS.primary.label} (the backquote/~ key under Esc). InsertGo's floating window appears above everything, and the app underneath keeps its state.`,
-    demo: `${HOTKEYS.primary.label}  →  overlay appears in 40 ms`,
   },
   {
     num: "02",
-    icon: LinearMicrophone2,
+    icon: LinearFlash,
     tile: "var(--color-tile-sky)",
     line: true,
-    title: "Compose, pick, or speak your prompt",
-    desc: "Type freely, run a saved template on your selected text, or hold the mic key and dictate. InsertGo captures your current selection automatically so the AI has context.",
-    demo: '"make this reply shorter and friendlier"',
+    title: "Type a prompt — or just select text",
+    desc: "Type freely in the palette or fire a saved template. Or skip the palette entirely: select text in any app and the Skill Bar floats up beside your selection with one-click transformation chips — Refine, Fix grammar, Shorten. Either way your selection is captured automatically, so the AI has context.",
   },
   {
     num: "03",
@@ -44,7 +44,6 @@ const steps = [
     line: true,
     title: "The AI generates your response",
     desc: "Your prompt goes straight to the managed InsertGo relay. You watch the response stream into the overlay — edit it, regenerate, or accept as-is.",
-    demo: "streaming…  ▍  1.2 s average response",
   },
   {
     num: "04",
@@ -53,9 +52,8 @@ const steps = [
     line: false,
     title: "It's inserted. You're already back.",
     desc: "Press Enter and the text is injected at your cursor in the app that was in focus — Word, Slack, VS Code, anywhere. The overlay closes itself. No copy, no paste, no window juggling.",
-    demo: "inserted into Slack ✓  overlay closed",
   },
-];
+] as const;
 
 const tech = [
   {
@@ -75,6 +73,12 @@ const tech = [
     tile: "var(--color-tile-mist)",
     title: "Palette-free rewriting",
     desc: `${HOTKEYS.improve.name} — ${HOTKEYS.improve.label} — rewrites the text field you are already typing in, without opening the palette. ${HOTKEYS.undo.name} — ${HOTKEYS.undo.label} — puts the original draft back.`,
+  },
+  {
+    icon: LinearMessageText,
+    tile: "var(--color-tile-sky)",
+    title: "Skill Bar on selection",
+    desc: "Highlight text in any app and a small floating toolbar appears beside the selection. One click on a chip — Refine, Fix grammar, Shorten, or your own saved skills — transforms the text right where it sits.",
   },
   {
     icon: LinearCopy,
@@ -122,13 +126,8 @@ export default function HowItWorksPage() {
                 <p className="mt-3 mb-0 max-w-[560px] text-base leading-[1.65] text-muted">
                   {s.desc}
                 </p>
-                <div className="glass-floating mt-5 flex max-w-[560px] items-center gap-3 rounded-lg px-[18px] py-4">
-                  <span className="flex shrink-0 text-accent-hover">
-                    <LinearMagicStar size={15} />
-                  </span>
-                  <span className="text-[13px] leading-normal text-on-accent">
-                    {s.demo}
-                  </span>
+                <div className="glass-floating mt-5 max-w-[560px] rounded-lg px-[18px] py-4">
+                  <AnimatedDemo stepNum={s.num} />
                 </div>
               </div>
             </div>

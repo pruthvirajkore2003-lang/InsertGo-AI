@@ -152,8 +152,19 @@ create index if not exists "creditLedger_userId_idx" on "creditLedger" ("userId"
 -- Better Auth (and the app's own pool in lib/db.ts) talk to these tables
 -- directly via the DATABASE_URL role. Lock them away from Supabase's
 -- anon/authenticated PostgREST roles:
+-- `service_role` is in this list as of 2026-08-08. It is not a PostgREST client
+-- role like anon/authenticated — it is the key in the Vercel environment, and
+-- therefore the one most likely to leak — and Supabase's default privileges had
+-- silently granted it ALL on every table here, including TRUNCATE on
+-- "creditLedger" (books of account) and on the audit log.
+--
+-- Nothing needs it: the ONLY PostgREST call in the codebase is
+-- `/rest/v1/rpc/${fn}` (lib/db.ts:102), so every Edge operation is a
+-- `security definer` function running as its owner, and Better Auth plus the
+-- Node routes connect as the table OWNER over DATABASE_URL. Verified by grep:
+-- there is no /rest/v1/<table> access anywhere in the app.
 revoke all on "user", "session", "account", "verification", "ssoProvider", "apiUsage", "creditLedger"
-  from anon, authenticated;
+  from anon, authenticated, service_role;
 
 -- Second layer, because the revoke above is an ENUMERATED denylist on a platform
 -- that grants by default: Supabase ships
@@ -176,4 +187,19 @@ alter table "apiUsage"     enable row level security;
 alter table "creditLedger" enable row level security;
 
 -- Make deny-by-default the standing rule for tables that do not exist yet.
-alter default privileges in schema public revoke all on tables from anon, authenticated;
+-- `service_role` included for the reason given above — without it, every table
+-- a later file creates ("auditLog", "consentRecord", "dsrRequest") is born with
+-- full DML and TRUNCATE for the leakiest credential in the system, and a
+-- `grant select` in that file does not take it back because GRANT is additive.
+alter default privileges in schema public revoke all on tables from anon, authenticated, service_role;
+
+-- The same rule for FUNCTIONS, which was missing until 2026-08-08 and is how
+-- every `security definer` function in supabase-audit-log.sql and
+-- supabase-consent-dsr.sql ended up anon-callable over /rest/v1/rpc despite
+-- both files carrying a revoke that was meant to prevent exactly that. Supabase
+-- ships `alter default privileges in schema public grant all on functions to
+-- postgres, anon, authenticated, service_role`, so a new function is
+-- world-callable the moment it is created; a per-function revoke only helps if
+-- someone remembers to write it, and it must name anon and authenticated
+-- explicitly because their grant is DIRECT, not inherited from PUBLIC.
+alter default privileges in schema public revoke execute on functions from anon, authenticated;

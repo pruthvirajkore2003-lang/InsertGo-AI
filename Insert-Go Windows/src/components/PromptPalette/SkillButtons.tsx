@@ -48,6 +48,9 @@ export function SkillButtons({ onRun }: Props) {
   const activeProvider = useSettingsStore((s) => s.activeProvider);
   const enabledSkillIds = useSettingsStore((s) => s.settings.enabledSkillIds);
   const customSkills = useSettingsStore((s) => s.settings.customSkills);
+  const targetLanguage = useSettingsStore(
+    (s) => s.settings.defaultTranslationLanguage
+  );
 
   // New array refs from `update()` on every change → this recomputes and the
   // bar re-renders. Stale/missing ids are filtered inside getActiveSkills.
@@ -60,7 +63,9 @@ export function SkillButtons({ onRun }: Props) {
 
   const onSkill = useCallback(
     (skill: Skill) => {
-      const composed = composeSkillPrompt(skill.template, body);
+      const composed = composeSkillPrompt(skill.template, body, {
+        targetLanguage,
+      });
       if (!activeProvider()) {
         setBody(composed);
         toast.info(
@@ -89,7 +94,7 @@ export function SkillButtons({ onRun }: Props) {
         resolveSkillGrounding(skill)
       );
     },
-    [body, activeProvider, setBody, setActiveSkill, onRun]
+    [body, targetLanguage, activeProvider, setBody, setActiveSkill, onRun]
   );
 
   // No wrapper/label: the ribbon renders directly inside the Improvise zone,

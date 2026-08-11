@@ -2,7 +2,8 @@
  * Open an external URL in the system browser. Uses Tauri's opener plugin inside
  * the app shell (subject to the `opener:allow-open-url` scope in
  * capabilities/default.json) and `window.open` during plain browser dev.
- * Used for the "Get your API key" provider links on the Provider Keys page.
+ * Used for billing checkout, the account pages and the privacy-policy link in
+ * Settings.
  */
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { isTauri } from "./tauriBridge";

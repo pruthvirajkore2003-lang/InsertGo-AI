@@ -53,6 +53,22 @@ export function dodoProductId(item: CheckoutItem): string | null {
   return process.env[`DODO_PRODUCT_ID_PACK_${item.credits}`] ?? null;
 }
 
+/**
+ * Reverse of `dodoProductId`: the tier a Dodo product id implies, or null when
+ * it matches neither configured plan (unconfigured env included — an empty
+ * `DODO_PRODUCT_ID_*` must never match an empty/absent payload field).
+ *
+ * This is the ONLY tier source that stays correct across a plan change. The
+ * `planTier` in checkout metadata is stamped once, at the original checkout, so
+ * a portal upgrade or downgrade carries the OLD tier forever.
+ */
+export function tierForProductId(id: unknown): PaidTier | null {
+  if (typeof id !== "string" || !id) return null;
+  if (id === process.env.DODO_PRODUCT_ID_PRO) return "pro";
+  if (id === process.env.DODO_PRODUCT_ID_PLUS) return "plus";
+  return null;
+}
+
 // ── Checkout ───────────────────────────────────────────────────────────────
 
 export function dodoApiBase(): string {
@@ -194,6 +210,10 @@ export type DodoWebhookPayload = {
   data?: {
     metadata?: Record<string, unknown> | null;
     customer?: { email?: string | null } | null;
+    /** Subscription events carry the CURRENT product; payment events carry the
+     *  cart. Either one is the live plan, unlike `metadata.planTier`. */
+    product_id?: string | null;
+    product_cart?: Array<{ product_id?: string | null } | null> | null;
   } | null;
 };
 
@@ -219,11 +239,17 @@ export function eventTimestampSeconds(
 
 /**
  * Map a Dodo subscription event to the tier it implies, or null for events
- * this app doesn't act on. Activation events read the `planTier` planted in
- * checkout metadata; a subscription created outside this app's checkout has
- * none, so it defaults to the entry paid tier (least paid privilege) rather
- * than pro. Termination events always land on free. Kept tiny and total so
- * the webhook route stays a thin shell.
+ * this app doesn't act on.
+ *
+ * Activation events resolve the tier from the event's own PRODUCT ID first.
+ * `metadata.planTier` is only the fallback because it is planted once, at the
+ * original checkout, and never rewritten: reading it on
+ * `subscription.plan_changed` under-grants every portal upgrade (plus→pro keeps
+ * "plus") and over-grants every downgrade (pro→plus keeps "pro", which is paid
+ * entitlement given away). A subscription created outside this app's checkout
+ * has neither, so it defaults to the entry paid tier (least paid privilege)
+ * rather than pro. Termination events always land on free. Kept tiny and total
+ * so the webhook route stays a thin shell.
  */
 export function tierForSubscriptionEvent(
   eventType: string,
@@ -233,6 +259,10 @@ export function tierForSubscriptionEvent(
     case "subscription.active":
     case "subscription.renewed":
     case "subscription.plan_changed": {
+      const byProduct =
+        tierForProductId(payload.data?.product_id) ??
+        tierForProductId(payload.data?.product_cart?.[0]?.product_id);
+      if (byProduct) return byProduct;
       const t = payload.data?.metadata?.planTier;
       return t === "pro" ? "pro" : "plus";
     }
@@ -258,6 +288,32 @@ export function packCreditsForEvent(
   if (eventType !== "payment.succeeded") return null;
   const raw = payload.data?.metadata?.packCredits;
   const credits = Number(raw);
+  return CREDIT_PACKS.some((p) => p.credits === credits) ? credits : null;
+}
+
+/**
+ * Events that undo a pack purchase. Pack credits never expire, so without a
+ * reversal a refunded or charged-back purchase leaves the credits granted
+ * forever — the one place in this integration where money can move backwards
+ * and entitlement doesn't.
+ *
+ * Isolated as a constant because these strings are the part of the Dodo
+ * catalogue this code can't verify from here: confirm them against the
+ * dashboard's webhook event list before going live.
+ */
+const REVERSAL_EVENTS = ["refund.succeeded", "dispute.lost"] as const;
+
+/**
+ * Credits to CLAW BACK for a refund/chargeback of a pack purchase, or null when
+ * the event isn't one. Mirrors `packCreditsForEvent` exactly, including the
+ * CREDIT_PACKS validation — a forged or mistyped `packCredits` reverses nothing.
+ */
+export function packCreditsReversedForEvent(
+  eventType: string,
+  payload: DodoWebhookPayload,
+): number | null {
+  if (!(REVERSAL_EVENTS as readonly string[]).includes(eventType)) return null;
+  const credits = Number(payload.data?.metadata?.packCredits);
   return CREDIT_PACKS.some((p) => p.credits === credits) ? credits : null;
 }
 

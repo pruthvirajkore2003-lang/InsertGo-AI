@@ -408,8 +408,8 @@ pub fn bar_position(anchor: ScreenRect, bar_w: i32, bar_h: i32, work: ScreenRect
     bounds::clamp_to_work(x, y, bar_w, bar_h, work)
 }
 
-// pub(crate): the Improve progress chip (platform::improve) reuses these
-// no-activate show/position helpers instead of duplicating the unsafe.
+// pub(crate): platform::bounds reuses these no-activate show/position
+// helpers instead of duplicating the unsafe.
 #[cfg(target_os = "windows")]
 pub(crate) mod imp {
     use super::ScreenRect;

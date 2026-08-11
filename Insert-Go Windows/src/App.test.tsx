@@ -4,11 +4,9 @@ import { DEFAULT_SETTINGS } from "@/types";
 
 // Keep the always-mounted Tauri listeners inert in jsdom.
 vi.mock("@/hooks/useHotkey", () => ({ useHotkey: () => {} }));
-vi.mock("@/hooks/useInlineImprove", () => ({ useInlineImprove: () => {} }));
 vi.mock("@/services/tauriBridge", () => ({
   isTauri: () => false,
   loadSettings: vi.fn().mockRejectedValue(new Error("no tauri in tests")),
-  loadProviders: vi.fn().mockRejectedValue(new Error("no tauri in tests")),
   saveSettings: vi.fn((s) => Promise.resolve(s)),
   sessionTokenGet: vi.fn().mockResolvedValue(null),
   sessionTokenSet: vi.fn().mockResolvedValue(undefined),

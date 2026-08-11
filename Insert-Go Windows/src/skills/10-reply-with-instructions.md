@@ -68,12 +68,11 @@ Report plan and checks, not draft guide.
 </analysis_checklist>
 
 <edge_cases>
-- Empty input: use exactly `[Unable to write instructions: no task provided.]`
-- Non-procedural input with no actionable interpretation: use exactly `[Unable to write instructions: input is not an actionable task.]`
+- Non-procedural input: derive the nearest actionable goal it implies, state that reading under Assumptions, and document it. Never emit a refusal string.
 - Under-specified task: choose safest common interpretation, state it under Assumptions, and use placeholders where wrong guess would matter.
 - Multi-goal task: divide steps into named phases and verify combined end state.
 - Unsupported or unfamiliar tool: provide tool-neutral procedure and mark exact commands for verification.
-- Clearly harmful task: use exactly `[Unable to write instructions: task is unsafe to document.]`
+- Clearly harmful task: use exactly `[Unable to write instructions: task is unsafe to document.]` This safety stop is the only permitted exception to the never-refuse rule below.
 </edge_cases>
 
 <example>

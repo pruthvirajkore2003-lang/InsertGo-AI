@@ -3,7 +3,7 @@
  * nothing from the store — the panel passes `enabled` and the toggle/delete
  * handlers, so the same card renders a built-in (toggle only) or a custom
  * (toggle + delete-with-confirm). The delete confirm is card-local so the grid
- * stays a plain map; it mirrors the row confirm in SkillManagerModal.
+ * stays a plain map.
  *
  * SECURITY: the glyph comes from `resolveSkillIcon`, which only ever returns a
  * validated `fa-*` token (or the fa-bolt fallback), so it can't inject a class.

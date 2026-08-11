@@ -54,11 +54,13 @@ import {
 import { getEdgeSession, type EdgeSession } from "@/lib/edgeSession";
 import { consumeQuota, debitCredit } from "@/lib/usageLimit";
 import { isPermanentDbFailure } from "@/lib/db";
+import { audit } from "@/lib/auditLog";
 import { BodyTooLargeError, readBodyCapped } from "@/lib/httpBody";
 import {
   RESEARCH_CLAUSE,
   composeResearchTopic,
   generateGrounded,
+  isAllowedModel,
   resolveGroundingModel,
   sseLineFromChunk,
   sseLineFromGrounding,
@@ -109,12 +111,28 @@ function denied(d: Denied): Response {
  *
  * Privacy (SPEC §10): the error message only — never prompt/response bodies.
  */
-function meteringFailure(stage: string, e: unknown): Response {
+function meteringFailure(
+  stage: string,
+  e: unknown,
+  req: Request,
+  userId: string
+): Response {
   console.error(
     `[ai/generate] ${stage} failed:`,
     e instanceof Error ? e.message : String(e)
   );
-  return isPermanentDbFailure(e)
+  const permanent = isPermanentDbFailure(e);
+  // Durable copy (CERT-In Direction 4): the console line above ages out in days
+  // on this plan, and `db.permanent_failure` is what the R-03 burst rule in
+  // supabase-audit-log.sql watches for. Stage/enum only — never bodies.
+  audit(permanent ? "db.permanent_failure" : "ai.metering_failure", {
+    outcome: "failure",
+    severity: permanent ? "critical" : "warn",
+    req,
+    userId,
+    detail: { stage },
+  });
+  return permanent
     ? errorResponse(
         500,
         "The generation service is misconfigured on our side — this is not " +
@@ -155,6 +173,13 @@ export async function POST(req: Request): Promise<Response> {
   if (!prompt.trim() || !model.trim()) {
     return errorResponse(400, "prompt and model are required.");
   }
+  // Cost gate, not an input check: the quotas below bound request COUNT while
+  // the debit is a flat credit, so an unpinned `model` lets any signed-in caller
+  // bill a premium model at flash-lite prices. Rejected before metering, like
+  // every other malformed request (step 3).
+  if (!isAllowedModel(model)) {
+    return errorResponse(400, "That model isn't available on this service.");
+  }
   const denySize = requirePayloadWithinLimit({ prompt, system });
   if (denySize) return denied(denySize);
 
@@ -170,16 +195,35 @@ export async function POST(req: Request): Promise<Response> {
   try {
     const burst = await consumeQuota(userId, "generate:burst", BURST_MAX, 60);
     const denyBurst = requireWithinQuota(burst);
-    if (denyBurst) return denied(denyBurst);
+    if (denyBurst) {
+      // Durable record: one 429 is a user typing fast, a burst of them across
+      // accounts is the shape of shared-key abuse (CERT-In Annexure I, "attacks
+      // on applications"). Counts and enums only — never bodies.
+      audit("ai.quota_denied", {
+        outcome: "denied",
+        req,
+        userId,
+        detail: { window: "burst", limit: BURST_MAX, count: burst.count },
+      });
+      return denied(denyBurst);
+    }
     const daily = await consumeQuota(userId, "generate:day", DAILY_MAX, 86_400);
     const denyDaily = requireWithinQuota(daily);
-    if (denyDaily) return denied(denyDaily);
+    if (denyDaily) {
+      audit("ai.quota_denied", {
+        outcome: "denied",
+        req,
+        userId,
+        detail: { window: "day", limit: DAILY_MAX, count: daily.count },
+      });
+      return denied(denyDaily);
+    }
   } catch (e) {
     // Fail closed: a DB blip must not reopen the unmetered hole. NOTE the
     // session lookup does NOT prove the DB is reachable from here — it goes to
     // Better Auth over HTTP (lib/edgeSession.ts), while this path is PostgREST.
     // A server missing SUPABASE_* therefore authenticates fine and dies here.
-    return meteringFailure("quota gate", e);
+    return meteringFailure("quota gate", e, req, userId);
   }
 
   // 3.5 Debit one credit BEFORE any Gemini call (cache hits included — a
@@ -237,13 +281,24 @@ export async function POST(req: Request): Promise<Response> {
       console.warn(
         `[ai/generate] replay refused user=${userId} replays=${debit.replays} age=${debit.ageSeconds}s`
       );
+      // lib/alert.ts cannot page from this route (Edge runtime, fetch-only
+      // dependency graph), and the platform log line above ages out in days.
+      // This is the durable copy: CERT-In Annexure I "attacks on applications",
+      // and the 180-day record that makes a burst provable after the fact.
+      audit("ai.replay_refused", {
+        outcome: "denied",
+        severity: "critical",
+        req,
+        userId,
+        detail: { replays: debit.replays, ageSeconds: debit.ageSeconds },
+      });
       return errorResponse(409, "Duplicate request.");
     }
     dailyLeft = debit.dailyRemaining;
     addOnLeft = debit.addOnCredits;
   } catch (e) {
     // Fail closed, same as the quota gate above. Nothing was charged.
-    return meteringFailure("credit debit", e);
+    return meteringFailure("credit debit", e, req, userId);
   }
   const responseHeaders = {
     ...SSE_HEADERS,

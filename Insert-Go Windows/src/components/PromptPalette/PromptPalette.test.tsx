@@ -12,7 +12,7 @@ import { useSettingsStore } from "@/store/settingsStore";
 import { useToastStore } from "@/store/toastStore";
 import { useAuthStore } from "@/store/authStore";
 import { useHistoryStore } from "@/store/historyStore";
-import { DEFAULT_SETTINGS, type ProviderConfig } from "@/types";
+import { DEFAULT_SETTINGS } from "@/types";
 import { PromptPalette } from "./PromptPalette";
 
 // Hoisted so the vi.mock factory (itself hoisted above imports) can close over it.
@@ -20,6 +20,10 @@ const { sendMock } = vi.hoisted(() => ({ sendMock: vi.fn() }));
 
 vi.mock("@/services/aiProviders", () => ({
   createProvider: () => ({ send: sendMock }),
+  resolveActiveProvider: async () => ({
+    provider: { send: sendMock },
+    requiresLogin: true,
+  }),
 }));
 
 // Copy goes through the clipboard service (Tauri plugin / Web API fallback);
@@ -40,13 +44,6 @@ vi.mock("@/store/monetizationStore", async (importOriginal) => {
 });
 import { canUseHistory } from "@/store/monetizationStore";
 
-const provider: ProviderConfig = {
-  id: "p1",
-  name: "Gemini",
-  baseUrl: "https://generativelanguage.googleapis.com",
-  apiKey: "g-test",
-  isDefault: true,
-};
 
 beforeEach(() => {
   sendMock.mockReset();
@@ -72,11 +69,7 @@ beforeEach(() => {
     activeSkill: null,
     pendingSelectionReview: null,
   });
-  useSettingsStore.setState({
-    settings: { ...DEFAULT_SETTINGS },
-    providers: [],
-    selectedProviderId: null,
-  });
+  useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS } });
   useToastStore.setState({ toasts: [] });
 });
 
@@ -91,7 +84,7 @@ function armRun(): { opts: () => ProviderSendOptions } {
     }
   );
   usePromptStore.setState({ body: "draft" });
-  useSettingsStore.setState({ providers: [provider] });
+  useAuthStore.setState({ token: "test-token" });
   return {
     opts: () => {
       if (!captured) throw new Error("send was not given streaming options");

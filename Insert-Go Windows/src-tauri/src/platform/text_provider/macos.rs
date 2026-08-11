@@ -18,9 +18,6 @@
 //!   Selection rect: `kAXSelectedTextRangeAttribute` →
 //!   `AXUIElementCopyParameterizedAttributeValue(kAXBoundsForRangeParameterizedAttribute)`
 //!   (CGRect in flipped screen coords — convert before storing `ScreenRect`).
-//! * Whole-field read: `kAXValueAttribute` on the focused element.
-//! * Password guard: `kAXRoleAttribute == kAXSecureTextFieldRole` →
-//!   `FieldRead { is_password: true }`, NO text, before any value read.
 //! * Electron/Chromium gotcha: the AX tree is materialized lazily. Setting
 //!   the target app's `AXManualAccessibility` (Chromium ≥ M65) or
 //!   `AXEnhancedUserInterface` attribute to `true` via
@@ -31,8 +28,8 @@
 //! ## Fallback tier — CGEvent chord synthesis (CoreGraphics)
 //! * `CGEventCreateKeyboardEvent(source, keycode, keydown)` +
 //!   `CGEventSetFlags(kCGEventFlagMaskCommand)` posted to `kCGHIDEventTap`
-//!   via `CGEventPost`. Keycodes: kVK_ANSI_C (0x08), kVK_ANSI_A (0x00),
-//!   kVK_ANSI_V (0x09). Press/release order mirrors clipboard.rs's
+//!   via `CGEventPost`. Keycodes: kVK_ANSI_C (0x08), kVK_ANSI_V (0x09).
+//!   Press/release order mirrors clipboard.rs's
 //!   `send_chord`: modifiers released even when the letter event fails.
 //! * Terminals take plain `Cmd+V` on macOS — `TargetApp::is_terminal` exists
 //!   for the Windows/Linux `Ctrl+Shift+V` chord and is a no-op here.
@@ -55,8 +52,7 @@
 use tauri::AppHandle;
 
 use super::{FallbackOps, NativeTextProvider, TargetApp};
-use crate::error::AppResult;
-use crate::platform::selection::{FieldRead, SelectionRead};
+use crate::platform::selection::SelectionRead;
 
 pub(crate) struct MacosTextProvider;
 
@@ -68,25 +64,9 @@ impl NativeTextProvider for MacosTextProvider {
         _pointer_gesture: bool,
     ) -> Option<SelectionRead> {
         // AXUIElementCopyAttributeValue(kAXSelectedTextAttribute), then
-        // fallback::capture_text(app, &MacFallbackOps, CaptureScope::Selection)
-        // when gated on and the AX read comes back empty (lazy Electron tree).
+        // fallback::capture_text(app, &MacFallbackOps) when gated on and the
+        // AX read comes back empty (lazy Electron tree).
         unimplemented!("macOS: AXUIElement selection read (see module docs)")
-    }
-
-    fn read_focused_value(
-        &self,
-        _app: &AppHandle,
-        _allow_clipboard_fallback: bool,
-    ) -> Option<FieldRead> {
-        // kAXSecureTextFieldRole guard FIRST, then kAXValueAttribute; fall
-        // back to fallback::capture_text(.., CaptureScope::WholeField).
-        unimplemented!("macOS: AXUIElement focused-value read (see module docs)")
-    }
-
-    fn replace_text(&self, _app: &AppHandle, _target: Option<isize>, _text: String) -> AppResult<()> {
-        // fallback::paste_text(app, &MacFallbackOps, text, /*select_all*/ true,
-        //     || activate + verify NSRunningApplication(pid), Ok(TargetApp {..}))
-        unimplemented!("macOS: NSRunningApplication activate + Cmd+V paste (see module docs)")
     }
 }
 
@@ -97,10 +77,6 @@ pub(crate) struct MacFallbackOps;
 impl FallbackOps for MacFallbackOps {
     fn send_copy(&self) -> Result<(), String> {
         unimplemented!("macOS: CGEventPost Cmd+C (kVK_ANSI_C + kCGEventFlagMaskCommand)")
-    }
-
-    fn send_select_all(&self) -> Result<(), String> {
-        unimplemented!("macOS: CGEventPost Cmd+A")
     }
 
     fn send_paste(&self, _target: &TargetApp) -> Result<(), String> {

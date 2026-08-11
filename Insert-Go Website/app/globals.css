@@ -138,23 +138,8 @@
   --animate-blink: blink 1s step-end infinite;
   --animate-glow-cta: glowPulseCta 4s ease-in-out infinite;
   --animate-nav-enter: navEnter 0.7s var(--ease-standard) both;
-  /* Apple's reveal: short rise + slight scale-up, so content reads as
-     approaching the viewer. Curve is front-loaded and settles slowly. */
-  --animate-fade-up: fadeUp 0.85s var(--ease-emphasized) both;
 
   --animate-hero-rise: heroRise 0.9s var(--ease-standard) 0.35s both;
-
-  @keyframes fadeUp {
-    from {
-      transform: translateY(24px) scale(0.985);
-      opacity: 0;
-    }
-
-    to {
-      transform: none;
-      opacity: 1;
-    }
-  }
 
   @keyframes heroRise {
     from {
@@ -631,18 +616,6 @@ textarea::placeholder {
 @keyframes skeletonSheen {
   to {
     transform: translateX(100%);
-  }
-}
-
-/* pre-reveal state: hidden until IntersectionObserver fires. Without JS the
-   observer never runs, so unhide it there rather than leaving content blank. */
-.reveal-pending {
-  opacity: 0;
-}
-
-@media (scripting: none) {
-  .reveal-pending {
-    opacity: 1;
   }
 }
 

@@ -1,11 +1,18 @@
-import { betterAuth } from "better-auth";
+import { createHash } from "node:crypto";
+import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { createAuthMiddleware, isAPIError } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { bearer, customSession, emailOTP } from "better-auth/plugins";
 import { sso } from "@better-auth/sso";
+import { kyselyAdapter } from "@better-auth/kysely-adapter";
+import { Kysely, PostgresDialect } from "kysely";
 import { Pool } from "pg";
 import { Resend } from "resend";
+import { audit } from "./auditLog";
 import { pool } from "./pgPool";
+import { withHashedSessionTokens } from "./sessionTokenHash";
 import { pgPoolConfig } from "./pgSsl";
+import { safeError } from "./safeLog";
 import {
   dailyRemaining,
   normalizeTier,
@@ -70,6 +77,161 @@ if (
   );
 }
 
+/**
+ * Endpoints that actually ESTABLISH a session — the ones whose outcome is a
+ * CERT-In Annexure I "unauthorised access" / "identity theft" signal (R-03).
+ * These are route TEMPLATES (`ctx.path`), not request URLs, so no identifier
+ * from the request ever reaches the audit store through this set.
+ *
+ * `/sign-in/social` and `/sign-in/sso` are deliberately absent: they only hand
+ * back a provider redirect and have authenticated nothing yet, so counting them
+ * would inflate every rate rule with traffic that cannot possibly be an attack.
+ * The event that matters lands on the callback.
+ */
+const SIGN_IN_PATHS = new Set([
+  "/sign-in/email-otp",
+  "/callback/:id", // Google OAuth
+  "/sso/callback",
+  "/sso/callback/:providerId",
+]);
+
+/**
+ * Stable pseudonym for the account a failed sign-in was aimed at, so R-03's
+ * per-account rule can count attempts against one target without an email
+ * address ever entering the 180-day store (R-06 — a log is a place addresses
+ * leak from, not a place they belong). Truncated to 64 bits: plenty to keep
+ * distinct accounts apart inside a 10-minute window.
+ */
+function accountSubject(email: unknown): string | null {
+  if (typeof email !== "string" || !email.trim()) return null;
+  return createHash("sha256")
+    .update(email.trim().toLowerCase())
+    .digest("hex")
+    .slice(0, 16);
+}
+
+/**
+ * Deliver a sign-in code (R-06).
+ *
+ * Exported only so a test can reach it: the plugin option it backs is closed
+ * over inside `betterAuth()`, and the regression it guards — an address or a
+ * live code reaching a production log — has no other symptom.
+ *
+ * Three rules, in priority order:
+ *
+ *  1. **The code never reaches a production log.** A logged OTP is not a
+ *     privacy finding, it is an authentication bypass: anyone with log access
+ *     (project members, a support export, a future log drain) signs in as that
+ *     user without touching their mailbox. The guard is `NODE_ENV`, which is
+ *     the question being asked. The previous guard was `!resend` — whether a
+ *     Resend key happened to be configured — so a production deploy that lost
+ *     its key started printing live codes while still looking healthy.
+ *  2. **No transport in production fails the request.** Returning quietly told
+ *     the client a code had been sent and left the user waiting for mail that
+ *     was never sent, while the code sat in the log. Fails closed now, the same
+ *     way `app/api/contact/route.ts` already handles the identical case.
+ *  3. **Only the pseudonym is logged, never the address** — `accountSubject`,
+ *     the same helper the sign-in failure rule uses.
+ */
+export async function deliverOtp({
+  email,
+  otp,
+  type,
+}: {
+  email: string;
+  otp: string;
+  type: string;
+}): Promise<void> {
+  const isDev = process.env.NODE_ENV !== "production";
+  const account = accountSubject(email);
+  // R-06 / CERT-In "identity theft": a code request is the first half of every
+  // passwordless sign-in, so a burst against one account is credential-stuffing
+  // with the password step removed. Pseudonym + type only — the address itself
+  // never reaches the table (rule 3 above), and the OTP never leaves this
+  // function. No `req`: Better Auth calls this from inside its own handler.
+  const record = (outcome: "success" | "failure") =>
+    audit("auth.otp.request", {
+      outcome,
+      detail: { type, subject: account },
+    });
+  const mailSubject =
+    type === "sign-in"
+      ? `${otp} is your InsertGo sign-in code`
+      : `${otp} is your InsertGo verification code`;
+
+  if (!resend) {
+    if (!isDev) {
+      safeError("[auth] RESEND_API_KEY is not set — code not sent", {
+        account,
+        type,
+      });
+      record("failure");
+      throw new Error("Could not send the sign-in code. Please try again.");
+    }
+    // DEV_SETUP.md's local sign-in reads the code from this line. Not
+    // reachable with NODE_ENV=production — the branch above throws first.
+    console.log(`[auth][dev] OTP for ${email} (${type}): ${otp}`); // log-hygiene: dev only
+    record("success");
+    return;
+  }
+
+  // The Resend SDK reports API failures in `error` instead of throwing, so an
+  // unchecked call returns `{ success: true }` to the client while no mail was
+  // ever sent — the user then waits for a code that does not exist. The shared
+  // `onboarding@resend.dev` sender in particular only delivers to the Resend
+  // account owner's own address.
+  const { error } = await resend.emails.send({
+    from: process.env.EMAIL_FROM ?? "InsertGo <onboarding@resend.dev>",
+    to: email,
+    subject: mailSubject,
+    text: `Your InsertGo code is ${otp}. It expires in 5 minutes. If you didn't request this, ignore this email.`,
+  });
+  if (!error) {
+    record("success");
+    return;
+  }
+
+  // Through safeError, and never into the thrown message: provider errors quote
+  // the request they failed on ("You can only send testing emails to your own
+  // address (x@y.com)"), and that string used to be interpolated into an
+  // exception Better Auth renders back to an unauthenticated caller.
+  safeError(`[auth] OTP delivery failed (account=${account})`, error);
+  record("failure");
+  if (isDev) {
+    // An unverified sending domain shouldn't block local work.
+    console.log(`[auth][dev] OTP for ${email} (${type}): ${otp}`); // log-hygiene: dev only
+    return;
+  }
+  throw new Error("Could not send the sign-in code. Please try again.");
+}
+
+/**
+ * Fixed-vocabulary failure code, or "" when the response carries none.
+ * Non-redirect errors carry `body.code` ("INVALID_OTP"); OAuth failures come
+ * back as a 302 whose Location has `?error=<code>` (better-auth's
+ * `redirectOnError`). Neither is user-supplied text — but this crosses into a
+ * bounded column, so cap it regardless.
+ */
+function failureReason(err: {
+  body?: { code?: string } | null;
+  headers?: unknown;
+}): string {
+  const code = err.body?.code;
+  if (typeof code === "string" && code) return code.slice(0, 64);
+  const location =
+    err.headers instanceof Headers ? err.headers.get("location") : null;
+  if (!location) return "";
+  try {
+    return (
+      new URL(location, "https://insertgo.ai").searchParams
+        .get("error")
+        ?.slice(0, 64) ?? ""
+    );
+  } catch {
+    return "";
+  }
+}
+
 // Cached on `globalThis` for the same reason lib/db.ts is: Next dev HMR
 // re-evaluates this module on every edit, and an uncached `new Pool()` here
 // strands the previous pool's sockets on the Supabase pooler and makes the next
@@ -85,10 +247,47 @@ export const auth = betterAuth({
 
   // TLS owned by the `ssl` object via pgPoolConfig (see lib/pgSsl.ts), not the
   // connection string — Supabase's chain needs the pinned CA to verify.
-  database: authPool,
+  //
+  // Passing an adapter rather than the Pool itself is what lets R-04 store
+  // `session.token` hashed: this is exactly the adapter Better Auth would build
+  // from a `pg` Pool on its own (createKyselyAdapter resolves a Pool to
+  // `PostgresDialect` with `databaseType: "postgres"` and no transaction
+  // override), wrapped so the raw token never reaches the database. See
+  // lib/sessionTokenHash.ts for the invariant and the one known divergence.
+  database: (options: BetterAuthOptions) =>
+    withHashedSessionTokens(
+      kyselyAdapter(
+        new Kysely({ dialect: new PostgresDialect({ pool: authPool }) }),
+        { type: "postgres" },
+      )(options),
+    ),
 
-  // Password auth intentionally disabled — OTP / OAuth / SSO only.
+  // Password auth intentionally disabled — OTP / OAuth / SSO only. Nothing
+  // writes `account.password`, which is what keeps SPDI under IT Rules 2011
+  // Rule 3 out of this database entirely; a CHECK constraint in
+  // supabase-session-hardening.sql pins that so it cannot regress silently.
   emailAndPassword: { enabled: false },
+
+  account: {
+    // Google's access / refresh / id tokens are credentials for a THIRD PARTY's
+    // account, so a database disclosure would reach past this app into the
+    // user's Google data. Better Auth encrypts them with AES-256-GCM under
+    // BETTER_AUTH_SECRET when this is on, and reads legacy cleartext rows
+    // through unchanged — so enabling it needs no migration.
+    //
+    // The cost is real and belongs in the rotation runbook: rotating
+    // BETTER_AUTH_SECRET now orphans every stored OAuth token. See
+    // compliance/secret-rotation.md.
+    encryptOAuthTokens: true,
+  },
+
+  // Both endpoints read sessions by user id, which is the one lookup that
+  // cannot recover a raw token from its hash (lib/sessionTokenHash.ts). Left
+  // enabled, `/list-sessions` would hand a client hashes it might treat as
+  // credentials and `/revoke-other-sessions` would answer `{status: true}`
+  // having revoked nothing. Neither has a UI here; 404 beats a silent lie.
+  // `/sign-out`, `/revoke-session` and `/revoke-sessions` are unaffected.
+  disabledPaths: ["/list-sessions", "/revoke-other-sessions"],
 
   // Desktop (Tauri) app origins — allowed to hit the auth API cross-origin.
   // trustedOrigins gates originCheckMiddleware, which validates BOTH the Origin
@@ -121,46 +320,77 @@ export const auth = betterAuth({
     max: 20, // global default; auth endpoints have stricter built-ins
   },
 
+  hooks: {
+    /**
+     * Sign-in evidence for the audit log (R-03). This is the highest-volume
+     * Annexure I signal the estate produces, and until now none of it was
+     * recorded anywhere that survives a week.
+     *
+     * Why the request-level hook and not `databaseHooks`: a session row is
+     * written only when authentication SUCCEEDS, so a database hook can never
+     * see a failure — and failures are the entire input to the
+     * credential-stuffing rule. `dispatchAuthEndpoint` catches a thrown
+     * APIError, parks it on `context.returned`, and then runs the after-hooks,
+     * so this seam sees both outcomes.
+     *
+     * Never awaited by the caller and never able to fail the request: `audit()`
+     * is fire-and-forget and swallows its own errors, so a broken audit sink
+     * degrades sign-in logging, not sign-in.
+     */
+    after: createAuthMiddleware(async (ctx) => {
+      if (!SIGN_IN_PATHS.has(ctx.path)) return;
+
+      // A new session is the unambiguous success signal, and the only one:
+      // a successful OAuth callback ALSO leaves as a 302 APIError, so the
+      // presence of an error object proves nothing on its own.
+      const userId = ctx.context.newSession?.user?.id;
+      if (userId) {
+        audit("auth.signin", {
+          outcome: "success",
+          req: ctx.request,
+          userId,
+          detail: { path: ctx.path },
+        });
+        return;
+      }
+
+      const returned = ctx.context.returned;
+      // No session and no error: an account-link callback, or a lane that
+      // authenticated nothing. Recording an outcome we cannot determine would
+      // put noise into a threshold rule — leave it out.
+      if (!isAPIError(returned)) return;
+      const status =
+        typeof returned.statusCode === "number" ? returned.statusCode : 0;
+      const reason = failureReason(returned);
+      // 302 is how BOTH outcomes leave the OAuth callback; only the failure
+      // redirect carries `?error=`. Without this, every account-link callback
+      // reads as a failed sign-in and inflates the rule watching them.
+      if (status === 302 && !reason) return;
+
+      audit("auth.signin", {
+        outcome: "failure",
+        req: ctx.request,
+        detail: {
+          path: ctx.path,
+          status,
+          reason: reason || "unspecified",
+          // Present only on the OTP lane, where the request names the account.
+          // R-03's per-account rule reads this key; the address itself never
+          // reaches the table.
+          subject: accountSubject(
+            (ctx.body as { email?: unknown } | undefined)?.email,
+          ),
+        },
+      });
+    }),
+  },
+
   plugins: [
     emailOTP({
       otpLength: 6,
       expiresIn: 60 * 5, // 5 minutes
       allowedAttempts: 3,
-      async sendVerificationOTP({ email, otp, type }) {
-        const subject =
-          type === "sign-in"
-            ? `${otp} is your InsertGo sign-in code`
-            : `${otp} is your InsertGo verification code`;
-
-        const isDev = process.env.NODE_ENV !== "production";
-
-        if (!resend) {
-          // Dev fallback: no RESEND_API_KEY yet — print to server console.
-          console.log(`[auth][dev] OTP for ${email} (${type}): ${otp}`);
-          return;
-        }
-
-        // The Resend SDK reports API failures in `error` instead of throwing,
-        // so an unchecked call returns `{ success: true }` to the client while
-        // no mail was ever sent — the user then waits for a code that does not
-        // exist. The shared `onboarding@resend.dev` sender in particular only
-        // delivers to the Resend account owner's own address.
-        const { error } = await resend.emails.send({
-          from: process.env.EMAIL_FROM ?? "InsertGo <onboarding@resend.dev>",
-          to: email,
-          subject,
-          text: `Your InsertGo code is ${otp}. It expires in 5 minutes. If you didn't request this, ignore this email.`,
-        });
-        if (error) {
-          console.error(`[auth] OTP delivery to ${email} failed`, error);
-          if (isDev) {
-            // Local work shouldn't be blocked by an unverified sending domain.
-            console.log(`[auth][dev] OTP for ${email} (${type}): ${otp}`);
-            return;
-          }
-          throw new Error(`Could not send the sign-in code: ${error.message}`);
-        }
-      },
+      sendVerificationOTP: deliverOtp,
     }),
 
     // OIDC providers are registered at runtime via /api/auth/sso/register.
@@ -207,7 +437,9 @@ export const auth = betterAuth({
             : 0;
         remaining = dailyRemaining(row, tier);
       } catch (e) {
-        console.error("[auth] entitlement lookup failed; using defaults", e);
+        // safeError, not console.error: a pg error's `detail` quotes the row it
+        // failed on, and this query's row is the user's.
+        safeError("[auth] entitlement lookup failed; using defaults", e);
       }
       return {
         user: {

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { LinearWindows } from "@/components/icons/LinearWindows";
+import { WindowsLogo } from "@/components/icons/WindowsLogo";
 import { LinearKey } from "@/components/icons/LinearKey";
 import { LinearKeyboard } from "@/components/icons/LinearKeyboard";
 import { Reveal, FadeUp } from "@/components/Reveal";
@@ -88,7 +89,7 @@ async function DownloadCta() {
               href={`/login?next=${encodeURIComponent("/download")}`}
               className="inline-flex animate-glow-cta items-center gap-3 rounded-full bg-terracotta px-9 py-[18px] text-lg font-medium text-on-accent transition-transform duration-200 hover:-translate-y-0.5"
             >
-              <LinearWindows size={20} />
+              <WindowsLogo size={20} />
               Sign in to download
             </Link>
             <span className="text-[13px] text-muted">
@@ -105,7 +106,7 @@ async function DownloadCta() {
               rel="noopener noreferrer"
               className="inline-flex animate-glow-cta items-center gap-3 rounded-full bg-terracotta px-9 py-[18px] text-lg font-medium text-on-accent transition-transform duration-200 hover:-translate-y-0.5"
             >
-              <LinearWindows size={20} />
+              <WindowsLogo size={20} />
               Download InsertGo-Setup.exe
             </a>
             <span className="text-[13px] text-muted">
@@ -119,7 +120,7 @@ async function DownloadCta() {
         ) : (
           <>
             <span className="inline-flex cursor-not-allowed items-center gap-3 rounded-full bg-terracotta/50 px-9 py-[18px] text-lg font-medium text-on-accent">
-              <LinearWindows size={20} />
+              <WindowsLogo size={20} />
               Windows build coming soon
             </span>
             <span className="text-[13px] text-muted">

@@ -139,8 +139,17 @@ jobs:
 
       # Frontend build is not duplicated here: tauri.conf.json's beforeBuildCommand
       # already runs `npm run build` (tsc + vite) inside this workspace.
+      #
+      # VITE_API_URL is REQUIRED: there is no .env on the runner, and vite.config.ts
+      # refuses a production build without it rather than inlining the localhost
+      # fallback — a shipped bundle would otherwise send the session bearer token
+      # to whatever is listening on the user's port 3000. Override with a repo
+      # variable to build against staging.
       - name: Build and sign installer
         run: npm run tauri:build -- --verbose
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://insertgo.ai' }}
+          VITE_GEMINI_MODEL: ${{ vars.VITE_GEMINI_MODEL || 'gemini-2.5-flash-lite' }}
 
       - name: Verify installer signature
         run: |

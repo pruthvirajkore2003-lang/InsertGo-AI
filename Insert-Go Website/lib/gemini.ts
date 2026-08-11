@@ -113,6 +113,35 @@ export function resolveGroundingModel(requestModel: string): string | null {
   return null;
 }
 
+/**
+ * Models this server will bill the shared Gemini key for.
+ *
+ * The request body's `model` reaches `generateContentStream` verbatim, and the
+ * debit is a flat 1 credit per generation — the burst and daily quotas bound
+ * request COUNT, not cost. Without this, any signed-in caller can name
+ * `gemini-2.5-pro` and be billed at flash-lite prices, 150 times a day on Pro.
+ * The desktop only ever sends its build-time `VITE_GEMINI_MODEL`, so this is a
+ * server-side ceiling, not a menu the client picks from.
+ *
+ * Pass-1 grounding is NOT gated here: its model comes from
+ * `GEMINI_GROUNDING_MODEL` (see `resolveGroundingModel`), which is server
+ * config, never request data.
+ */
+const DEFAULT_ALLOWED_MODELS = [
+  "gemini-2.5-flash-lite", // the desktop's shipped VITE_GEMINI_MODEL
+  "gemini-3.6-flash-lite", // its obvious successor, same (cheapest) tier
+];
+
+/** True when the request model is one this deployment agrees to pay for.
+ *  `GEMINI_ALLOWED_MODELS` (comma-separated) replaces the default outright. */
+export function isAllowedModel(model: string): boolean {
+  const configured = process.env.GEMINI_ALLOWED_MODELS?.split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
+  const allowed = configured?.length ? configured : DEFAULT_ALLOWED_MODELS;
+  return allowed.includes(model.trim());
+}
+
 // Lazily-constructed singleton: constructing eagerly would throw on a missing
 // key at import time and take the whole route (and tests) down. Guarded here so
 // only an actual generation call fail-fasts on a misconfigured server.

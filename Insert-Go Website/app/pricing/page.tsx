@@ -2,22 +2,34 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { Reveal, FadeUp } from "@/components/Reveal";
 import { GlowBackdrop } from "@/components/PageHero";
+import { LinearFlash } from "@/components/icons/LinearFlash";
+import { LinearShieldTick } from "@/components/icons/LinearShieldTick";
+import { LinearTickCircle } from "@/components/icons/LinearTickCircle";
+import { LinearHeadphone } from "@/components/icons/LinearHeadphone";
 import { PricingPlans, type Currency } from "./PricingPlans";
 
 const notes = [
   {
+    icon: LinearFlash,
+    tile: "var(--color-tile-sky)",
     title: "Free credits daily",
     body: "Every account gets 5 credits a day, forever. No credit card required.",
   },
   {
+    icon: LinearShieldTick,
+    tile: "var(--color-tile-mist)",
     title: "Credits that keep",
     body: "Add-on packs never expire — daily credits are always spent first.",
   },
   {
+    icon: LinearTickCircle,
+    tile: "var(--color-tile-sand)",
     title: "Cancel anytime",
     body: "Downgrade to Free whenever you like — your templates stay on your machine.",
   },
   {
+    icon: LinearHeadphone,
+    tile: "var(--color-tile-clay)",
     title: "Questions?",
     body: null, // rendered with links below
   },
@@ -66,14 +78,25 @@ export default async function PricingPage() {
       <PricingPlans currency={currency} />
 
       <section className="mx-auto max-w-[960px] px-6 pt-[50px] pb-[110px]">
-        <Reveal>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-[18px]">
-            {notes.map((n) => (
-              <div
-                key={n.title}
-                className="glass-card p-[22px]"
-              >
-                <h3 className="mt-0 mb-2 font-serif text-base font-semibold text-ink">
+        <Reveal className="mb-8 text-center">
+          <p className="mb-3 text-xs font-medium tracking-[0.16em] text-brand uppercase">
+            Good to know
+          </p>
+          <h2 className="m-0 font-serif text-[clamp(24px,3vw,32px)] font-semibold tracking-[-0.02em] text-ink">
+            No fine print, just fair terms
+          </h2>
+        </Reveal>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-[18px]">
+          {notes.map((n, i) => (
+            <Reveal key={n.title} delay={i * 0.08} hoverLift>
+              <div className="glass-card flex h-full flex-col gap-3 p-[22px]">
+                <span
+                  className="flex h-10 w-10 items-center justify-center rounded-[10px] text-ink"
+                  style={{ background: n.tile }}
+                >
+                  <n.icon size={20} />
+                </span>
+                <h3 className="m-0 font-serif text-base font-semibold text-ink">
                   {n.title}
                 </h3>
                 {n.body ? (
@@ -100,9 +123,9 @@ export default async function PricingPage() {
                   </p>
                 )}
               </div>
-            ))}
-          </div>
-        </Reveal>
+            </Reveal>
+          ))}
+        </div>
       </section>
     </main>
   );

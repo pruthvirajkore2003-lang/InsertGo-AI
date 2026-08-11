@@ -10,8 +10,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { SKILLS } from "@/services/skills";
-import { useSettingsStore } from "@/store/settingsStore";
-import type { ProviderConfig } from "@/types";
+import { useAuthStore } from "@/store/authStore";
 import { SelectionBar } from "./SelectionBar";
 
 const { invokeMock, listenHandlers, sendMock } = vi.hoisted(() => ({
@@ -37,27 +36,20 @@ vi.mock("@/services/aiProviders", () => ({
 }));
 
 // The bar loads settings on mount (fresh webview context); reject so the
-// store keeps its test-controlled state instead of seeding dev providers.
+// store keeps its test-controlled state.
 vi.mock("@/services/tauriBridge", () => ({
   loadSettings: vi.fn().mockRejectedValue(new Error("no tauri in tests")),
-  loadProviders: vi.fn().mockRejectedValue(new Error("no tauri in tests")),
-  saveProviders: vi.fn().mockRejectedValue(new Error("no tauri in tests")),
   isTauri: () => false,
 }));
-
-const provider: ProviderConfig = {
-  id: "p1",
-  name: "Gemini",
-  baseUrl: "https://generativelanguage.googleapis.com",
-  apiKey: "g-test",
-  isDefault: true,
-};
 
 beforeEach(() => {
   invokeMock.mockReset().mockResolvedValue(undefined);
   sendMock.mockReset();
   localStorage.clear();
-  useSettingsStore.setState({ providers: [], selectedProviderId: null });
+  // Signed in by default: the session token IS the lane (one hosted relay), so
+  // without it the bar renders the login panel INSTEAD of the skill row. The
+  // logged-out branch is covered by its own case below.
+  useAuthStore.setState({ token: "test-token", error: null });
 });
 
 /** Render the bar and deliver a `selection:show` with `text`. */
@@ -109,7 +101,6 @@ describe("SelectionBar", () => {
   });
 
   it("hands the skill + selection to the palette for floater review", async () => {
-    useSettingsStore.setState({ providers: [provider] });
     await showSelection("my draft");
 
     await act(async () => {
@@ -130,7 +121,6 @@ describe("SelectionBar", () => {
   });
 
   it("More hands the selection over with no skill (floater opens its picker)", async () => {
-    useSettingsStore.setState({ providers: [provider] });
     await showSelection("my draft");
 
     await act(async () => {
@@ -145,42 +135,31 @@ describe("SelectionBar", () => {
     });
   });
 
-  it("More without a provider shows the login notice, no handoff", async () => {
+  it("logged out: replaces the skill row with a login notice", async () => {
+    useAuthStore.setState({ token: null, error: null });
     await showSelection("my draft");
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "More" }));
-    });
-
+    expect(screen.getByRole("status").textContent).toBe(
+      "Sign in to InsertGo to run skills"
+    );
+    // The skills and the More handoff are GONE, not merely disabled — there is
+    // nothing to click that could reach the provider or the selection.
+    expect(screen.queryByRole("button", { name: "Translate This" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "More" })).toBeNull();
+    expect(screen.getByRole("button", { name: /sign in/i })).toBeEnabled();
+    expect(sendMock).not.toHaveBeenCalled();
+    // Crucially: no handoff, and no paste over the user's live selection.
     expect(invokeMock).not.toHaveBeenCalledWith(
       "open_selection_review",
       expect.anything()
     );
-    expect(screen.getByRole("status").textContent).toBe(
-      "Log in to InsertGo to run skills"
-    );
-  });
-
-  it("without a provider: shows a login notice and never touches the selection", async () => {
-    await showSelection("my draft");
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Translate This" }));
-    });
-
-    expect(sendMock).not.toHaveBeenCalled();
-    // Crucially: no paste over the user's live selection.
     expect(invokeMock).not.toHaveBeenCalledWith(
       "apply_to_selection",
       expect.anything()
     );
-    expect(screen.getByRole("status").textContent).toBe(
-      "Log in to InsertGo to run skills"
-    );
   });
 
   it("shows an error notice when the palette handoff fails", async () => {
-    useSettingsStore.setState({ providers: [provider] });
     invokeMock.mockRejectedValue(new Error("handoff exploded"));
     await showSelection("my draft");
 

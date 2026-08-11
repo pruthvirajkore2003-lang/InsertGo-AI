@@ -250,7 +250,7 @@ export function SelectionBar() {
               className={`ig-selbar__note${authError ? " ig-selbar__note--error" : ""}`}
               role="status"
             >
-              {authError ?? "Log in to InsertGo to run skills"}
+              {authError ?? "Sign in to InsertGo to run skills"}
             </span>
             <button
               className="ig-btn ig-btn--primary"
@@ -264,8 +264,8 @@ export function SelectionBar() {
                 </>
               ) : (
                 <>
-                  <i className="fa-solid fa-lock" aria-hidden="true" />
-                  Log in
+                  <i className="fa-solid fa-arrow-right-to-bracket" aria-hidden="true" />
+                  Sign in
                 </>
               )}
             </button>

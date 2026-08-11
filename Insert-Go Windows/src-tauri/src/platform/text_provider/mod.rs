@@ -22,12 +22,11 @@ mod macos;
 #[cfg(target_os = "linux")]
 mod linux;
 
-pub use fallback::{CaptureScope, FallbackOps, PasteFailure};
+pub use fallback::{FallbackOps, PasteFailure};
 #[cfg(target_os = "windows")]
 pub(crate) use windows::WinFallbackOps;
 
-use crate::error::AppResult;
-use crate::platform::selection::{FieldRead, SelectionRead};
+use crate::platform::selection::SelectionRead;
 use tauri::AppHandle;
 
 /// The window/app a paste is aimed at. The handle is platform-opaque:
@@ -70,23 +69,6 @@ pub trait NativeTextProvider: Send + Sync {
         allow_clipboard_fallback: bool,
         pointer_gesture: bool,
     ) -> Option<SelectionRead>;
-
-    /// Read the ENTIRE content of the focused text control. Password fields
-    /// must return `is_password: true` with NO text — secrets never enter
-    /// process memory.
-    fn read_focused_value(
-        &self,
-        app: &AppHandle,
-        allow_clipboard_fallback: bool,
-    ) -> Option<FieldRead>;
-
-    /// Replace the entire content of the focused field in `target` with
-    /// `text` (select-all + paste semantics). Destructive by design: callers
-    /// snapshot the prior content first (Undo). On an aborted paste the text
-    /// stays staged on the clipboard and the frontend is told to toast
-    /// "copied — paste manually"; `Err` is reserved for real failures like an
-    /// unwritable clipboard.
-    fn replace_text(&self, app: &AppHandle, target: Option<isize>, text: String) -> AppResult<()>;
 }
 
 /// The provider for the compiled platform.

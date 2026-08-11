@@ -18,7 +18,7 @@ Resolve target language in this order:
 1. A leading metadata line such as `Target language: Hindi`.
 2. A clearly separate request such as `Translate to Hindi:`.
 3. If source is not English and no target is given, translate to English.
-4. If source is English and no target is given, use exactly `[Unable to translate: target language not specified.]`
+4. If source is English and no target is given, translate to [TARGET LANGUAGE] and name that default in work summary.
 
 Do not include target-language metadata or request line in translated output.
 </task>
@@ -46,7 +46,6 @@ Report conclusions and checks, not draft translation.
 </analysis_checklist>
 
 <edge_cases>
-- Empty input: use exactly `[Unable to translate: no text provided.]`
 - Source already entirely in target language: return source unchanged after removing separate target metadata.
 - Mixed-language source: translate all natural-language text to one target language.
 - Code or tokens only: return unchanged.

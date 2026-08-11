@@ -1,0 +1,541 @@
+{
+  "generatedAt": "2026-08-08",
+  "generatedBy": "scripts/ropa.mjs",
+  "basis": "DPDP Act 2023 §8(1); ISO/IEC 27001 A.5.34",
+  "note": "Generated from the SQL schema. Do not hand-edit — edit CLASSIFICATION in scripts/ropa.mjs, which CI gates against the live schema.",
+  "classes": {
+    "A": "Consent / service basis — purged on an erasure request (R-12)",
+    "B": "Statutory hold — survives erasure; disclosed in the §5 notice",
+    "N": "Not personal data"
+  },
+  "columns": [
+    {
+      "table": "user",
+      "column": "id",
+      "retentionClass": "N",
+      "purpose": "Pseudonymous identifier; retained to keep Class B rows joinable"
+    },
+    {
+      "table": "user",
+      "column": "name",
+      "retentionClass": "A",
+      "purpose": "Account — display"
+    },
+    {
+      "table": "user",
+      "column": "email",
+      "retentionClass": "A",
+      "purpose": "Account — sign-in and service email"
+    },
+    {
+      "table": "user",
+      "column": "emailVerified",
+      "retentionClass": "A",
+      "purpose": "Account — sign-in"
+    },
+    {
+      "table": "user",
+      "column": "image",
+      "retentionClass": "A",
+      "purpose": "Account — display"
+    },
+    {
+      "table": "user",
+      "column": "createdAt",
+      "retentionClass": "A",
+      "purpose": "Account"
+    },
+    {
+      "table": "user",
+      "column": "updatedAt",
+      "retentionClass": "A",
+      "purpose": "Account"
+    },
+    {
+      "table": "user",
+      "column": "subscriptionStatus",
+      "retentionClass": "B",
+      "purpose": "Billing — legacy entitlement stamp"
+    },
+    {
+      "table": "user",
+      "column": "credits",
+      "retentionClass": "B",
+      "purpose": "Billing — legacy balance"
+    },
+    {
+      "table": "user",
+      "column": "tier",
+      "retentionClass": "B",
+      "purpose": "Billing — entitlement"
+    },
+    {
+      "table": "user",
+      "column": "addOnCredits",
+      "retentionClass": "B",
+      "purpose": "Billing — purchased balance"
+    },
+    {
+      "table": "user",
+      "column": "dailyCreditsUsed",
+      "retentionClass": "A",
+      "purpose": "Service — daily quota counter"
+    },
+    {
+      "table": "user",
+      "column": "dailyCreditsDate",
+      "retentionClass": "A",
+      "purpose": "Service — daily quota window"
+    },
+    {
+      "table": "user",
+      "column": "billingEventAt",
+      "retentionClass": "B",
+      "purpose": "Billing — webhook ordering watermark"
+    },
+    {
+      "table": "user",
+      "column": "erasedAt",
+      "retentionClass": "B",
+      "purpose": "Evidence that erasure was performed and when"
+    },
+    {
+      "table": "session",
+      "column": "id",
+      "retentionClass": "A",
+      "purpose": "Account — session"
+    },
+    {
+      "table": "session",
+      "column": "expiresAt",
+      "retentionClass": "A",
+      "purpose": "Account — session"
+    },
+    {
+      "table": "session",
+      "column": "token",
+      "retentionClass": "A",
+      "purpose": "Credential (SHA-256 hashed at rest, R-04)"
+    },
+    {
+      "table": "session",
+      "column": "createdAt",
+      "retentionClass": "A",
+      "purpose": "Account — session"
+    },
+    {
+      "table": "session",
+      "column": "updatedAt",
+      "retentionClass": "A",
+      "purpose": "Account — session"
+    },
+    {
+      "table": "session",
+      "column": "ipAddress",
+      "retentionClass": "A",
+      "purpose": "Account — session provenance"
+    },
+    {
+      "table": "session",
+      "column": "userAgent",
+      "retentionClass": "A",
+      "purpose": "Account — session provenance"
+    },
+    {
+      "table": "session",
+      "column": "userId",
+      "retentionClass": "A",
+      "purpose": "Account — session"
+    },
+    {
+      "table": "account",
+      "column": "id",
+      "retentionClass": "A",
+      "purpose": "Account — federated identity"
+    },
+    {
+      "table": "account",
+      "column": "accountId",
+      "retentionClass": "A",
+      "purpose": "Account — provider subject id"
+    },
+    {
+      "table": "account",
+      "column": "providerId",
+      "retentionClass": "A",
+      "purpose": "Account — provider name"
+    },
+    {
+      "table": "account",
+      "column": "userId",
+      "retentionClass": "A",
+      "purpose": "Account — federated identity"
+    },
+    {
+      "table": "account",
+      "column": "accessToken",
+      "retentionClass": "A",
+      "purpose": "Third-party credential (AES-256-GCM, R-04)"
+    },
+    {
+      "table": "account",
+      "column": "refreshToken",
+      "retentionClass": "A",
+      "purpose": "Third-party credential (AES-256-GCM, R-04)"
+    },
+    {
+      "table": "account",
+      "column": "idToken",
+      "retentionClass": "A",
+      "purpose": "Third-party credential (AES-256-GCM, R-04)"
+    },
+    {
+      "table": "account",
+      "column": "accessTokenExpiresAt",
+      "retentionClass": "A",
+      "purpose": "Account — federated identity"
+    },
+    {
+      "table": "account",
+      "column": "refreshTokenExpiresAt",
+      "retentionClass": "A",
+      "purpose": "Account — federated identity"
+    },
+    {
+      "table": "account",
+      "column": "scope",
+      "retentionClass": "A",
+      "purpose": "Account — federated identity"
+    },
+    {
+      "table": "account",
+      "column": "password",
+      "retentionClass": "A",
+      "purpose": "SPDI under IT Rules 2011 r.3 — CHECK-constrained null"
+    },
+    {
+      "table": "account",
+      "column": "createdAt",
+      "retentionClass": "A",
+      "purpose": "Account — federated identity"
+    },
+    {
+      "table": "account",
+      "column": "updatedAt",
+      "retentionClass": "A",
+      "purpose": "Account — federated identity"
+    },
+    {
+      "table": "verification",
+      "column": "id",
+      "retentionClass": "A",
+      "purpose": "Account — OTP / PKCE code"
+    },
+    {
+      "table": "verification",
+      "column": "identifier",
+      "retentionClass": "A",
+      "purpose": "Account — email address or code key"
+    },
+    {
+      "table": "verification",
+      "column": "value",
+      "retentionClass": "A",
+      "purpose": "Credential — OTP / authorization code"
+    },
+    {
+      "table": "verification",
+      "column": "expiresAt",
+      "retentionClass": "A",
+      "purpose": "Account — OTP / PKCE code"
+    },
+    {
+      "table": "verification",
+      "column": "createdAt",
+      "retentionClass": "A",
+      "purpose": "Account — OTP / PKCE code"
+    },
+    {
+      "table": "verification",
+      "column": "updatedAt",
+      "retentionClass": "A",
+      "purpose": "Account — OTP / PKCE code"
+    },
+    {
+      "table": "ssoProvider",
+      "column": "id",
+      "retentionClass": "N",
+      "purpose": "Organisation configuration, not personal data"
+    },
+    {
+      "table": "ssoProvider",
+      "column": "issuer",
+      "retentionClass": "N",
+      "purpose": "Organisation configuration"
+    },
+    {
+      "table": "ssoProvider",
+      "column": "oidcConfig",
+      "retentionClass": "N",
+      "purpose": "Organisation configuration"
+    },
+    {
+      "table": "ssoProvider",
+      "column": "samlConfig",
+      "retentionClass": "N",
+      "purpose": "Organisation configuration"
+    },
+    {
+      "table": "ssoProvider",
+      "column": "userId",
+      "retentionClass": "A",
+      "purpose": "Account — who registered the provider"
+    },
+    {
+      "table": "ssoProvider",
+      "column": "providerId",
+      "retentionClass": "N",
+      "purpose": "Organisation configuration"
+    },
+    {
+      "table": "ssoProvider",
+      "column": "organizationId",
+      "retentionClass": "N",
+      "purpose": "Organisation configuration"
+    },
+    {
+      "table": "ssoProvider",
+      "column": "domain",
+      "retentionClass": "N",
+      "purpose": "Organisation configuration"
+    },
+    {
+      "table": "apiUsage",
+      "column": "key",
+      "retentionClass": "A",
+      "purpose": "Service — quota bucket, contains the user id"
+    },
+    {
+      "table": "apiUsage",
+      "column": "userId",
+      "retentionClass": "A",
+      "purpose": "Service — quota"
+    },
+    {
+      "table": "apiUsage",
+      "column": "count",
+      "retentionClass": "A",
+      "purpose": "Service — quota"
+    },
+    {
+      "table": "apiUsage",
+      "column": "windowStart",
+      "retentionClass": "A",
+      "purpose": "Service — quota"
+    },
+    {
+      "table": "apiUsage",
+      "column": "updatedAt",
+      "retentionClass": "A",
+      "purpose": "Service — quota"
+    },
+    {
+      "table": "creditLedger",
+      "column": "idempotencyKey",
+      "retentionClass": "B",
+      "purpose": "Books of account — Companies Act, GST, income tax"
+    },
+    {
+      "table": "creditLedger",
+      "column": "userId",
+      "retentionClass": "B",
+      "purpose": "Books of account"
+    },
+    {
+      "table": "creditLedger",
+      "column": "amount",
+      "retentionClass": "B",
+      "purpose": "Books of account"
+    },
+    {
+      "table": "creditLedger",
+      "column": "replays",
+      "retentionClass": "B",
+      "purpose": "Books of account — replay accounting"
+    },
+    {
+      "table": "creditLedger",
+      "column": "createdAt",
+      "retentionClass": "B",
+      "purpose": "Books of account"
+    },
+    {
+      "table": "auditLog",
+      "column": "id",
+      "retentionClass": "B",
+      "purpose": "CERT-In Direction 4 — 180-day rolling retention"
+    },
+    {
+      "table": "auditLog",
+      "column": "at",
+      "retentionClass": "B",
+      "purpose": "CERT-In Direction 4"
+    },
+    {
+      "table": "auditLog",
+      "column": "event",
+      "retentionClass": "B",
+      "purpose": "CERT-In Direction 4"
+    },
+    {
+      "table": "auditLog",
+      "column": "severity",
+      "retentionClass": "B",
+      "purpose": "CERT-In Direction 4"
+    },
+    {
+      "table": "auditLog",
+      "column": "outcome",
+      "retentionClass": "B",
+      "purpose": "CERT-In Direction 4"
+    },
+    {
+      "table": "auditLog",
+      "column": "userId",
+      "retentionClass": "B",
+      "purpose": "CERT-In Direction 4 — pseudonymous, deliberately no FK"
+    },
+    {
+      "table": "auditLog",
+      "column": "ip",
+      "retentionClass": "B",
+      "purpose": "CERT-In Direction 4 — legal obligation, not consent"
+    },
+    {
+      "table": "auditLog",
+      "column": "userAgent",
+      "retentionClass": "B",
+      "purpose": "CERT-In Direction 4 — legal obligation, not consent"
+    },
+    {
+      "table": "auditLog",
+      "column": "detail",
+      "retentionClass": "B",
+      "purpose": "CERT-In Direction 4 — ids/counts/enums only, never content"
+    },
+    {
+      "table": "consentRecord",
+      "column": "id",
+      "retentionClass": "B",
+      "purpose": "DPDP §6 — proof consent was validly obtained"
+    },
+    {
+      "table": "consentRecord",
+      "column": "at",
+      "retentionClass": "B",
+      "purpose": "DPDP §6 — proof"
+    },
+    {
+      "table": "consentRecord",
+      "column": "userId",
+      "retentionClass": "B",
+      "purpose": "DPDP §6 — proof, deliberately no FK"
+    },
+    {
+      "table": "consentRecord",
+      "column": "purpose",
+      "retentionClass": "B",
+      "purpose": "DPDP §6 — proof"
+    },
+    {
+      "table": "consentRecord",
+      "column": "granted",
+      "retentionClass": "B",
+      "purpose": "DPDP §6 — proof"
+    },
+    {
+      "table": "consentRecord",
+      "column": "noticeVersion",
+      "retentionClass": "B",
+      "purpose": "DPDP §6 — which text was shown"
+    },
+    {
+      "table": "consentRecord",
+      "column": "language",
+      "retentionClass": "B",
+      "purpose": "DPDP §5(3) — which language was shown"
+    },
+    {
+      "table": "consentRecord",
+      "column": "method",
+      "retentionClass": "B",
+      "purpose": "DPDP §6 — how the decision was collected"
+    },
+    {
+      "table": "consentRecord",
+      "column": "ip",
+      "retentionClass": "B",
+      "purpose": "DPDP §6 — provenance of the decision"
+    },
+    {
+      "table": "consentRecord",
+      "column": "userAgent",
+      "retentionClass": "B",
+      "purpose": "DPDP §6 — provenance of the decision"
+    },
+    {
+      "table": "dsrRequest",
+      "column": "id",
+      "retentionClass": "B",
+      "purpose": "DPDP §§11–14 — proof the request was handled"
+    },
+    {
+      "table": "dsrRequest",
+      "column": "createdAt",
+      "retentionClass": "B",
+      "purpose": "DPDP §§11–14 — starts the 90-day clock"
+    },
+    {
+      "table": "dsrRequest",
+      "column": "dueAt",
+      "retentionClass": "B",
+      "purpose": "DPDP Rules — the 90-day deadline"
+    },
+    {
+      "table": "dsrRequest",
+      "column": "userId",
+      "retentionClass": "B",
+      "purpose": "DPDP §§11–14 — proof, deliberately no FK"
+    },
+    {
+      "table": "dsrRequest",
+      "column": "kind",
+      "retentionClass": "B",
+      "purpose": "DPDP §§11–14"
+    },
+    {
+      "table": "dsrRequest",
+      "column": "status",
+      "retentionClass": "B",
+      "purpose": "DPDP §§11–14"
+    },
+    {
+      "table": "dsrRequest",
+      "column": "verifiedAt",
+      "retentionClass": "B",
+      "purpose": "Identity verification preceded execution"
+    },
+    {
+      "table": "dsrRequest",
+      "column": "fulfilledAt",
+      "retentionClass": "B",
+      "purpose": "DPDP §§11–14 — SLA evidence"
+    },
+    {
+      "table": "dsrRequest",
+      "column": "note",
+      "retentionClass": "B",
+      "purpose": "DPDP §§11–14 — free text; never carries prompt content"
+    }
+  ]
+}

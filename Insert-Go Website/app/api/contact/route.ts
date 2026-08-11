@@ -17,6 +17,7 @@
  *  - a honeypot field plus a per-IP fixed window blunt drive-by spam.
  */
 import { BodyTooLargeError, readBodyCapped } from "@/lib/httpBody";
+import { safeError } from "@/lib/safeLog";
 
 export const runtime = "nodejs";
 
@@ -109,7 +110,7 @@ export async function POST(req: Request) {
       console.error("[contact] RESEND_API_KEY is not configured");
       return bad("Messaging is temporarily unavailable.", 503);
     }
-    console.log(`[contact][dev] ${topic} from ${name} <${email}>: ${message}`);
+    console.log(`[contact][dev] ${topic} from ${name} <${email}>: ${message}`); // log-hygiene: dev only, production returned 503 above
     return Response.json({ ok: true });
   }
 
@@ -127,7 +128,9 @@ export async function POST(req: Request) {
   if (error) {
     // The Resend SDK reports failures in `error` rather than throwing, so an
     // unchecked call would report success while nothing was ever delivered.
-    console.error("[contact] delivery failed", error);
+    // safeError, not console.error (R-06): this error object quotes the request
+    // it failed on, and the request carries the submitter's address.
+    safeError("[contact] delivery failed", error);
     return bad("Could not send your message. Try again in a moment.", 502);
   }
 

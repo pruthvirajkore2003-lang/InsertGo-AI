@@ -13,8 +13,10 @@
     "log:default",
     {
       "identifier": "http:default",
+      "comment": "InsertGo.AI only, matching the main window and the skill bar. The floater's only request is the provider run, and that resolves to `${API_URL}/api/ai/generate` (services/lanes.ts -> aiProviders.ts) — never to a model host. The previous `https://**` rule existed for BYOK, which is a decided non-feature (R-15, 2026-08-08); it left the one window that streams user text able to POST it to any host on the internet.",
       "allow": [
-        { "url": "https://**" },
+        { "url": "https://insertgo.ai/**" },
+        { "url": "https://*.insertgo.ai/**" },
         { "url": "http://localhost:*/**" },
         { "url": "http://127.0.0.1:*/**" }
       ]

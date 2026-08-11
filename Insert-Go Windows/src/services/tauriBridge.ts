@@ -4,13 +4,7 @@
  * never depends on raw string command identifiers.
  */
 import { invoke } from "@tauri-apps/api/core";
-import type {
-  AppContext,
-  PermissionReport,
-  Prompt,
-  ProviderConfig,
-  Settings,
-} from "@/types";
+import type { AppContext, PermissionReport, Prompt, Settings } from "@/types";
 
 /** Rust command identifiers — must match `#[tauri::command]` fn names. */
 export const Commands = {
@@ -21,12 +15,9 @@ export const Commands = {
   deletePrompt: "delete_prompt",
   loadSettings: "load_settings",
   saveSettings: "save_settings",
-  loadProviders: "load_providers",
-  saveProviders: "save_providers",
   sessionTokenSet: "session_token_set",
   sessionTokenGet: "session_token_get",
   sessionTokenDelete: "session_token_delete",
-  ollamaListModels: "ollama_list_models",
   exportLogs: "export_logs",
   getHardwareId: "get_hardware_id",
   resizeWithinWorkArea: "resize_within_work_area",
@@ -85,16 +76,6 @@ export function saveSettings(settings: Settings): Promise<Settings> {
   return invoke(Commands.saveSettings, { settings });
 }
 
-export function loadProviders(): Promise<ProviderConfig[]> {
-  return invoke(Commands.loadProviders);
-}
-
-export function saveProviders(
-  providers: ProviderConfig[]
-): Promise<ProviderConfig[]> {
-  return invoke(Commands.saveProviders, { providers });
-}
-
 /** Copy the log file to Downloads; resolves to the destination path. */
 export function exportLogs(): Promise<string> {
   return invoke(Commands.exportLogs);
@@ -118,11 +99,6 @@ export function sessionTokenGet(): Promise<string | null> {
 /** Remove the stored session token (idempotent). */
 export function sessionTokenDelete(): Promise<void> {
   return invoke(Commands.sessionTokenDelete);
-}
-
-/** Models of a locally running Ollama instance; [] when it isn't running. */
-export function ollamaListModels(baseUrl?: string): Promise<string[]> {
-  return invoke(Commands.ollamaListModels, { baseUrl: baseUrl || null });
 }
 
 /** True when running inside the Tauri shell (vs. plain browser dev). */

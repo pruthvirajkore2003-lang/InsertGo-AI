@@ -18,7 +18,12 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { useAppShortcuts } from "@/hooks/useAppShortcuts";
 import { isTauri } from "@/services/tauriBridge";
 import { API_URL } from "@/services/apiConfig";
-import { formatUsd, planFor } from "@/services/billing";
+import {
+  detectCurrency,
+  formatMoney,
+  planFor,
+  type Money,
+} from "@/services/billing";
 import { useAuthStore } from "@/store/authStore";
 import {
   useMonetizationStore,
@@ -28,9 +33,10 @@ import {
 const EASE = [0.32, 0.72, 0, 1] as const; // mirrors --ig-ease
 
 /** Monthly prices as the copy renders them. Used when the pricing catalog
- *  hasn't loaded (first open, offline) — the last known website prices. */
-const FALLBACK_PLUS = 8;
-const FALLBACK_PRO = 15;
+ *  hasn't loaded (first open, offline) — the last known website prices. Both
+ *  columns, or an INR user offline reads "₹8/mo". */
+const FALLBACK_PLUS: Money = { USD: 8, INR: 499 };
+const FALLBACK_PRO: Money = { USD: 15, INR: 999 };
 
 type Prices = { plus: string; pro: string };
 
@@ -59,7 +65,8 @@ const COPY: Record<
     title: "Interaction history is part of InsertGo Plus",
     body: ({ plus, pro }) =>
       "Keep every interaction searchable on this device. Included in Plus " +
-      `(${plus}/mo) and Pro (${pro}/mo).`,
+      `(${plus}/mo) and Pro (${pro}/mo), before tax — taxes (e.g. VAT/GST) ` +
+      "are calculated at checkout.",
     cta: "Upgrade to Plus",
     anchor: "",
   },
@@ -86,9 +93,13 @@ export function PlanUpgradeModal() {
     if (open) void loadPricing();
   }, [open, loadPricing]);
 
+  const currency = detectCurrency();
+  const price = (tier: "plus" | "pro", fallback: Money) =>
+    formatMoney(planFor(pricing, tier)?.price[currency] ?? fallback[currency], currency);
+
   const prices: Prices = {
-    plus: formatUsd(planFor(pricing, "plus")?.price.USD ?? FALLBACK_PLUS),
-    pro: formatUsd(planFor(pricing, "pro")?.price.USD ?? FALLBACK_PRO),
+    plus: price("plus", FALLBACK_PLUS),
+    pro: price("pro", FALLBACK_PRO),
   };
 
   const goPricing = async (anchor: string) => {

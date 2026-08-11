@@ -1,0 +1,175 @@
+name: security
+
+# Compliance gates for the InsertGo estate (compliance/remediation-plan.md).
+#
+# R-06 — log hygiene. Personal data and one-time codes must not be interpolated
+# into a console call: platform logs are readable by every project member,
+# exportable to support and drainable to a third party, so a logged OTP is an
+# authentication bypass rather than a privacy nit.
+#
+# R-07 — vulnerability management. `npm audit` and `cargo audit` on every PR and
+# weekly, blocking on High/Critical. Neither tool carries its own ignore list:
+# both read compliance/vulnerability-exceptions.md through scripts/audit-gate.mjs,
+# so a suppression cannot exist without a reason, an owner and a review date, and
+# a lapsed date fails the build.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 3 * * 1' # Mondays, so a rule that rots is found without a PR
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  log-hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Scoped to the website: the desktop app has its own boundary
+      # (src/services/safeLog.ts) and its own rule in SECURITY.md.
+      #
+      # Two shapes are banned: `${email}` (a bare identifier) and `${x.email}`
+      # (a property). `message` and `prompt` are bare-only on purpose —
+      # `${e.message}` and `${usage.promptTokenCount}` are legitimate and a gate
+      # that flagged them would be switched off within a week.
+      #
+      # ponytail: line-based, so a console call whose interpolation sits on a
+      # later line slips through. An ESLint AST rule would not — worth the swap
+      # only once a multi-line leak actually occurs.
+      - name: No personal data in log calls
+        run: |
+          set -euo pipefail
+          bare='console\.(log|error|warn|info|debug|trace)\(.*\$\{[[:space:]]*(email|otp|password|message|name|apiKey|token|secret|prompt)\b'
+          prop='console\.(log|error|warn|info|debug|trace)\(.*\$\{[^}]*\.(email|otp|password|apiKey|token|secret)\b'
+          hits=$(grep -rEn "$bare|$prop" --include='*.ts' --include='*.tsx' \
+                   'Insert-Go Website/app' 'Insert-Go Website/lib' \
+                 | grep -v 'log-hygiene:' || true)
+          if [ -n "$hits" ]; then
+            echo "::error::Personal data or a credential is being logged."
+            echo "$hits"
+            echo
+            echo "Log an identifier, not the value: lib/auth.ts uses accountSubject()"
+            echo "for the address and routes error objects through lib/safeLog.ts."
+            echo "A deliberate dev-only line carries a '// log-hygiene: <reason>'"
+            echo "comment ON THE SAME LINE, and must be unreachable in production."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - run: npm ci
+
+      # The gate above is a proxy for the property; these tests are the property
+      # itself — that the OTP lane logs no address and no code, and that an
+      # error object cannot smuggle one in on a property nobody named.
+      - name: Log-hygiene tests
+        working-directory: Insert-Go Website
+        run: npx vitest run lib/safeLog.test.ts lib/auth.test.ts
+
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # A dependency gate without a committed lockfile measures a moving target:
+      # `npm audit` would score whatever the resolver picked that minute, and
+      # "this PR introduces no High advisory" would mean nothing. The root
+      # package-lock.json is currently untracked (the two per-workspace
+      # lockfiles still in git predate the workspace merge and nothing installs
+      # from them), so this fails loudly rather than auditing an unpinned tree.
+      - name: Lockfile is committed
+        run: |
+          test -f package-lock.json || {
+            echo "::error::package-lock.json is not in the repository. Commit it:"
+            echo "  npm audit and npm ci both resolve from it, and an unpinned"
+            echo "  tree makes this gate unenforceable. Delete the stale"
+            echo "  'Insert-Go Website/package-lock.json' and"
+            echo "  'Insert-Go Windows/package-lock.json' in the same change."
+            exit 1
+          }
+
+      # `--package-lock-only`: audit what the repo pins, with no install step and
+      # no chance of scoring a tree the runner happened to resolve.
+      #
+      # devDependencies stay in scope (no `--omit=dev`): the one confirmed
+      # compromise in this estate's history came through a dev-only Vite CVE that
+      # could read `.env` (R-01, SECURITY.md), so a production-only gate would
+      # have missed the incident that opened this plan.
+      #
+      # `npm audit` exits non-zero whenever it finds anything, including the
+      # excepted rows, so `|| true` here is a transport detail — the gate script
+      # is what decides.
+      - name: npm audit (High/Critical, exceptions from the register)
+        run: |
+          set -euo pipefail
+          npm audit --package-lock-only --json > /tmp/npm-audit.json || true
+          node scripts/audit-gate.mjs npm < /tmp/npm-audit.json
+
+  cargo-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads Cargo.lock only, so the Windows-only crate audits fine on Linux
+      # and the job costs seconds instead of a cross-compile.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      # No `--deny warnings`: the 18 unmaintained/unsound warnings are Linux-only
+      # GTK3 bindings pulled transitively by Tauri 2 with no maintained
+      # replacement. Failing on them would train everyone to skip this job.
+      # Reasoning is recorded in the register.
+      - name: cargo audit (exceptions from the register)
+        working-directory: Insert-Go Windows/src-tauri
+        run: cargo audit $(node ../../scripts/audit-gate.mjs cargo-ignores)
+
+  exception-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Runs on its own so a lapsed review date is reported as itself, not as a
+      # side effect of whichever audit job happened to run first.
+      - name: No exception past its review date
+        run: node scripts/audit-gate.mjs expiry
+
+  # R-21 — DPDP §8(1) accountability. A hand-maintained RoPA drifts from the
+  # schema within weeks, so the record is generated from the SQL and this gate
+  # fails when a column has no retention classification. The point is WHEN it
+  # fails: in the pull request that adds the column, while whoever added it
+  # still knows what it is for — not at the next audit.
+  ropa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Every personal-data column is classified
+        run: node scripts/ropa.mjs check
+
+      # Catches the other direction: someone edits CLASSIFICATION, forgets to
+      # regenerate, and the published record stops matching the schema it
+      # claims to describe.
+      - name: compliance/ropa.json is up to date
+        run: |
+          node scripts/ropa.mjs emit
+          git diff --exit-code -- compliance/ropa.json || {
+            echo "::error::compliance/ropa.json is stale. Run: node scripts/ropa.mjs emit"
+            exit 1
+          }

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAppShortcuts } from "@/hooks/useAppShortcuts";
 import { useSession } from "@/lib/auth-client";
-import { LinearWindows } from "./icons/LinearWindows";
+import { WindowsLogo } from "./icons/WindowsLogo";
 
 const links = [
   { label: "Home", href: "/" },
@@ -159,7 +159,7 @@ export function SiteNav() {
             href="/download"
             className="ease-apple inline-flex items-center gap-2 rounded-full bg-terracotta px-5 py-[11px] text-sm font-medium whitespace-nowrap text-on-accent transition-[transform,box-shadow] duration-300 hover:-translate-y-px hover:shadow-cta-sm active:translate-y-0 active:scale-[0.97] active:duration-75"
           >
-            <LinearWindows size={16} />
+            <WindowsLogo size={16} />
             <span className="hidden sm:inline">Download for Windows</span>
             <span className="sm:hidden">Download</span>
           </Link>

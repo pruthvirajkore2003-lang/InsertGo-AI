@@ -14,7 +14,6 @@ import { hideWindow, startWindowDrag } from "@/services/windowChrome";
 import { isTauri } from "@/services/tauriBridge";
 import { useHotkey } from "@/hooks/useHotkey";
 import { useAppShortcuts } from "@/hooks/useAppShortcuts";
-import { useInlineImprove } from "@/hooks/useInlineImprove";
 import {
   AUTO_HEIGHT_TRANSITION,
   useAutoWindowHeight,
@@ -122,10 +121,6 @@ export default function App() {
   }, [showComposerAndFocus]);
   useHotkey({ onShown });
 
-  // Inline Improve (SPEC §4.4): the hotkey pipeline's LLM leg runs in this
-  // always-mounted webview even while the palette is hidden.
-  useInlineImprove();
-
   return (
     <div className="ig-overlay">
       <div className="ig-panel">
@@ -230,13 +225,35 @@ export default function App() {
                   >
                     <motion.header className="ig-auth__head" variants={AUTH_RISE}>
                       <h2 className="ig-auth__title">
-                        Get Started with InsertGo
+                        Your prompts, one hotkey away.
                       </h2>
                       <p className="ig-auth__sub">
                         Start your 7-day free trial (50 credits). No credit
                         card required.
                       </p>
                     </motion.header>
+                    {/* Trust bullets — compact echo of the website login's
+                        brand pane (tick-circle icons in cobalt tile washes). */}
+                    <motion.ul className="ig-auth__trust" variants={AUTH_RISE}>
+                      <li>
+                        <span className="ig-auth__tick" aria-hidden="true">
+                          <i className="fa-solid fa-circle-check" />
+                        </span>
+                        No password to remember
+                      </li>
+                      <li>
+                        <span className="ig-auth__tick" aria-hidden="true">
+                          <i className="fa-solid fa-circle-check" />
+                        </span>
+                        7-day free trial included
+                      </li>
+                      <li>
+                        <span className="ig-auth__tick" aria-hidden="true">
+                          <i className="fa-solid fa-circle-check" />
+                        </span>
+                        Syncs with your InsertGo.AI account
+                      </li>
+                    </motion.ul>
                     <motion.div variants={AUTH_RISE}>
                       <AuthPanel />
                     </motion.div>

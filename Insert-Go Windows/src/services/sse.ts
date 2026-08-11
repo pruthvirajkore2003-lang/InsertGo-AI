@@ -73,26 +73,10 @@ export async function readSseStream(
   );
 }
 
-/**
- * Read a byte stream as NDJSON-style lines (Ollama's streaming format),
- * invoking `onLine` with each non-empty line. Same buffering, idle-timeout,
- * and cancellation semantics as `readSseStream` — they share the line loop.
- */
-export async function readNdjsonStream(
-  stream: ReadableStream<Uint8Array>,
-  onLine: (line: string) => void,
-  opts: ReadSseOptions = {}
-): Promise<void> {
-  return readLineStream(
-    stream,
-    (rawLine) => {
-      const line = rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine;
-      if (line.trim() === "") return;
-      onLine(line);
-    },
-    opts
-  );
-}
+// `readNdjsonStream` lived here for Ollama's streaming format and had no caller
+// but its own test. Deleted 2026-08-08 with the rest of the local-model lane
+// (R-15). The relay speaks SSE; if a second wire format ever arrives, it comes
+// back as a five-line wrapper over `readLineStream`.
 
 /** Shared line-splitting read loop behind both wire formats. */
 async function readLineStream(

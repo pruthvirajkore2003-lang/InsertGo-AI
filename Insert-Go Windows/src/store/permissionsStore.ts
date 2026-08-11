@@ -27,7 +27,6 @@ import type {
 const INITIAL_PERMISSIONS: Record<PermissionId, PermissionStatus> = {
   accessibility: "unknown",
   globalHotkey: "unknown",
-  improveHotkey: "unknown",
   clipboard: "unknown",
   autostart: "unknown",
 };
@@ -75,7 +74,6 @@ function applyReport(
   return {
     accessibility: coerce(report.accessibility),
     globalHotkey: coerce(report.globalHotkey),
-    improveHotkey: coerce(report.improveHotkey),
     clipboard: coerce(report.clipboard),
     autostart: coerce(report.autostart),
   };

@@ -47,8 +47,7 @@ Report edit decisions, not draft wording.
 </analysis_checklist>
 
 <edge_cases>
-- Empty input: use exactly `[Unable to improve: no text provided.]`
-- Meaning is unrecoverable: use exactly `[Unable to improve: meaning is unrecoverable.]`
+- Garbled or fragmentary text: improve what is recoverable and keep uncertain wording verbatim. Never emit a refusal string.
 - Already strong text: return unchanged or make only clear micro-edits. Do not manufacture changes.
 - Very short informal message: preserve brevity and register.
 - Mixed-quality document: edit all sections consistently.

@@ -6,7 +6,6 @@ vi.mock("@/services/tauriBridge", () => ({
   isTauri: () => false,
   saveSettings: vi.fn(async (s: Settings) => s),
   loadSettings: vi.fn(),
-  loadProviders: vi.fn(),
   getHardwareId: vi.fn(async () => "hw"),
 }));
 import { useSettingsStore } from "@/store/settingsStore";

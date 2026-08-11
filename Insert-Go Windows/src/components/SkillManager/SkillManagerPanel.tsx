@@ -6,7 +6,8 @@
  * All state lives in the settings store; this panel dispatches its actions,
  * which persist to settings.json (through Rust) and re-render the PromptPalette
  * skill bar reactively — toggling a card here updates the bar with no reload.
- * The existing SkillManagerModal (opened from the palette) is untouched.
+ * This panel is the only skill-management surface; the earlier palette-opened
+ * modal was deleted once nothing rendered it.
  */
 import { useMemo, useState } from "react";
 import {

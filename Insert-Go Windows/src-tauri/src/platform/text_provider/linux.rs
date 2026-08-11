@@ -11,8 +11,6 @@
 //! * Selection read: the `org.a11y.atspi.Text` interface —
 //!   `GetNSelections`/`GetSelection` for the range, `GetText(start, end)` for
 //!   the content, `GetRangeExtents` for the screen rect.
-//! * Whole-field read: `Text.GetText(0, -1)`; password guard: the accessible
-//!   role `password_text` / state `Protected` → `is_password: true`, NO text.
 //! * Gotchas: the a11y bus must be enabled (`org.a11y.Bus` → `IsEnabled`);
 //!   Electron apps only join it when launched with a11y active
 //!   (GTK_MODULES=gail:atk-bridge or `--force-renderer-accessibility`), so
@@ -22,7 +20,7 @@
 //! ## Fallback tier — chord synthesis
 //! * X11: XTest (`x11rb`'s `xtest` extension or `libxdo`):
 //!   `xtest::fake_input(KEY_PRESS/KEY_RELEASE, keycode, ...)` for
-//!   Ctrl+C / Ctrl+A / Ctrl+V — and `Ctrl+Shift+V` when
+//!   Ctrl+C / Ctrl+V — and `Ctrl+Shift+V` when
 //!   `TargetApp::is_terminal()` (GNOME Terminal, Konsole, etc. treat Ctrl+V
 //!   as a literal control char).
 //! * Wayland: there is NO global key injection. Options: the
@@ -46,8 +44,7 @@
 use tauri::AppHandle;
 
 use super::{FallbackOps, NativeTextProvider, TargetApp};
-use crate::error::AppResult;
-use crate::platform::selection::{FieldRead, SelectionRead};
+use crate::platform::selection::SelectionRead;
 
 pub(crate) struct LinuxTextProvider;
 
@@ -60,24 +57,8 @@ impl NativeTextProvider for LinuxTextProvider {
     ) -> Option<SelectionRead> {
         // AT-SPI2 Text.GetSelection first; X11 has a cheaper pre-check — the
         // PRIMARY selection often already holds the selected text. Then
-        // fallback::capture_text(app, &LinuxFallbackOps, CaptureScope::Selection).
+        // fallback::capture_text(app, &LinuxFallbackOps).
         unimplemented!("Linux: AT-SPI2 selection read (see module docs)")
-    }
-
-    fn read_focused_value(
-        &self,
-        _app: &AppHandle,
-        _allow_clipboard_fallback: bool,
-    ) -> Option<FieldRead> {
-        // Role/state password guard FIRST, then Text.GetText(0, -1); fall
-        // back to fallback::capture_text(.., CaptureScope::WholeField).
-        unimplemented!("Linux: AT-SPI2 focused-value read (see module docs)")
-    }
-
-    fn replace_text(&self, _app: &AppHandle, _target: Option<isize>, _text: String) -> AppResult<()> {
-        // fallback::paste_text(app, &LinuxFallbackOps, text, /*select_all*/ true,
-        //     || EWMH-activate + verify the captured window, Ok(TargetApp {..}))
-        unimplemented!("Linux: EWMH activate + XTest paste (see module docs)")
     }
 }
 
@@ -88,10 +69,6 @@ pub(crate) struct LinuxFallbackOps;
 impl FallbackOps for LinuxFallbackOps {
     fn send_copy(&self) -> Result<(), String> {
         unimplemented!("Linux: XTest Ctrl+C / portal injection")
-    }
-
-    fn send_select_all(&self) -> Result<(), String> {
-        unimplemented!("Linux: XTest Ctrl+A / portal injection")
     }
 
     fn send_paste(&self, target: &TargetApp) -> Result<(), String> {

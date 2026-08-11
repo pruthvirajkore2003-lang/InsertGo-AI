@@ -255,8 +255,7 @@ InsertGo's roadmap is organized into progressive milestones. The current roadmap
     *   **I1 — capture/write-back core**: UIA + clipboard capture + replace + restore. *(Shipped)*
     *   **I2 — adapters + modes**: target profiles (claude-web, vscode, cursor, generic). *(Shipped)*
     *   **I3 — hardening**: latency optimization, settings UI overrides.
-*   **Phase 1: Local-First & Zero-Trust Architecture (Ollama)**:
-    *   **P1-Local**: Ollama auto-discovery and integration, local text processing for complete offline security. *(Backend command retained; no UI routes to it.)*
+*   ~~**Phase 1: Local-First & Zero-Trust Architecture (Ollama)**~~ — **cancelled 2026-08-08 (R-15).** See §16.
 *   **Phase 2: IDE & Terminal Workspace Context Scraper & Presets**:
     *   **P2-Context**: Rust backend scanners for active file path, active workspace directory, and local Git diffs.
     *   **P2-Terminal**: Scraping terminal error buffers (WT / PowerShell) for inline bug debugging.
@@ -327,12 +326,37 @@ Maintain a small fixture set per mode × profile (rough draft -> expected proper
 
 ---
 
-## 16. Local LLM Integration (Phase 1)
+## 16. Local LLM / BYOK — cancelled
 
-### 16.2 Local LLM Integration (Ollama / Llama.cpp)
-*   **Auto-Discovery**: On startup, the Rust backend attempts to ping `http://localhost:11434/api/tags` to check for a running local Ollama instance. If found, Ollama models are made available in the model picker.
-*   **Inference Pipeline**: Local requests use the Ollama API `/api/generate` with stream=true. This allows complete offline processing with 0ms network latency.
-*   **Model Requirements**: Recommendations include 1B-3B parameter models (e.g., Llama-3-8B-Instruct or Qwen-2.5-Coder-3B) for fast local rewrites.
+**Decision, 2026-08-08 (compliance item R-15):** InsertGo will not ship
+bring-your-own-key providers or local-model inference, now or later. The
+managed relay is the only lane, and the product is specified on that basis.
+
+What the decision removed, so it is not rebuilt by accident:
+
+*   `src-tauri/src/domain/ollama.rs` (loopback `/api/tags` auto-discovery) and
+    its `ollama_list_models` command and bridge wrapper — **deleted**. No UI
+    ever routed to it.
+*   The ~35 third-party model hosts in `capabilities/default.json`'s
+    `http:default` scope, and the `https://**` scope on the selection review
+    floater — **deleted**. Every request the app makes resolves to
+    `${API_URL}` (`services/lanes.ts` → `aiProviders.ts`), so those rules
+    granted egress no code path used.
+*   Every claim in the Terms and Privacy Policy that a user key or a local
+    model exists — **deleted** in legal version 1.3.0. They had described the
+    feature as shipped for the whole of its non-existence, which over-promised
+    privacy rather than under-promising it.
+
+What deliberately stays: `ProviderConfig` and the provider list in
+`domain/providers.rs`, because the managed lane is itself a provider row
+(`services/lanes.ts`), and `apiKey` on that struct, which is persisted as `""`
+or `"dummy"` and ignored by the backend. Removing the field would be a
+storage-format change for no gain.
+
+Loopback in the http capability also stays: it is the dev API server
+(`apiConfig.ts` falls back to `http://localhost:3000`), and a release build
+cannot point at it because `vite.config.ts` fails the build when
+`VITE_API_URL` is a dev origin.
 
 ---
 

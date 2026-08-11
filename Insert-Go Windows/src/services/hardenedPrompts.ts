@@ -1,6 +1,6 @@
 /**
- * Injection-hardened, provider-neutral prompt shells — the fourth sibling of
- * SKILL_SYSTEM / REFINE_SYSTEM / IMPROVE_SYSTEM (skills.ts). Where those
+ * Injection-hardened, provider-neutral prompt shells — the third sibling of
+ * SKILL_SYSTEM / REFINE_SYSTEM (skills.ts). Where those
  * harden one feature each, this module is the generic template layer for
  * prompts adapted from external prompt libraries into InsertGo, following the
  * OWASP LLM01 structured pattern (LLM Prompt Injection Prevention Cheat

@@ -62,7 +62,7 @@ pub(crate) fn insert_from(app: &AppHandle, label: &str, text: String) -> AppResu
     // The generic lifecycle (cache → stage → paste → wait → restore) lives in
     // text_provider::fallback; the closure is the Windows focus dance run
     // between staging and the chord.
-    let result = paste_text(app, &WinFallbackOps::new(false), text, false, || {
+    let result = paste_text(app, &WinFallbackOps::new(false), text, || {
         // Hide the calling surface so InsertGo stops being the foreground
         // window, then give the OS a beat to settle the focus handoff.
         // `palette:hidden` is the palette's own lifecycle signal — never
@@ -132,73 +132,6 @@ pub fn insert_text(app: AppHandle, text: String) -> AppResult<()> {
     Ok(())
 }
 
-/// Replace the ENTIRE content of the focused field in the previously focused
-/// app with `text` (Inline Improve write-back, SPEC §4.4/§5.6.1). Identical
-/// pipeline to [`insert_text`] — cache clipboard → stage → focus restore →
-/// re-verify foreground → paste → 500 ms settle → restore clipboard, with the
-/// same `insert:fallback` contract — except a `Ctrl+A` is sent before the
-/// paste so the improved prompt overwrites the whole field. Destructive of
-/// field content by design: callers must snapshot the captured draft first
-/// (the Improve pipeline stores it for the Undo hotkey).
-#[cfg(target_os = "windows")]
-#[tauri::command]
-pub async fn replace_text(app: AppHandle, text: String) -> AppResult<()> {
-    use crate::PriorWindow;
-    use tauri::Manager;
-
-    let target = app.state::<PriorWindow>().get();
-    crate::platform::text_provider::provider().replace_text(&app, target, text)
-}
-
-/// Non-Windows: stage on the clipboard only, mirroring `insert_text`.
-#[cfg(not(target_os = "windows"))]
-#[tauri::command]
-pub async fn replace_text(app: AppHandle, text: String) -> AppResult<()> {
-    app.clipboard()
-        .write_text(text)
-        .map_err(|e| AppError::Os(format!("clipboard write: {e}")))?;
-    Ok(())
-}
-
-/// Core of [`replace_text`], callable with an explicit target so the Undo
-/// hotkey can restore its snapshot into the original window without touching
-/// `PriorWindow` semantics. Never called with the palette visible (Inline
-/// Improve is headless), but hides it defensively like `insert_text` — a
-/// visible palette would otherwise hold the foreground the pipeline needs.
-#[cfg(target_os = "windows")]
-pub(crate) fn replace_into(
-    app: &AppHandle,
-    target: Option<isize>,
-    text: String,
-) -> AppResult<()> {
-    use crate::platform::text_provider::{fallback::paste_text, PasteFailure, TargetApp, WinFallbackOps};
-    use crate::platform::window::PALETTE_LABEL;
-    use std::time::Duration;
-    use tauri::{Emitter, Manager};
-
-    // Replace semantics: `select_all_first` makes the generic lifecycle
-    // select the whole field in the verified-foreground window immediately
-    // before the paste overwrites it.
-    let result = paste_text(app, &WinFallbackOps::new(false), text, true, || {
-        if let Some(window) = app.get_webview_window(PALETTE_LABEL) {
-            if window.is_visible().unwrap_or(false) {
-                window.hide().map_err(|e| format!("hide palette: {e}"))?;
-                let _ = app.emit("palette:hidden", ());
-                std::thread::sleep(Duration::from_millis(50));
-            }
-        }
-        let hwnd = target.ok_or_else(|| "no target window captured".to_string())?;
-        acquire_verified_focus(app, hwnd)?;
-        Ok(TargetApp { window: hwnd })
-    });
-
-    match result {
-        Ok(()) => Ok(()),
-        Err(PasteFailure::Stage(e)) => Err(AppError::Os(e)),
-        Err(PasteFailure::Staged(reason)) => fallback(app, PALETTE_LABEL, &reason).map(|_| ()),
-    }
-}
-
 /// Abort the paste but keep the prompt on the clipboard: re-show the calling
 /// window (so the toast is visible) and tell the frontend to surface the
 /// fallback. Deliberately does NOT overwrite `PriorWindow` — mid-pipeline the
@@ -260,13 +193,6 @@ pub(crate) fn send_terminal_copy_chord() -> Result<(), String> {
     send_chord(enigo::Key::C, true)
 }
 
-/// Send a synthetic `Ctrl+A` chord — whole-field select for the Inline
-/// Improve capture fallback and the replace-semantics write-back.
-#[cfg(target_os = "windows")]
-pub(crate) fn send_selectall_chord() -> Result<(), String> {
-    send_ctrl_chord('a')
-}
-
 /// Terminal paste chord: terminals swallow `Ctrl+V` (or feed it to the
 /// hosted CLI) and take `Ctrl+Shift+V` instead — Windows Terminal's
 /// bracketed paste then keeps multiline text a paste, never an Enter press.
@@ -277,9 +203,7 @@ pub(crate) fn send_terminal_paste_chord() -> Result<(), String> {
 }
 
 /// `true` when `process` (an executable file name) hosts a terminal — the
-/// targets whose clipboard chords are `Ctrl+Shift+C` / `Ctrl+Shift+V` and
-/// whose input line cannot be select-all-captured (the Improve pipeline
-/// routes them to the palette).
+/// targets whose clipboard chords are `Ctrl+Shift+C` / `Ctrl+Shift+V`.
 pub(crate) fn is_terminal_process(process: &str) -> bool {
     const TERMINALS: [&str; 10] = [
         "windowsterminal.exe",
@@ -317,13 +241,12 @@ mod tests {
     }
 }
 
-/// Shared `Ctrl+<letter>` chord core for the paste/copy/select-all chords.
+/// Shared `Ctrl+<letter>` chord core for the paste/copy chords.
 #[cfg(target_os = "windows")]
 fn send_ctrl_chord(letter: char) -> Result<(), String> {
     use enigo::Key;
 
     let key = match letter {
-        'a' | 'A' => Key::A,
         'c' | 'C' => Key::C,
         'v' | 'V' => Key::V,
         _ => return Err(format!("unsupported ctrl chord: {letter}")),

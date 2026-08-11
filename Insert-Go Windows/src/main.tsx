@@ -17,8 +17,8 @@ const runtime = isTauri() ? "tauri" : "browser";
 document.documentElement.dataset.runtime = runtime;
 
 // Window-label routing: the `floating-icon` window loads this same bundle
-// but must mount only the launcher bubble — App wires stores, hotkeys and
-// the Inline Improve pipeline, none of which may run twice.
+// but must mount only the launcher bubble — App wires stores and hotkeys,
+// none of which may run twice.
 const label = runtime === "tauri" ? getCurrentWindow().label : "main";
 
 // Material mode from the backend (see listenGlassMode).

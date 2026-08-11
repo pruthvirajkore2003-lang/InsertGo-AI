@@ -51,8 +51,7 @@ This is an audit summary, not a draft of final summary.
 </quality_checks>
 
 <edge_cases>
-- Empty input: use exactly `[Unable to summarize: no content provided.]`
-- Meaningless or corrupted input: use exactly `[Unable to summarize: content has no summarizable meaning.]`
+- Fragmentary, garbled, or non-prose source: summarize whatever meaning is recoverable and quote unclear wording verbatim. Never emit a refusal string.
 - Several unrelated documents: summarize each under its own short heading, in source order.
 - Very short source: do not pad it.
 </edge_cases>

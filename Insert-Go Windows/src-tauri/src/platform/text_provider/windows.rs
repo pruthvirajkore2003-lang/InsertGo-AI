@@ -11,8 +11,7 @@
 use tauri::AppHandle;
 
 use super::{FallbackOps, NativeTextProvider, TargetApp};
-use crate::error::AppResult;
-use crate::platform::selection::{FieldRead, SelectionRead};
+use crate::platform::selection::SelectionRead;
 use crate::platform::{clipboard, selection};
 
 pub(crate) struct WindowsTextProvider;
@@ -25,18 +24,6 @@ impl NativeTextProvider for WindowsTextProvider {
         pointer_gesture: bool,
     ) -> Option<SelectionRead> {
         selection::read_selection(app, allow_clipboard_fallback, pointer_gesture)
-    }
-
-    fn read_focused_value(
-        &self,
-        app: &AppHandle,
-        allow_clipboard_fallback: bool,
-    ) -> Option<FieldRead> {
-        selection::read_focused_value(app, allow_clipboard_fallback)
-    }
-
-    fn replace_text(&self, app: &AppHandle, target: Option<isize>, text: String) -> AppResult<()> {
-        clipboard::replace_into(app, target, text)
     }
 }
 
@@ -60,10 +47,6 @@ impl FallbackOps for WinFallbackOps {
         } else {
             clipboard::send_copy_chord()
         }
-    }
-
-    fn send_select_all(&self) -> Result<(), String> {
-        clipboard::send_selectall_chord()
     }
 
     fn send_paste(&self, target: &TargetApp) -> Result<(), String> {

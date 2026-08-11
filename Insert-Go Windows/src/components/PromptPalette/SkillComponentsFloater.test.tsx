@@ -5,9 +5,8 @@ import { createRef } from "react";
 import { SkillComponentsFloater } from "./SkillComponentsFloater";
 import { REFINE_SYSTEM, composeRefinePrompt } from "@/services/skills";
 import { usePromptStore, type ActiveSkill } from "@/store/promptStore";
-import { useSettingsStore } from "@/store/settingsStore";
+import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
-import type { ProviderConfig } from "@/types";
 
 // The selection-source Apply goes through selection_floater_insert (hide the
 // floater window, paste over the original selection); mock the bridge so the
@@ -34,18 +33,10 @@ const SKILL: ActiveSkill = {
   source: "editor",
 };
 
-const PROVIDER: ProviderConfig = {
-  id: "p1",
-  name: "Gemini (test)",
-  baseUrl: "https://generativelanguage.googleapis.com",
-  apiKey: "k",
-  isDefault: true,
-};
-
 function seedStores({
   result = null as string | null,
   isSending = false,
-  providers = [PROVIDER] as ProviderConfig[],
+  signedIn = true,
 } = {}) {
   usePromptStore.setState({
     body: "",
@@ -58,7 +49,8 @@ function seedStores({
     abortRun: null,
     activeSkill: SKILL,
   });
-  useSettingsStore.setState({ providers, selectedProviderId: null });
+  // One lane, gated on the session token: signed in ⇒ a provider exists.
+  useAuthStore.setState({ token: signedIn ? "test-token" : null });
 }
 
 function renderFloater(onRun = vi.fn()) {
@@ -104,8 +96,12 @@ describe("SkillComponentsFloater", () => {
 
     expect(screen.getByText("Thinking")).toBeInTheDocument();
     expect(screen.getByText("weighing tone and length")).toBeInTheDocument();
-    // The reasoning is the progress cue now — no separate working pulse.
-    expect(screen.queryByRole("status", { name: "Working" })).toBeNull();
+    // The working orb stays mounted for the WHOLE pre-deliverable run, reasoning
+    // or not: unmounting it when `thinking` starts restarted its rAF loop (a
+    // visible blink) and left the screen empty during the transient
+    // `result === ""` gap. The reasoning is an addition to that cue, not a
+    // replacement for it (see the comment on the branch in the component).
+    expect(screen.getByRole("status", { name: "Working" })).toBeInTheDocument();
     // Auto-expanded while there is no deliverable yet.
     expect(
       screen.getByText("weighing tone and length").closest("details")
@@ -184,8 +180,8 @@ describe("SkillComponentsFloater", () => {
     expect(screen.getByLabelText("Refine instruction")).toHaveValue("");
   });
 
-  it("hides the Edit affordance when no provider is configured", () => {
-    seedStores({ result: "text", providers: [] });
+  it("hides the Edit affordance when signed out (no lane)", () => {
+    seedStores({ result: "text", signedIn: false });
     renderFloater();
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
   });

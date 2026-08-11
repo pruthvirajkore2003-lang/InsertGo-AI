@@ -36,7 +36,7 @@ import {
   validateCustomSkill,
   type CustomSkillDraft,
 } from "@/services/skills";
-import { resolveActiveProvider } from "@/services/lanes";
+import { resolveActiveProvider } from "@/services/aiProviders";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
@@ -83,7 +83,7 @@ export function CreateSkillWizard({ onClose }: Props) {
   useEffect(() => () => abortRef.current?.abort(), []);
 
   // One Esc handler across both layers: the picker (top) closes first, then the
-  // wizard — mirrors SkillManagerModal, avoiding two racing capture listeners.
+  // wizard — one owner for both layers, no racing capture listeners.
   useAppShortcuts({
     onClose: () => {
       if (iconPickerOpen) {

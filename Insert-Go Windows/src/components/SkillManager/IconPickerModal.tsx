@@ -9,10 +9,10 @@
  * hand back thousands of `fa-*` names the bundled font can't draw; the picker
  * therefore only offers glyphs proven to render (guarded by a vitest check).
  *
- * Esc is intentionally NOT bound here: SkillManagerModal owns a single
- * window-level Escape handler that closes this picker first (it is the top
- * layer) and the manager only when the picker is shut — one listener, no
- * capture-phase race between two dialogs on the same window.
+ * Esc is intentionally NOT bound here: CreateSkillWizard (this picker's only
+ * host) owns a single window-level Escape handler that closes the picker first
+ * (it is the top layer) and the wizard only when the picker is shut — one
+ * listener, no capture-phase race between two dialogs on the same window.
  */
 import { useMemo, useRef, useState } from "react";
 import { ICON_PRESETS } from "@/services/skills";

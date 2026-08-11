@@ -15,19 +15,20 @@
     "remotion:render": "remotion render FeatureReel out/feature-reel.mp4"
   },
   "//deps": "@upstash/redis + @upstash/vector are fetch-only and back the two shared caches the Edge generate route depends on (lib/edgeCache.ts). pg is now Node-runtime only — Better Auth's adapter, the billing webhook and the account page (lib/pgPool.ts); nothing reachable from an Edge route may import it. The Edge route reaches Postgres over PostgREST with plain fetch (lib/db.ts), so no Edge database driver is a dependency at all.",
+  "//adapter-deps": "@better-auth/kysely-adapter and kysely were already installed transitively under better-auth; they are declared here because lib/sessionTokenHash.ts builds the Kysely adapter explicitly in order to wrap it (R-04 — session tokens are stored hashed). Keep @better-auth/kysely-adapter on the SAME version as better-auth: it is a first-party package released in lockstep, and a mismatch means two Kysely adapters with different schema assumptions.",
   "dependencies": {
+    "@better-auth/kysely-adapter": "^1.6.23",
     "@better-auth/sso": "^1.6.23",
     "@google/genai": "^2.10.0",
-    "@remotion/cli": "^4.0.490",
     "@upstash/redis": "^1.38.0",
     "@upstash/vector": "^1.2.3",
     "better-auth": "^1.6.23",
     "framer-motion": "^11.15.0",
+    "kysely": "^0.29.3",
     "next": "^15.3.8",
     "pg": "^8.22.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "remotion": "^4.0.490",
     "resend": "^6.17.1"
   },
   "//overrides": "Both are transitive under next, which has no release that resolves them: sharp (libvips CVE-2026-33327/33328/35590/35591) and next's vendored postcss (GHSA-qx2v-qp2m-jg93). Drop an entry once next ships a version that pulls the patched range itself.",
@@ -35,12 +36,15 @@
     "sharp": "^0.35.3",
     "postcss": "^8.5.10"
   },
+  "//remotion": "Marketing-reel toolchain (remotion/ + the two remotion scripts). Nothing under app/, components/ or lib/ imports it, so it is a build-time authoring tool, not a runtime dependency — dev-only keeps it out of a production install and out of the deployed bundle's dependency surface.",
   "devDependencies": {
+    "@remotion/cli": "^4.0.490",
     "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^22.10.0",
     "@types/pg": "^8.20.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "remotion": "^4.0.490",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.7.0",
     "vitest": "^4.1.10"

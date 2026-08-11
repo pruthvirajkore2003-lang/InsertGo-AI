@@ -13,7 +13,14 @@ surface the Edge generate route calls:
 ```bash
 psql "$DATABASE_URL" -f supabase-auth-schema.sql
 psql "$DATABASE_URL" -f supabase-edge-rpc.sql
+psql "$DATABASE_URL" -f supabase-audit-log.sql          # CERT-In 180-day log + detector
+psql "$DATABASE_URL" -f supabase-session-hardening.sql  # hashed session tokens (R-04)
 ```
+
+Order matters for the last one against an existing database: it rewrites live
+session tokens into the hashed form the app looks them up by, so run it **after**
+deploying the code, not before. Both orders fail closed (a mismatch is a 401),
+but running it first signs everyone out until the deploy lands.
 
 ## 2. Environment
 
