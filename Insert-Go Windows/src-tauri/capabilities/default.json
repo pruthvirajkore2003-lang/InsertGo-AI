@@ -21,6 +21,7 @@
     "clipboard-manager:allow-read-text",
     "log:default",
     "deep-link:default",
+    "updater:default",
     {
       "identifier": "opener:allow-open-url",
       "comment": "The bare `https://*/**` rule exists for grounded-run citations (SkillComponentsFloater Sources): their hosts are arbitrary publisher/redirect domains that no allowlist can enumerate. It only ever hands a URL to the SYSTEM BROWSER — never the webview — and the caller filters to http(s) first, so no javascript:/file: URI can reach it.",

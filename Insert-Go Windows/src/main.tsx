@@ -5,6 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import App from "./App";
 import { FloatingIcon } from "./components/FloatingIcon/FloatingIcon";
 import { listenGlassMode, syncThemeFromBackend } from "./store/settingsStore";
+import { startUpdateChecks } from "./services/updater";
 import "./styles/global.css";
 import "./styles/fontawesome.css";
 
@@ -36,6 +37,10 @@ if (navigator.userAgent.includes("Mac")) {
 // dark default tokens until the first theme:apply broadcast. Pull the
 // persisted theme once at startup; live changes arrive via the broadcast.
 if (label === "floating-icon") void syncThemeFromBackend();
+
+// Main window only: every window loads this bundle, and N windows would mean N
+// timers hitting the endpoint and racing to run the same installer.
+if (label === "main") startUpdateChecks();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

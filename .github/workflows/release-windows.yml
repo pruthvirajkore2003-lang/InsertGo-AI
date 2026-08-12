@@ -16,6 +16,15 @@ name: release-windows
 #   4. Repo variables: AZURE_SIGN_ENDPOINT (region URI, e.g.
 #      https://eus.codesigning.azure.net), AZURE_SIGN_ACCOUNT, AZURE_SIGN_PROFILE.
 #      Repo secrets: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID.
+#
+# Updater signing is a SECOND, unrelated signature. Azure Artifact Signing is
+# Authenticode — it tells Windows the installer is from us. The updater's
+# minisign keypair (`npm run tauri signer generate`) is what tells an ALREADY
+# INSTALLED copy that the .exe it just downloaded is from us, and it is checked
+# by the client against `plugins.updater.pubkey` in tauri.conf.json. Neither
+# substitutes for the other.
+#   Repo secrets: TAURI_SIGNING_PRIVATE_KEY (the whole insertgo.key file),
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD.
 
 on:
   push:
@@ -34,6 +43,11 @@ jobs:
   build:
     runs-on: windows-latest
     environment: release-windows
+    # Overrides the read-only default above: the updater's endpoint is
+    # releases/latest/download/latest.json, so the job has to publish a release.
+    permissions:
+      contents: write
+      id-token: write
     defaults:
       run:
         shell: pwsh
@@ -145,11 +159,32 @@ jobs:
       # fallback — a shipped bundle would otherwise send the session bearer token
       # to whatever is listening on the user's port 3000. Override with a repo
       # variable to build against staging.
+      # An installed client compares its own version against latest.json's, so a
+      # tag that disagrees with tauri.conf.json ships a release nobody is ever
+      # offered (tag ahead) or an update loop (tag behind). Cheap to check here,
+      # unfixable once published.
+      - name: Tag matches tauri.conf.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $conf = (Get-Content src-tauri\tauri.conf.json -Raw | ConvertFrom-Json).version
+          $tag  = "${{ github.ref_name }}" -replace '^v', ''
+          if ($conf -ne $tag) {
+            throw "Tag v$tag does not match tauri.conf.json version $conf."
+          }
+          "IG_VERSION=$conf" | Add-Content -Path $env:GITHUB_ENV -Encoding utf8
+
       - name: Build and sign installer
         run: npm run tauri:build -- --verbose
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL || 'https://insertgo.ai' }}
           VITE_GEMINI_MODEL: ${{ vars.VITE_GEMINI_MODEL || 'gemini-2.5-flash-lite' }}
+          # bundle.createUpdaterArtifacts reads these. If the key is absent the
+          # CLI does NOT fail — it just skips the .sig, and the manifest step
+          # below is what turns that into a red build instead of a release that
+          # every client silently refuses.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - name: Verify installer signature
         run: |
@@ -159,9 +194,60 @@ jobs:
           if (-not $installer) { throw 'No NSIS installer produced.' }
           & $env:IG_SIGNTOOL verify /pa /v $installer
 
+      # `tauri build` writes the .sig next to the installer; it does NOT write
+      # latest.json — that has only ever come from tauri-apps/tauri-action, and
+      # this workflow drives the CLI directly so it can keep the Azure signing
+      # steps. Twelve lines here is cheaper than reshaping the job around an
+      # action whose signing hooks we do not use.
+      - name: Build updater manifest
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $nsis = 'src-tauri\target\release\bundle\nsis'
+          $exe  = Get-ChildItem "$nsis\*-setup.exe"     | Select-Object -First 1
+          $sig  = Get-ChildItem "$nsis\*-setup.exe.sig" | Select-Object -First 1
+          if (-not $sig) {
+            throw 'No .sig produced. TAURI_SIGNING_PRIVATE_KEY is missing or wrong: ' +
+                  'the installer would be rejected by every client that tried to update.'
+          }
+          @{
+            version   = $env:IG_VERSION
+            notes     = "InsertGo $env:IG_VERSION"
+            pub_date  = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            platforms = @{
+              'windows-x86_64' = @{
+                # The signature is the .sig file's literal contents, not a path.
+                signature = (Get-Content $sig.FullName -Raw).Trim()
+                url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$($exe.Name)"
+              }
+            }
+          } | ConvertTo-Json -Depth 5 | Out-File "$nsis\latest.json" -Encoding utf8
+
       - uses: actions/upload-artifact@v4
         with:
           name: InsertGo-windows-nsis
-          path: Insert-Go Windows/src-tauri/target/release/bundle/nsis/*-setup.exe
+          path: |
+            Insert-Go Windows/src-tauri/target/release/bundle/nsis/*-setup.exe
+            Insert-Go Windows/src-tauri/target/release/bundle/nsis/*-setup.exe.sig
+            Insert-Go Windows/src-tauri/target/release/bundle/nsis/latest.json
           if-no-files-found: error
           retention-days: 30
+
+      # The updater endpoint is `releases/latest/download/latest.json`, so the
+      # three files have to be release ASSETS — a workflow artifact is not
+      # reachable without a token. Draft on purpose: `releases/latest` only
+      # resolves to a PUBLISHED release, so nothing is offered to installed
+      # clients until a human publishes it and every rollback is one click.
+      - name: Publish draft release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $nsis = "$env:GITHUB_WORKSPACE\Insert-Go Windows\src-tauri\target\release\bundle\nsis"
+          gh release create "${{ github.ref_name }}" `
+            --draft --title "InsertGo $env:IG_VERSION" --generate-notes `
+            (Get-ChildItem "$nsis\*-setup.exe").FullName `
+            (Get-ChildItem "$nsis\*-setup.exe.sig").FullName `
+            "$nsis\latest.json"
+          if ($LASTEXITCODE -ne 0) { throw 'gh release create failed.' }

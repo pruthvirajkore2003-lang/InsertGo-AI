@@ -1,0 +1,82 @@
+version: 2
+
+# R-07 companion. security.yml AUDITS (npm audit / cargo audit, blocking on
+# High+Critical); Dependabot is what actually moves the versions so those gates
+# have something to pass. Weekly, not daily: the audit gate already fails a PR
+# the moment a High advisory lands, so the bump PRs are maintenance, not alerts.
+
+updates:
+  # npm — directory is "/" and NOT "/Insert-Go Windows".
+  #
+  # This repo is an npm workspace: the single package-lock.json lives at the
+  # root and both `npm ci` (security.yml, release-windows.yml) and
+  # `npm audit --package-lock-only` resolve from it. Dependabot pointed at a
+  # workspace member would edit that member's package.json and leave the root
+  # lockfile untouched — every CI job then dies on EUSAGE "lock file does not
+  # satisfy package.json". Rooted here it walks the `workspaces` array, so
+  # BOTH "Insert-Go Website" and "Insert-Go Windows" are covered by this entry.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '04:00'
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 5
+    groups:
+      # One PR per ecosystem-ish cluster instead of ~15 singles a week. Patch
+      # and minor only — a major is reviewed on its own.
+      tauri:
+        patterns: ['@tauri-apps/*']
+        update-types: [minor, patch]
+      react:
+        patterns: ['react', 'react-dom', '@types/react', '@types/react-dom']
+        update-types: [minor, patch]
+      dev-tooling:
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      # Pinned deliberately in Insert-Go Windows/package.json against the Rust
+      # side: @tauri-apps/api and the plugin JS must stay on the same major as
+      # the crates in src-tauri/Cargo.toml, which this entry cannot see.
+      - dependency-name: '@tauri-apps/*'
+        update-types: [version-update:semver-major]
+
+  # Cargo — the desktop crate. Not a workspace member of anything above it;
+  # Cargo.lock lives beside this Cargo.toml.
+  - package-ecosystem: cargo
+    directory: /Insert-Go Windows/src-tauri
+    schedule:
+      interval: weekly
+      day: monday
+      time: '04:00'
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 5
+    groups:
+      tauri:
+        patterns: ['tauri', 'tauri-*', 'tauri-plugin-*']
+        update-types: [minor, patch]
+    ignore:
+      # Cargo.toml pins these with a comment explaining why (single `windows`
+      # copy shared with enigo; uiautomation 0.23+ jumps to windows 0.62 and
+      # would build two). A minor bump here silently duplicates the crate.
+      - dependency-name: windows
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: uiautomation
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      # MSRV 1.85 is fixed by enigo 0.6; a major tauri bump is a release
+      # decision, not a Monday morning PR.
+      - dependency-name: tauri
+        update-types: [version-update:semver-major]
+
+  # The workflows themselves. Pinned actions rot into deprecation warnings and
+  # then into hard failures (actions/upload-artifact v3 shutdown); this is the
+  # cheapest entry in the file.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '04:00'
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 3

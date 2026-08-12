@@ -60,11 +60,21 @@
       "desktop": {
         "schemes": ["insertgo"]
       }
+    },
+    "updater": {
+      "endpoints": [
+        "https://github.com/pruthvirajkore2003-lang/InsertGo-AI/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDkwRkY1Rjg2RUI5RDI0QjkKUldTNUpKM3JobC8va01EQk9kZVlJbFRaTFNtaVVZVXM1VmFML1pkeFBOODJKMlFOcDVkRm5TM3EK",
+      "windows": {
+        "installMode": "passive"
+      }
     }
   },
   "bundle": {
     "active": true,
     "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -73,7 +83,10 @@
       "icons/icon.ico"
     ],
     "windows": {
-      "signCommand": "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File sign-windows.ps1 %1"
+      "signCommand": "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File sign-windows.ps1 %1",
+      "nsis": {
+        "installMode": "currentUser"
+      }
     }
   }
 }

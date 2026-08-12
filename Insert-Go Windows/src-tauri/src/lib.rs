@@ -67,6 +67,11 @@ pub fn run() {
                 let _ = window.set_focus();
             }
         }));
+        // Auto-update (services/updater.ts drives it). In this block and not the
+        // chain below because Cargo.toml gates the crate to
+        // `cfg(not(any(android, ios)))` — the same set `desktop` names — so an
+        // unconditional registration would not compile for a mobile target.
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     }
     builder
         .manage(PriorWindow::default())
@@ -165,9 +170,7 @@ pub fn run() {
             // Selection review floater: the dedicated window a bar skill click
             // streams into (the main palette never opens for bar clicks).
             // Log-and-continue: a failure degrades to "bar clicks do nothing".
-            if let Err(e) =
-                platform::selection_floater::create_selection_floater(app.handle())
-            {
+            if let Err(e) = platform::selection_floater::create_selection_floater(app.handle()) {
                 log::error!("selection floater window creation failed: {e}");
             }
             Ok(())
