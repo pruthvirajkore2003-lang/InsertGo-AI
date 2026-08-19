@@ -6,10 +6,24 @@ function req(headers: Record<string, string>): Request {
 }
 
 describe("clientIp", () => {
-  it("takes the first hop of x-forwarded-for", () => {
+  it("takes the RIGHT-most hop of x-forwarded-for (edge-appended, not the spoofable first)", () => {
     expect(clientIp(req({ "x-forwarded-for": "1.2.3.4, 10.0.0.1, 10.0.0.2" }))).toBe(
-      "1.2.3.4"
+      "10.0.0.2"
     );
+  });
+
+  it("prefers x-real-ip over a spoofed x-forwarded-for", () => {
+    expect(
+      clientIp(req({ "x-forwarded-for": "1.2.3.4", "x-real-ip": "5.6.7.8" }))
+    ).toBe("5.6.7.8");
+  });
+
+  it("prefers x-vercel-forwarded-for over x-forwarded-for", () => {
+    expect(
+      clientIp(
+        req({ "x-forwarded-for": "1.2.3.4", "x-vercel-forwarded-for": "9.9.9.9" })
+      )
+    ).toBe("9.9.9.9");
   });
 
   it("falls back to x-real-ip when x-forwarded-for is absent", () => {

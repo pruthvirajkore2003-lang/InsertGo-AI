@@ -23,6 +23,10 @@ export type HistoryEntry = {
   body: string;
   /** ISO-8601 wall-clock time the run completed. */
   at: string;
+  /** Label of the skill that ran, shown instead of a `body` preview. Absent on
+   *  entries written before this field existed. Never selection text — only a
+   *  skill label (SPEC §10), so it is safe to persist for floater runs. */
+  title?: string;
   /** Provider-reported output tokens; null when none were reported. */
   outputTokens: number | null;
   /** Total run time in ms; null if unavailable. */
@@ -57,7 +61,9 @@ function load(): HistoryEntry[] {
         typeof e === "object" &&
         typeof (e as HistoryEntry).id === "string" &&
         typeof (e as HistoryEntry).body === "string" &&
-        typeof (e as HistoryEntry).at === "string"
+        typeof (e as HistoryEntry).at === "string" &&
+        // Optional: legacy entries have no title at all.
+        ["string", "undefined"].includes(typeof (e as HistoryEntry).title)
     );
   } catch {
     return [];

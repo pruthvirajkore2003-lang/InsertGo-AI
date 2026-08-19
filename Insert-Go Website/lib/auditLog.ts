@@ -100,16 +100,20 @@ function defaultSeverity(outcome: AuditOutcome): AuditSeverity {
 /**
  * Client IP as seen at the edge.
  *
- * `x-forwarded-for` is a comma-separated chain and the FIRST hop is the client —
- * but it is also client-settable, so this value is evidence of what was claimed,
- * not proof of origin. That is the right thing to store: CERT-In wants what the
- * system observed. Vercel overwrites the header at its edge, so on production the
- * first hop is trustworthy; `x-real-ip` covers other deployments.
+ * Trust only what the edge sets itself. On Vercel, `x-real-ip` and
+ * `x-vercel-forwarded-for` are the true client IP and are NOT client-settable.
+ * `x-forwarded-for` is a comma-separated chain the client can prepend to — the
+ * proxy *appends* the real IP to the end, so the FIRST hop is attacker-controlled
+ * (CWE-348: spoofing it forges audit-log IPs and bypasses IP rate limits). Read
+ * the RIGHT-most hop, the one the trusted edge added, never the first.
  */
 export function clientIp(req: Request): string | null {
-  const forwarded = req.headers.get("x-forwarded-for");
-  const first = forwarded?.split(",")[0]?.trim();
-  const ip = first || req.headers.get("x-real-ip")?.trim() || "";
+  const xff = req.headers.get("x-forwarded-for");
+  const ip =
+    req.headers.get("x-real-ip")?.trim() ||
+    req.headers.get("x-vercel-forwarded-for")?.split(",").pop()?.trim() ||
+    xff?.split(",").pop()?.trim() ||
+    "";
   return ip ? ip.slice(0, MAX_IP_CHARS) : null;
 }
 

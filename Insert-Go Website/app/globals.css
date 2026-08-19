@@ -37,6 +37,15 @@
   /* Zinc-400 — secondary text */
   --color-text-secondary: #a1a1aa;
   /* alias of muted */
+  --color-muted: #a1a1aa;
+  /* the `muted` utilities themselves (text-muted, bg-muted/N) — was never
+     registered, so every text-muted silently inherited and bg-muted washes
+     rendered as nothing */
+
+  /* Windows app text ladder (--ig-fg / --ig-muted, dark :root) — used only
+     by the 1:1 app-replica demo surfaces (see .ig-* components below). */
+  --color-ig-fg: #f4f7fb;
+  --color-ig-muted: #9aa6b2;
 
   --color-line: rgba(255, 255, 255, 0.05);
   /* hairlines — delicate glass edge */
@@ -617,6 +626,221 @@ textarea::placeholder {
   to {
     transform: translateX(100%);
   }
+}
+
+/* ---- Interactive demo primitives (FloaterDemo, SkillBarShowcase) ---- */
+@layer components {
+
+  /* A selectable sentence in the Skill Bar demo. The highlight is a gradient
+     whose background-size sweeps 0%→100% — unlike a scaleX overlay it follows
+     the text across line wraps (box-decoration-break paints every fragment),
+     and the 320ms ease-out reads as a human drag-selection. */
+  .demo-phrase {
+    display: inline;
+    padding: 1px 3px;
+    border-radius: 5px;
+    font: inherit;
+    color: inherit;
+    text-align: inherit;
+    cursor: pointer;
+    text-decoration: underline dotted rgba(161, 161, 170, 0.55);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+    background: linear-gradient(var(--color-accent), var(--color-accent)) no-repeat 0 50% / 0% 100%;
+    transition: background-size 320ms var(--ease-standard),
+      text-decoration-color 200ms var(--ease-standard);
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  .demo-phrase:hover {
+    text-decoration-color: var(--color-accent-hover);
+  }
+
+  .demo-phrase[data-selected="true"] {
+    background-size: 100% 100%;
+    text-decoration-color: transparent;
+    color: var(--color-text-primary);
+  }
+}
+
+/* ---- Windows app replica material (1:1 with Insert-Go Windows) ----
+   Values copied verbatim from the app's dark :root tokens
+   (Insert-Go Windows/src/styles/global.css) and component rules
+   (src/styles/components.css): .ig-modal__card.ig-skillfloater,
+   .ig-skillfloater__skill, the .ig-result__text well, .ig-btn(--primary),
+   .ig-selbar-shell > .ig-skillbar and .ig-skillbtn. Layout and spacing stay
+   in Tailwind utilities in the JSX; these classes own only the material. */
+@layer components {
+
+  /* .ig-modal__card.ig-skillfloater — 14px card over a 12px frost. */
+  .ig-floater-card {
+    border: 1px solid rgba(255, 255, 255, 0.18); /* --ig-floater-border */
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08); /* --ig-floater-bg */
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    /* --ig-floater-shadow: top specular + one soft diffuse drop */
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+
+  /* .ig-skillfloater__skill — the accent wash reads as lit glass via the
+     tint + top specular alone; no outline ring competing with the card rim. */
+  .ig-floater-skill {
+    border: 1px solid transparent;
+    border-radius: 9999px; /* --ig-radius-pill */
+    background: rgba(47, 107, 255, 0.14); /* --ig-accent-tint */
+    box-shadow: inset 0 1px 0 rgba(244, 247, 251, 0.13); /* --ig-highlight */
+  }
+
+  /* .ig-skillfloater .ig-result__text — sunken deliverable well: depth via
+     inner shadow, not a heavy fill. */
+  .ig-floater-well {
+    border-radius: 12px; /* --ig-radius-card */
+    background: rgba(0, 0, 0, 0.16); /* --ig-result-well-bg */
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.22); /* --ig-inset-well */
+  }
+
+  /* .ig-btn — liquid-glass control. The app's own backdrop-filter is dropped
+     here: this button already sits on the frosted card, and nested backdrop
+     filters compound GPU cost (the app's file-header rule). */
+  .ig-btn-app {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 28px; /* --ig-control-md */
+    padding: 0 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 9px; /* --ig-radius-btn */
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.04)),
+      rgba(255, 255, 255, 0.15);
+    box-shadow: inset 0 1px 0 rgba(244, 247, 251, 0.13),
+      0 4px 30px rgba(0, 0, 0, 0.1);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: -0.1px;
+    line-height: 1.2;
+    white-space: nowrap;
+    transition: background 150ms ease, border-color 150ms ease,
+      box-shadow 150ms ease, transform 150ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .ig-btn-app:hover:not(:disabled) {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.08)),
+      rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.32);
+    box-shadow: inset 0 1px 0 rgba(244, 247, 251, 0.13),
+      0 8px 40px rgba(0, 0, 0, 0.16);
+  }
+
+  .ig-btn-app:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+
+  .ig-btn-app:disabled {
+    opacity: 0.45;
+  }
+
+  /* .ig-btn--primary — accent-tinted glass pill; the 85% brand fill keeps the
+     white label AA over any ground. Hover rides the sanctioned hover step. */
+  .ig-btn-app-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 28px;
+    padding: 0 12px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 9999px; /* --ig-radius-pill */
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0)),
+      rgba(47, 107, 255, 0.85); /* color-mix(in srgb, --ig-accent 85%, transparent) */
+    color: #ffffff; /* --ig-accent-fg */
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+      0 4px 14px rgba(47, 107, 255, 0.38); /* --ig-btn-specular + accent glow */
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: -0.1px;
+    line-height: 1.2;
+    white-space: nowrap;
+    transition: background 150ms ease, border-color 150ms ease,
+      box-shadow 150ms ease, transform 150ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .ig-btn-app-primary:hover:not(:disabled) {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0)),
+      rgba(74, 130, 255, 0.95); /* --ig-accent-hover @ 95% */
+    border-color: rgba(255, 255, 255, 0.32);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+      0 6px 20px rgba(47, 107, 255, 0.38);
+  }
+
+  .ig-btn-app-primary:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+
+  /* .ig-selbar-shell > .ig-skillbar — opaque obsidian pill: single FLAT fill
+     (never a gradient), strong hairline, top specular. The caret is a plain
+     rotated-square element in the JSX, same as the app's ::after. */
+  .ig-selbar-pill {
+    border: 1px solid rgba(244, 247, 251, 0.08); /* --ig-border-strong */
+    border-radius: 9999px;
+    background: #0b0f14; /* --ig-bg-opaque */
+    box-shadow: inset 0 1px 0 rgba(244, 247, 251, 0.13); /* --ig-highlight */
+  }
+
+  /* .ig-skillbtn — 28px icon-only control, accent glyph, surface-step hover. */
+  .ig-skillbtn-app {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px; /* --ig-control-md */
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 9px; /* --ig-radius-btn */
+    background: transparent;
+    color: #2f6bff; /* --ig-accent */
+    transition: background 150ms ease, color 150ms ease,
+      transform 150ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .ig-skillbtn-app:hover {
+    background: rgba(244, 247, 251, 0.09); /* --ig-surface-2 */
+    transform: translateY(-1px);
+  }
+
+  .ig-skillbtn-app:active {
+    transform: scale(0.9);
+  }
+
+  /* No-frost engines: a solid surface fill stands in, mirroring the app's
+     own @supports fallback pattern for glass surfaces. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .ig-floater-card {
+      background: rgba(23, 25, 31, 0.95);
+    }
+  }
+}
+
+/* Inserted/replaced text flash — informational, so it may run long. `both`
+   holds the transparent end state; under reduced motion the blanket duration
+   rule collapses it to an instant clear, which is the intended resting look. */
+@keyframes demoWash {
+  from {
+    background-color: var(--color-accent);
+  }
+
+  to {
+    background-color: transparent;
+  }
+}
+
+.demo-wash {
+  animation: demoWash 800ms var(--ease-standard) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

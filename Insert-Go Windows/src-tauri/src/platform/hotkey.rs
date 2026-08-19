@@ -193,10 +193,18 @@ mod tests {
     /// the validator it delegates to — same error, no Tauri context.
     #[test]
     fn rejects_os_reserved_tab_chords() {
-        for s in ["Ctrl+Tab", "Ctrl+Shift+Tab", "ctrl+shift+tab", "Control+Tab"] {
+        for s in [
+            "Ctrl+Tab",
+            "Ctrl+Shift+Tab",
+            "ctrl+shift+tab",
+            "Control+Tab",
+        ] {
             match ensure_not_reserved(s) {
                 Err(AppError::Config(m)) => {
-                    assert!(m.contains("reserved by the OS"), "wrong message for {s}: {m}")
+                    assert!(
+                        m.contains("reserved by the OS"),
+                        "wrong message for {s}: {m}"
+                    )
                 }
                 other => panic!("expected a Config error for {s}, got {other:?}"),
             }
@@ -207,7 +215,14 @@ mod tests {
     fn allows_tab_with_other_modifiers_and_partial_input() {
         // Parser untouched: only Ctrl / Ctrl+Shift + Tab are refused. Empty and
         // half-typed chords pass — the settings field saves per keystroke.
-        for s in ["Super+Tab", "Ctrl+Alt+Tab", "Alt+Shift+Tab", "Ctrl+`", "Ctrl+Ta", ""] {
+        for s in [
+            "Super+Tab",
+            "Ctrl+Alt+Tab",
+            "Alt+Shift+Tab",
+            "Ctrl+`",
+            "Ctrl+Ta",
+            "",
+        ] {
             assert!(ensure_not_reserved(s).is_ok(), "wrongly rejected: {s}");
         }
     }

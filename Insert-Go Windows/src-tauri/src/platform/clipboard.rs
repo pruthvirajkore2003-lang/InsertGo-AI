@@ -52,7 +52,9 @@ pub async fn insert_text(app: AppHandle, text: String) -> AppResult<()> {
 /// Returns `true` on a landed paste, `false` on the clipboard fallback.
 #[cfg(target_os = "windows")]
 pub(crate) fn insert_from(app: &AppHandle, label: &str, text: String) -> AppResult<bool> {
-    use crate::platform::text_provider::{fallback::paste_text, PasteFailure, TargetApp, WinFallbackOps};
+    use crate::platform::text_provider::{
+        fallback::paste_text, PasteFailure, TargetApp, WinFallbackOps,
+    };
     use crate::PriorWindow;
     use std::time::Duration;
     use tauri::{Emitter, Manager};
@@ -259,8 +261,7 @@ fn send_ctrl_chord(letter: char) -> Result<(), String> {
 fn send_chord(key: enigo::Key, shift: bool) -> Result<(), String> {
     use enigo::{Direction, Enigo, Key, Keyboard, Settings};
 
-    let mut enigo =
-        Enigo::new(&Settings::default()).map_err(|e| format!("enigo init: {e}"))?;
+    let mut enigo = Enigo::new(&Settings::default()).map_err(|e| format!("enigo init: {e}"))?;
     enigo
         .key(Key::Control, Direction::Press)
         .map_err(|e| format!("ctrl press: {e}"))?;

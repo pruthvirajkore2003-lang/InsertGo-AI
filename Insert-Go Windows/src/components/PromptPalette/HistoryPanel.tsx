@@ -38,7 +38,9 @@ export function HistoryPanel({ onReuse }: Props) {
     <ul className="ig-list" aria-label="Prompt history">
       {entries.map((h) => (
         <li key={h.id} className="ig-history">
-          <div className="ig-history__body">{preview(h.body)}</div>
+          {/* Title when the run carried one (floater runs log no body);
+              preview() still covers entries written before titles existed. */}
+          <div className="ig-history__body">{h.title || preview(h.body)}</div>
           <div className="ig-history__meta">
             <span>{new Date(h.at).toLocaleString()}</span>
             {h.outputTokens != null && (

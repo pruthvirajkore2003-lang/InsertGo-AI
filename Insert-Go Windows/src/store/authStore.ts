@@ -8,7 +8,7 @@ import { toast } from "@/store/toastStore";
 import { API_URL } from "@/services/apiConfig";
 import { http } from "@/services/http";
 import { createPkce } from "@/services/pkce";
-import { showWindow } from "@/services/windowChrome";
+import { hideWindow, showWindow } from "@/services/windowChrome";
 import { safeError } from "@/services/safeLog";
 
 /**
@@ -124,8 +124,12 @@ type AuthState = {
 
 const TOKEN_KEY = "auth_token";
 const TOKEN_TS_KEY = "auth_token_ts";
-/** A token older than this is re-validated before use (server sessions are
- *  hour-scale; 55 min keeps a margin under a 60-min expiry). */
+/** A token older than this is re-validated before use. Server sessions are a
+ *  30-day SLIDING window now (website lib/auth.ts `session.expiresIn` /
+ *  `updateAge`), so this is no longer a margin under an expiry — it is a
+ *  revocation-liveness check: it bounds how long a session revoked on the
+ *  website can still ride a generate request, and it is the request that keeps
+ *  the sliding window sliding. */
 export const TOKEN_FRESH_MS = 55 * 60 * 1000;
 const REFRESH_INTERVAL_MS = 45 * 60 * 1000;
 
@@ -382,6 +386,9 @@ async function handleCallback(rawUrl: string): Promise<void> {
     });
     settlePending(false);
     toast.error(message);
+    // The palette hid itself when the browser opened — bring it back so the
+    // error isn't sitting on an invisible window.
+    if (getCurrentWindow().label === "main") void showWindow();
   }
 }
 
@@ -467,14 +474,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             error: "Timed out waiting for browser approval. Try again.",
           });
           settlePending(false);
+          // Same as the callback-error path: surface the timeout on a
+          // visible window, not one hidden behind the browser.
+          if (getCurrentWindow().label === "main") void showWindow();
         }, SIGN_IN_TIMEOUT_MS);
       });
 
       // If the opener is blocked by scope or otherwise throws, flip
       // browserOpenFailed so the panel foregrounds the copyable URL instead of
-      // silently dead-ending. The wait continues either way.
+      // silently dead-ending. The wait continues either way — and the window
+      // stays VISIBLE on failure, since the copyable URL lives on it.
       try {
         await openUrl(authorizeUrl);
+        // Browser is up — get the palette out of its way. It stays hidden
+        // until the deep-link callback lands (showWindow in handleCallback)
+        // or the user summons it with the global hotkey. Hiding only on
+        // success keeps the manual copy-link fallback on screen when the
+        // hand-off never happened.
+        void hideWindow();
       } catch (e) {
         safeError("Failed to open browser; user can visit manually", e);
         set((s) =>
@@ -559,16 +576,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (response.status === 401 || response.status === 403) {
-        // Only Better Auth speaks JSON here. Captive portals, WAFs and proxies
-        // answer HTML (or nothing) — that 401/403 never reached the API, so
-        // treat it as network interference rather than a revoked session.
+      if (response.status === 401) {
+        // Logging out ERASES the keyring entry, and the only way back is a full
+        // system-browser re-auth — so it takes a definitive answer from Better
+        // Auth itself, not merely a 401-shaped response. Captive portals, WAFs
+        // and corporate proxies answer HTML (or nothing at all); that reply
+        // never reached the API, so it is network interference, not revocation.
+        //
+        // 403 is deliberately NOT here: `/get-session` answers 401 for an
+        // invalid or expired session, so a JSON 403 comes from something in
+        // front of the API (a WAF rule, a geo block) and is not evidence about
+        // this session at all. `http()` also manufactures a bodiless 401 for
+        // its own signed-out gate, which has no Content-Type and so cannot
+        // reach this branch either.
         const contentType = response.headers.get("Content-Type") ?? "";
         if (contentType.toLowerCase().includes("application/json")) {
           void get().logout();
         }
         return;
       }
+      if (response.status === 403) return; // see above — not a session verdict
       const data = await response.json();
       if (!response.ok || !data?.user) {
         // Null body = session expired/revoked.

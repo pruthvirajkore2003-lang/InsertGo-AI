@@ -12,7 +12,10 @@ import { LinearDocumentText } from "@/components/icons/LinearDocumentText";
 import { LinearMessageText } from "@/components/icons/LinearMessageText";
 import { LinearSms } from "@/components/icons/LinearSms";
 import { LinearMonitor } from "@/components/icons/LinearMonitor";
+import { LinearMagicStar } from "@/components/icons/LinearMagicStar";
 import { Reveal, FadeUp } from "@/components/Reveal";
+import { SkillBarShowcase } from "@/components/demos/SkillBarShowcase";
+import { CustomSkillBuilderShowcase } from "@/components/demos/CustomSkillBuilderShowcase";
 import { AppChip } from "@/components/AppChip";
 import { WindowsLogo } from "@/components/icons/WindowsLogo";
 import { HeroSection } from "@/components/HeroSection";
@@ -112,6 +115,12 @@ const features = [
     title: "Private by design",
     desc: "Prompts, templates, and settings live in plain local files on your machine. Nothing leaves it except the prompts you explicitly run through the managed relay.",
   },
+  {
+    icon: LinearMagicStar,
+    tile: "var(--color-tile-clay)",
+    title: "Custom skills in plain English",
+    desc: "Describe a skill in a sentence and the AI Skill Generator builds the prompt template for you. Run it from the Skill Bar in any app — still zero API keys.",
+  },
 ];
 
 const categories = [
@@ -143,6 +152,11 @@ const homeFaqs = [
     question: "Is InsertGo a Raycast alternative for Windows AI prompts?",
     answer:
       "Yes, when you want a focused AI prompt and text-insertion workflow. Raycast now has a Windows beta and offers a broader launcher with file search, extensions, snippets, and AI. InsertGo concentrates on dynamic prompts, selection actions, and safe write-back.",
+  },
+  {
+    question: "Can I build my own AI skills without API keys?",
+    answer:
+      "Yes. Describe the skill in plain English and the AI Skill Generator writes the prompt template, with a [PASTE …] placeholder for your text. The skill runs on the managed InsertGo relay — no provider accounts or keys — and works from the Skill Bar in any Windows app.",
   },
 ];
 
@@ -311,6 +325,54 @@ export default function Home() {
             className="text-[15px] font-medium text-brand hover:underline"
           >
             See the full walkthrough →
+          </Link>
+        </Reveal>
+      </section>
+
+      {/* SKILL BAR DEMO */}
+      <section className="mx-auto max-w-[1080px] px-6 pb-[90px]">
+        <Reveal className="mx-auto mb-12 max-w-[660px] text-center">
+          <p className="mb-3.5 text-xs font-medium tracking-[0.16em] text-brand uppercase">
+            Selection actions
+          </p>
+          <h2 className="m-0 font-serif text-[clamp(32px,4.5vw,48px)] leading-[1.12] font-semibold tracking-[-0.02em] text-ink">
+            Select text. Fix it in one click.
+          </h2>
+          <p className="mt-[18px] text-[17px] leading-relaxed text-muted">
+            The Skill Bar appears the moment you select text in any Windows app
+            — no hotkey, no palette, no copy-paste. Try it on the draft below.
+          </p>
+        </Reveal>
+        <Reveal delay={0.08}>
+          <SkillBarShowcase />
+        </Reveal>
+      </section>
+
+      {/* CUSTOM SKILL BUILDER */}
+      <section className="mx-auto max-w-[1080px] px-6 pb-[90px]">
+        <Reveal className="mx-auto mb-12 max-w-[680px] text-center">
+          <p className="mb-3.5 text-xs font-medium tracking-[0.16em] text-brand uppercase">
+            Custom skills &amp; automation
+          </p>
+          <h2 className="m-0 font-serif text-[clamp(32px,4.5vw,48px)] leading-[1.12] font-semibold tracking-[-0.02em] text-ink">
+            Describe a skill in plain English. Run it anywhere in one click.
+          </h2>
+          <p className="mt-[18px] text-[17px] leading-relaxed text-muted">
+            The AI Skill Generator turns a sentence into a working prompt
+            template — no API keys, no setup — and the skill lands on your
+            Skill Bar for every Windows app. Build one below.
+          </p>
+        </Reveal>
+        <Reveal delay={0.08}>
+          <CustomSkillBuilderShowcase />
+        </Reveal>
+        <Reveal className="mt-9 flex flex-wrap items-center justify-center gap-3.5">
+          <DownloadButton />
+          <Link
+            href="/features"
+            className="text-[15px] font-medium text-brand hover:underline"
+          >
+            Explore all features →
           </Link>
         </Reveal>
       </section>

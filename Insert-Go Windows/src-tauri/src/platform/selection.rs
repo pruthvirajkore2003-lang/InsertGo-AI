@@ -296,8 +296,7 @@ mod imp {
                 let mut vals = [0f64; 4];
                 for (i, v) in vals.iter_mut().enumerate() {
                     let idx = i as i32;
-                    SafeArrayGetElement(sa, &idx, v as *mut f64 as *mut core::ffi::c_void)
-                        .ok()?;
+                    SafeArrayGetElement(sa, &idx, v as *mut f64 as *mut core::ffi::c_void).ok()?;
                 }
                 Some(ScreenRect {
                     x: vals[0] as i32,

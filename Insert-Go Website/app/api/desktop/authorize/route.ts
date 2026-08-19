@@ -31,6 +31,7 @@ export async function POST(req: Request) {
   // absent header means a non-browser caller — the one case where falling back
   // to SameSite alone would prove nothing.
   const origin = req.headers.get("origin");
+  console.log("DEBUG Origin:", origin, "URL:", req.url);
   if (origin !== new URL(req.url).origin) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }

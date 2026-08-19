@@ -134,6 +134,7 @@ export function PromptPalette({ editorRef }: Props) {
         if (prev.isSending && !s.isSending && s.result && !s.error) {
           useHistoryStore.getState().record({
             body: s.body,
+            title: s.activeSkill?.label,
             outputTokens: s.metrics?.outputTokens ?? null,
             totalMs: s.metrics?.totalMs ?? null,
           });

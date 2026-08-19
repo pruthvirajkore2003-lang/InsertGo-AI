@@ -38,6 +38,8 @@ const COPY: Record<
     why: string;
     optional?: boolean;
     recovery?: readonly string[];
+    /** Only for cards wired to a toggle — the copy beside its checkbox. */
+    toggleLabel?: string;
   }
 > = {
   accessibility: {
@@ -81,6 +83,7 @@ const COPY: Record<
     icon: "fa-power-off",
     title: "Start with Windows",
     optional: true,
+    toggleLabel: "Start InsertGo when I sign in",
     why:
       "Optional. InsertGo is only useful when it's already running, so most " +
       "people turn this on — but nothing here depends on it, and you can " +
@@ -143,6 +146,7 @@ export function PermissionsPanel() {
                 ? (enabled) => void setAutostart(enabled)
                 : undefined
             }
+            toggleLabel={COPY[id].toggleLabel}
           />
         ))}
       </div>

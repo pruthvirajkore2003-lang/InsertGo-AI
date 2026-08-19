@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { pool } from "@/lib/pgPool";
 import { currentConsent, needsConsentGate } from "@/lib/consent";
+import { inrPriceForItemKey } from "@/lib/pricing";
+import { PurchaseConversion } from "@/components/analytics/PurchaseConversion";
 import { SignOutButton } from "./SignOutButton";
 
 export const metadata: Metadata = {
@@ -19,7 +21,13 @@ const TIER_LABELS: Record<string, string> = {
   pro: "Pro",
 };
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  // Dodo returns the buyer here after a successful checkout, carrying the
+  // order id and item key lib/dodo.ts planted in the return URL.
+  searchParams: Promise<{ upgraded?: string; tx?: string; item?: string }>;
+}) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
 
@@ -58,6 +66,14 @@ export default async function AccountPage() {
   const dailyMax = user.dailyCreditsMax ?? 5;
   const addOn = user.addOnCredits ?? 0;
 
+  // The conversion report for a checkout that just completed. The price is
+  // resolved from the catalogue HERE, on the server — the URL only names the
+  // item, so the worst a tampered link can do is attribute one real catalogue
+  // price to another. Nothing on this path can move money; fulfilment is the
+  // webhook's job and happened before the browser got back.
+  const { tx, item } = await searchParams;
+  const conversionValue = item ? inrPriceForItemKey(item) : null;
+
   // Pack purchases live in "creditLedger" as negative amounts (webhook
   // grants); per-generation debits (+1 rows) are noise here, so filter.
   let purchases: { credits: number; at: Date }[] = [];
@@ -76,6 +92,15 @@ export default async function AccountPage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-5 pt-28 pb-16">
       <div className="w-full max-w-[480px]">
+        {tx && conversionValue !== null && item && (
+          <PurchaseConversion
+            transactionId={tx}
+            value={conversionValue}
+            currency="INR"
+            item={item}
+            email={user.email}
+          />
+        )}
         <div className="glass-panel rounded-[28px] p-8 sm:p-10">
           <h1 className="font-serif text-[26px] font-semibold tracking-[-0.01em] text-ink">
             Your account
@@ -98,9 +123,25 @@ export default async function AccountPage() {
                 {user.email}
               </dd>
             </div>
-            <div className="glass-chip flex items-center justify-between gap-4 rounded-2xl px-4 py-3">
-              <dt className="text-sm font-medium text-muted">Plan</dt>
-              <dd className="text-[15px] font-medium text-ink">{tier}</dd>
+            <div className="glass-chip rounded-2xl px-4 py-3">
+              <div className="flex items-center justify-between gap-4">
+                <dt className="text-sm font-medium text-muted">Plan</dt>
+                <dd className="text-[15px] font-medium text-ink">{tier}</dd>
+              </div>
+              {/* Cancelling has to be reachable from the surface that shows the
+                  plan, not only from the footer — the same "as easy as" test
+                  the privacy link below is here for. */}
+              <p className="mt-1.5 mb-0 text-xs text-muted">
+                {tier === "Free"
+                  ? "Paid plans renew monthly and can be cancelled any time. "
+                  : `Renews monthly. Cancel any time and keep ${tier} until the period you have paid for ends. `}
+                <Link
+                  href="/cancel"
+                  className="font-medium text-brand no-underline hover:underline"
+                >
+                  Cancellation &amp; refund policy
+                </Link>
+              </p>
             </div>
             <div className="glass-chip rounded-2xl px-4 py-3">
               <div className="flex items-center justify-between gap-4">

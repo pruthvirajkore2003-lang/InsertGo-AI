@@ -13,7 +13,6 @@ import {
   isManipulatingWindow,
   clearWindowManipulation,
 } from "@/services/windowChrome";
-import { useAuthStore } from "@/store/authStore";
 import { usePromptStore } from "@/store/promptStore";
 
 export type HotkeyHandlers = {
@@ -61,9 +60,12 @@ export function useHotkey({ onShown, onHidden }: HotkeyHandlers): void {
         // real click-away (no active manipulation) should dismiss the
         // palette.
         if (isManipulatingWindow()) return;
+        // No isLoading exception here: sign-in now hides the window itself
+        // right after the browser opens, so blur-hide during login is the
+        // desired behaviour, not a race to suppress. Generation still wins —
+        // hiding mid-stream would orphan the request UI.
         const isGenerating = usePromptStore.getState().isSending;
-        const isLoggingIn = useAuthStore.getState().isLoading;
-        if (isGenerating || isLoggingIn) return;
+        if (isGenerating) return;
         void getCurrentWindow().hide();
         onHidden?.();
       })

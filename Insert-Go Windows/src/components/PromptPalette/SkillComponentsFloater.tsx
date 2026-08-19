@@ -85,6 +85,12 @@ export function SkillComponentsFloater({ onRun, editorRef, autoHeight }: Props) 
   // cleared before each re-arm so rapid clicks don't flicker, and on unmount.
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  // Blocked-outside-click feedback: while the dismiss guard below is active
+  // (run streaming or deliverable on screen) an outside click is refused, and
+  // a silent refusal reads as dead UI — so the card pings (nudges) instead.
+  // Same one-timer re-arm pattern as `copied`, cleared on unmount too.
+  const [blockedPing, setBlockedPing] = useState(false);
+  const pingTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Citations are relayed model/web data, so only http(s) links are offered:
   // a `javascript:`/`file:` uri must never reach openExternal. Also the "has
@@ -104,7 +110,13 @@ export function SkillComponentsFloater({ onRun, editorRef, autoHeight }: Props) 
     else if (!isSending) setThinkingOpen(false);
   }, [hasDeliverable, isSending]);
 
-  useEffect(() => () => clearTimeout(copyTimerRef.current), []);
+  useEffect(
+    () => () => {
+      clearTimeout(copyTimerRef.current);
+      clearTimeout(pingTimerRef.current);
+    },
+    [],
+  );
 
   // Copy the deliverable to the system clipboard (copyToClipboard handles the
   // Tauri-plugin / Web-API fallback). On success flash "Copied!"; on failure
@@ -134,16 +146,31 @@ export function SkillComponentsFloater({ onRun, editorRef, autoHeight }: Props) 
   // glass must frost the real panel content, not a tinted overlay), so the
   // dismiss surface is a document-level mousedown: anything outside the card
   // closes it. mousedown, not click — a drag that starts inside and ends
-  // outside must not dismiss.
+  // outside must not dismiss. While a run is streaming or a deliverable is
+  // on screen, outside clicks are blocked — an accidental mousedown must not
+  // destroy the in-flight run or the finished result — and the refusal is
+  // made visible: the card nudges (ig-skillfloater--blocked) so the blocked
+  // click doesn't feel like dead UI. Explicit dismissals (Esc, the close
+  // button, Apply) stay live in every state.
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
       if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+        // The guard sits INSIDE the outside-click branch: a mousedown within
+        // the card must never ping, guarded state or not. 480ms > the 420ms
+        // nudge so the modifier outlives the animation; re-armed per click so
+        // rapid repeated clicks hold the ping instead of flicker-stacking.
+        if (isSending || hasDeliverable) {
+          setBlockedPing(true);
+          clearTimeout(pingTimerRef.current);
+          pingTimerRef.current = setTimeout(() => setBlockedPing(false), 480);
+          return;
+        }
         closeSkillFloater();
       }
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
-  }, [closeSkillFloater]);
+  }, [closeSkillFloater, isSending, hasDeliverable]);
 
   // Apply the reviewed draft. source "editor": commit it as the composer
   // body (mirrors ResultView's "Replace editor") and close. source
@@ -215,7 +242,7 @@ export function SkillComponentsFloater({ onRun, editorRef, autoHeight }: Props) 
   return (
     <motion.div
       ref={cardRef}
-      className="ig-modal__card ig-skillfloater"
+      className={`ig-modal__card ig-skillfloater${blockedPing ? " ig-skillfloater--blocked" : ""}`}
       role="dialog"
       aria-label="Skill Components"
       initial={false}
@@ -233,6 +260,7 @@ export function SkillComponentsFloater({ onRun, editorRef, autoHeight }: Props) 
           className="ig-btn ig-skillfloater__close"
           onClick={closeSkillFloater}
           aria-label="Close"
+          title="Close (Esc)"
         >
           <i className="fa-solid fa-xmark" aria-hidden="true" />
         </button>
@@ -274,7 +302,14 @@ export function SkillComponentsFloater({ onRun, editorRef, autoHeight }: Props) 
         </details>
       )}
 
-      <div className="ig-skillfloater__screen" ref={autoHeight?.screenRef}>
+      {/* aria-busy (not aria-live) for the streamed region: tokens update far
+          too fast for polite announcements — busy just flags the region as
+          in-flux until the run settles. */}
+      <div
+        className="ig-skillfloater__screen"
+        ref={autoHeight?.screenRef}
+        aria-busy={isSending}
+      >
         {/* Probe div: unconstrained inside the scroll cell, so its height is
             the deliverable's natural height (useAutoWindowHeight target). */}
         <div ref={autoHeight?.contentRef}>
@@ -287,6 +322,9 @@ export function SkillComponentsFloater({ onRun, editorRef, autoHeight }: Props) 
             // result === "" gap, left this screen rendering nothing at all.
             <div className="ig-working" role="status" aria-label="Working">
               <ThinkingOrb state="working" size={64} />
+              {/* Visible status text under the orb: a bare spinner reads as
+                  stalled, so the loading state is named. */}
+              <span className="ig-working__label">Working…</span>
             </div>
           ) : null}
         </div>
@@ -351,6 +389,20 @@ export function SkillComponentsFloater({ onRun, editorRef, autoHeight }: Props) 
             Refine
           </button>
         </form>
+      )}
+
+      {/* Protected-state hint, persistent for as long as the outside-click
+          guard is: the nudge says the click was refused, this says WHY and
+          what still works (Esc / ✕) — doubling as Esc discoverability.
+          Deliberately NOT a toast: it must not disappear while the state it
+          explains is active. */}
+      {(isSending || hasDeliverable) && (
+        <div className="ig-skillfloater__hint" role="status">
+          <i className="fa-solid fa-lock" aria-hidden="true" />
+          {isSending
+            ? "Generating — outside clicks paused, Esc or ✕ still closes"
+            : "Result kept — close with Esc or ✕"}
+        </div>
       )}
 
       <div className="ig-actions" style={{ justifyContent: "flex-end" }}>

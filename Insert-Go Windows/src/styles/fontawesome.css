@@ -85,6 +85,10 @@
 .fa-book-bookmark::before { content: "\e0bb"; }
 .fa-clock-rotate-left::before { content: "\f1da"; }
 .fa-spinner::before { content: "\f110"; }
+.fa-universal-access::before { content: "\f29a"; }
+.fa-clipboard::before { content: "\f328"; }
+.fa-power-off::before { content: "\f011"; }
+.fa-rotate::before { content: "\f2f1"; }
 
 /* Skill icon-picker catalog (SkillManager → IconPickerModal). Every glyph the
    picker offers (services/skills.ts ICON_PRESETS) MUST have a codepoint here,

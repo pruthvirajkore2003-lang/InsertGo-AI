@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { LinearMonitor } from "@/components/icons/LinearMonitor";
+import { LinearSms } from "@/components/icons/LinearSms";
 import {
   DESKTOP_CLIENT_ID,
   DESKTOP_REDIRECT_URI,
@@ -72,19 +73,31 @@ export default async function DesktopAuthorizePage({
             <h1 className="font-serif text-[26px] font-semibold tracking-[-0.01em] text-ink">
               Connect your desktop
             </h1>
-            <p className="mt-2 text-[15px] text-muted">
-              {valid ? (
-                <>
-                  Approve to sign the InsertGo desktop app in as{" "}
-                  <strong className="break-all text-ink">
+            {valid ? (
+              <>
+                <p className="mt-2 text-[15px] text-muted">
+                  Approve to sign the InsertGo desktop app in as
+                </p>
+                {/* Identity chip — the email gets its own row instead of an
+                    inline <strong>, because break-all was slicing addresses
+                    mid-word across lines. min-w-0 lets the flex child shrink
+                    so break-words only wraps when the chip genuinely can't
+                    fit the address on one line. */}
+                <div className="glass-chip mt-4 flex items-center gap-3 rounded-2xl px-4 py-3 text-left">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-tile-sky text-brand">
+                    <LinearSms size={18} />
+                  </span>
+                  <span className="min-w-0 break-words text-balance text-[15px] leading-snug font-medium text-ink">
                     {session!.user.email}
-                  </strong>
-                  .
-                </>
-              ) : (
-                "This sign-in link is malformed or incomplete. Start again from the desktop app."
-              )}
-            </p>
+                  </span>
+                </div>
+              </>
+            ) : (
+              <p className="mt-2 text-[15px] text-muted">
+                This sign-in link is malformed or incomplete. Start again from
+                the desktop app.
+              </p>
+            )}
           </div>
           {valid ? (
             <DesktopApprove challenge={challenge} state={state} />

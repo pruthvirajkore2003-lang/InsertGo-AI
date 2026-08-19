@@ -63,7 +63,12 @@ describe("Settings › Access", () => {
 
     // One Check button per card — four cards, no microphone among them.
     expect(screen.getAllByRole("button", { name: "Check" })).toHaveLength(4);
-    expect(screen.getAllByText("Not checked")).toHaveLength(4);
+    // Three badges: autostart carries a toggle, and the checkbox already
+    // states on/off — a badge beside it would say the same thing twice.
+    expect(screen.getAllByText("Not checked")).toHaveLength(3);
+    expect(
+      screen.getByLabelText("Start InsertGo when I sign in")
+    ).toBeInTheDocument();
     expect(screen.queryByText(/microphone|audio|voice/i)).toBeNull();
     // The verbose "why" is hidden by default to reduce cognitive load.
     expect(

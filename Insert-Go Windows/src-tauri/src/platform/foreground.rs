@@ -21,8 +21,8 @@ mod imp {
         PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
-        BringWindowToTop, GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId,
-        IsIconic, IsWindow, SetForegroundWindow, ShowWindow, SW_RESTORE,
+        BringWindowToTop, GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId, IsIconic,
+        IsWindow, SetForegroundWindow, ShowWindow, SW_RESTORE,
     };
 
     /// Rebuild an `HWND` from the raw value produced by [`capture`].

@@ -64,7 +64,9 @@ fn matches_pattern(process: &str, pattern: &str) -> bool {
 /// `"all"` scope (SPEC §10: password managers / credential UIs). Supports the
 /// `*` wildcard via [`matches_pattern`].
 pub fn blocklisted(process: &str, block: &[String]) -> bool {
-    block.iter().any(|pattern| matches_pattern(process, pattern))
+    block
+        .iter()
+        .any(|pattern| matches_pattern(process, pattern))
 }
 
 /// Pure scope decision (SPEC §10): may the watcher read `process`? `is_own`
@@ -108,9 +110,9 @@ mod imp {
         VK_PRIOR, VK_RIGHT, VK_RSHIFT, VK_SHIFT, VK_UP,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
-        CallNextHookEx, SetWindowsHookExW, HC_ACTION, KBDLLHOOKSTRUCT, MSLLHOOKSTRUCT,
-        WH_KEYBOARD_LL, WH_MOUSE_LL, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP,
-        WM_SYSKEYDOWN, WM_SYSKEYUP, MSG, GetMessageW, DispatchMessageW,
+        CallNextHookEx, DispatchMessageW, GetMessageW, SetWindowsHookExW, HC_ACTION,
+        KBDLLHOOKSTRUCT, MSG, MSLLHOOKSTRUCT, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_KEYDOWN, WM_KEYUP,
+        WM_LBUTTONDOWN, WM_LBUTTONUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
     };
 
     /// What a hook proc observed.
@@ -134,7 +136,9 @@ mod imp {
         /// catches up to a mere selection collapse, so a fresh read coming
         /// back non-empty here would likely be stale, not real (this was
         /// the actual bug — the bar stayed up after a plain deselect click).
-        Cleared { point: Option<(i32, i32)> },
+        Cleared {
+            point: Option<(i32, i32)>,
+        },
         Dismiss,
     }
 
@@ -377,8 +381,7 @@ mod imp {
         // Re-read settings every gesture (µs-scale JSON read, user-paced
         // cadence) so toggling the feature or editing the scope/allowlist
         // applies live, without a settings-changed plumbing channel.
-        let settings =
-            crate::domain::settings::load_settings(app.clone()).unwrap_or_default();
+        let settings = crate::domain::settings::load_settings(app.clone()).unwrap_or_default();
 
         if !settings.selection_bar {
             skillbar_window::hide_skillbar(app);
@@ -540,14 +543,32 @@ mod tests {
         // An unlisted app is now readable in "all" scope.
         assert!(scope_allows("explorer.exe", false, "all", &apps, &block()));
         // …but never a blocklisted credential UI, even in "all".
-        assert!(!scope_allows("1password.exe", false, "all", &apps, &block()));
-        assert!(!scope_allows("KeePassXC.exe", false, "all", &apps, &block()));
+        assert!(!scope_allows(
+            "1password.exe",
+            false,
+            "all",
+            &apps,
+            &block()
+        ));
+        assert!(!scope_allows(
+            "KeePassXC.exe",
+            false,
+            "all",
+            &apps,
+            &block()
+        ));
     }
 
     #[test]
     fn own_process_is_never_read_in_any_scope() {
         let apps = allow();
         assert!(!scope_allows("claude.exe", true, "all", &apps, &block()));
-        assert!(!scope_allows("claude.exe", true, "allowlist", &apps, &block()));
+        assert!(!scope_allows(
+            "claude.exe",
+            true,
+            "allowlist",
+            &apps,
+            &block()
+        ));
     }
 }

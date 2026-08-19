@@ -16,11 +16,11 @@ pub fn get_hardware_id() -> Result<String, String> {
         let crypto = hklm
             .open_subkey("SOFTWARE\\Microsoft\\Cryptography")
             .map_err(|e| format!("Failed to open registry key: {}", e))?;
-        
+
         let guid: String = crypto
             .get_value("MachineGuid")
             .map_err(|e| format!("Failed to read MachineGuid: {}", e))?;
-            
+
         Ok(guid)
     }
 

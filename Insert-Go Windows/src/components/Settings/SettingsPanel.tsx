@@ -11,8 +11,6 @@ import { useSettingsStore } from "@/store/settingsStore";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { Tabs, TabPanel, type TabDef } from "@/components/ui/Tabs";
 import { PermissionsPanel } from "@/components/Permissions/PermissionsPanel";
-import { PrivacyIndicator } from "@/components/Monetization/PrivacyIndicator";
-import { openExternal } from "@/services/openExternal";
 
 const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "system", label: "system" },
@@ -78,44 +76,6 @@ function CommitField({
         placeholder={placeholder}
       />
       <span className="ig-muted">{hint}</span>
-    </div>
-  );
-}
-
-/**
- * R-15: the data-flow notice, shown where provider settings used to live.
- *
- * DPDP §5 wants the disclosure at the point of collection, and the point of
- * collection is this app, not a web page read once at sign-up. It names the
- * actual destination — our relay, then Google's Gemini API, outside India —
- * because "hosted proxy" told a user nothing about where their text ends up.
- *
- * There is deliberately no provider picker beside it: BYOK is a decided
- * non-feature (R-15, 2026-08-08), so this route is the only one that exists
- * and the notice can state it flatly rather than conditionally.
- */
-function DataFlowNotice() {
-  return (
-    <div className="ig-field">
-      <PrivacyIndicator providerLabel="Google Gemini" />
-      <span className="ig-muted" style={{ fontSize: 12 }}>
-        Every AI request runs through your InsertGo account: the text you invoke
-        InsertGo on is sent to our service and on to Google&apos;s Gemini API,
-        which is outside India. We record token counts, never the text. InsertGo
-        cannot be pointed at your own API key or at a model on your machine.{" "}
-        <a
-          className="ig-linkbtn"
-          href="https://insertgo.ai/privacy"
-          onClick={(e) => {
-            // System browser, never this webview (same rule as grounded-run
-            // citations in SkillComponentsFloater).
-            e.preventDefault();
-            void openExternal("https://insertgo.ai/privacy");
-          }}
-        >
-          Read the privacy policy
-        </a>
-      </span>
     </div>
   );
 }
@@ -283,8 +243,6 @@ export function SettingsPanel() {
           <PermissionsPanel />
         </TabPanel>
       )}
-
-      <DataFlowNotice />
     </div>
   );
 }

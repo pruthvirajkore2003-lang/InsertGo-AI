@@ -3,17 +3,17 @@ import Link from "next/link";
 import { PageHero, GlowBackdrop } from "@/components/PageHero";
 import {
   Breadcrumbs,
+  ComparisonTable,
   DirectAnswer,
   FaqBlocks,
+  HowToSteps,
   JsonLd,
   SeoCta,
+  SourceNote,
 } from "@/components/SeoContent";
 import { FadeUp, Reveal } from "@/components/Reveal";
-import {
-  breadcrumbSchema,
-  CONTENT_UPDATED,
-  faqSchema,
-} from "@/lib/seo";
+import { AdUnit } from "@/components/ads/AdUnit";
+import { CONTENT_UPDATED, HOTKEY_WORKFLOW_STEPS, pageGraph } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Raycast Alternative for Windows AI Prompts",
@@ -63,49 +63,63 @@ const faqs = [
 const comparison = [
   {
     criterion: "Primary job",
-    insertgo:
+    ours:
       "Focused AI prompt assistant: compose, reuse, improve, generate, and insert text.",
-    raycast:
+    theirs:
       "General productivity launcher: apps, files, commands, extensions, snippets, and AI.",
   },
   {
     criterion: "Windows availability",
-    insertgo: "Native Windows 10 and 11 app.",
-    raycast: "Native Windows 10+ beta.",
+    ours: "Native Windows 10 and 11 app.",
+    theirs: "Native Windows 10+ beta.",
   },
   {
     criterion: "Reusable AI prompts",
-    insertgo:
+    ours:
       "Prompt library grouped by category, with fill-in forms before a prompt runs.",
-    raycast:
+    theirs:
       "AI Commands with tags, models, creativity controls, sharing, and imports.",
   },
   {
     criterion: "Runtime inputs",
-    insertgo:
+    ours:
       "Text fields, paragraphs, menus, toggles, clipboard content, and legacy selected-text placeholders.",
-    raycast:
+    theirs:
       "Arguments, option lists, selected text, clipboard, dates, browser tabs, and other Dynamic Placeholders.",
   },
   {
     criterion: "Write-back",
-    insertgo:
+    ours:
       "Insert generated text at the cursor in the app active before the overlay; restore prior clipboard content after a successful paste.",
-    raycast:
+    theirs:
       "Replace selected text in place with AI Command output; snippets can paste into the active app.",
   },
   {
+    criterion: "Clipboard safety",
+    ours:
+      "Generated text is staged on the clipboard for the paste only, then the previous clipboard value is restored.",
+    theirs:
+      "Clipboard History is a stored, searchable list; AI Commands replace the selection rather than staging a paste.",
+  },
+  {
+    criterion: "Pricing",
+    ours:
+      "Free tier, paid plans, and non-expiring credit packs — see the pricing page.",
+    theirs:
+      "Free tier with paid Pro and Team plans that carry the AI and Cloud Sync limits.",
+  },
+  {
     criterion: "Data model",
-    insertgo:
+    ours:
       "Prompt library and settings stored locally; secrets use Windows credential storage.",
-    raycast:
+    theirs:
       "Account-based product with optional Pro Cloud Sync across supported platforms.",
   },
   {
     criterion: "Best fit",
-    insertgo:
+    ours:
       "People wanting a small, purpose-built AI prompt and insertion layer.",
-    raycast:
+    theirs:
       "People wanting one broad launcher and automation platform with AI included.",
   },
 ];
@@ -113,14 +127,29 @@ const comparison = [
 export default function RaycastWindowsAlternativePage() {
   return (
     <main className="relative overflow-hidden">
-      <JsonLd data={breadcrumbSchema(breadcrumbs)} />
-      <JsonLd data={faqSchema(faqs)} />
+      <JsonLd
+        data={pageGraph({
+          path: "/alternatives/raycast-windows",
+          name: "Raycast alternative for Windows AI prompts",
+          description:
+            "How InsertGo compares with Raycast on Windows: focused prompt-to-text workflow versus a general launcher, runtime inputs, write-back, clipboard handling, and pricing.",
+          breadcrumbs,
+          faqs,
+          howTo: {
+            name: "How to run a reusable AI prompt on Windows",
+            description:
+              "Open InsertGo over the active app, fill in the template fields, review the generated text, and insert it at the cursor.",
+            totalTime: "PT1M",
+            steps: HOTKEY_WORKFLOW_STEPS,
+          },
+        })}
+      />
       <GlowBackdrop />
       <Breadcrumbs items={breadcrumbs} />
 
       <PageHero
         compact
-        kicker="Current comparison · July 2026"
+        kicker="Current comparison · August 2026"
         title="Raycast alternative for Windows AI prompts"
         sub="Raycast now runs on Windows. The useful question is no longer “What replaces Raycast?” but “Do you need a full launcher or a focused AI prompt workflow?”"
       >
@@ -136,9 +165,10 @@ export default function RaycastWindowsAlternativePage() {
         <Reveal>
           <DirectAnswer title="What is the best Raycast alternative for Windows AI prompts?">
             InsertGo is a focused alternative when reusable, form-driven AI
-            prompts and direct insertion matter most. Raycast is broader: choose
-            it when app search, file search, extensions, notes, window
-            management, and general automation belong in the same launcher.
+            prompts and direct insertion into Windows apps matter most: a hotkey
+            over the active window, a fill-in dialog, a verified paste at the
+            cursor. Raycast is broader — choose it when app search, file search,
+            extensions, notes, and window management belong in the same launcher.
           </DirectAnswer>
         </Reveal>
       </section>
@@ -160,45 +190,24 @@ export default function RaycastWindowsAlternativePage() {
         </Reveal>
 
         <Reveal>
-          <div className="glass-panel overflow-x-auto">
-            <table className="w-full min-w-[760px] border-collapse text-left">
-              <caption className="sr-only">
-                InsertGo and Raycast Windows AI feature comparison
-              </caption>
-              <thead>
-                <tr className="border-b border-line">
-                  <th scope="col" className="p-5 text-sm font-semibold text-ink">
-                    Decision
-                  </th>
-                  <th scope="col" className="p-5 text-sm font-semibold text-ink">
-                    InsertGo
-                  </th>
-                  <th scope="col" className="p-5 text-sm font-semibold text-ink">
-                    Raycast
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {comparison.map((row) => (
-                  <tr key={row.criterion} className="border-b border-line last:border-0">
-                    <th
-                      scope="row"
-                      className="w-[20%] p-5 align-top text-sm font-semibold text-ink-soft"
-                    >
-                      {row.criterion}
-                    </th>
-                    <td className="w-[40%] p-5 align-top text-sm leading-relaxed text-muted">
-                      {row.insertgo}
-                    </td>
-                    <td className="w-[40%] p-5 align-top text-sm leading-relaxed text-muted">
-                      {row.raycast}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ComparisonTable
+            caption="InsertGo and Raycast Windows AI feature comparison"
+            theirs="Raycast"
+            rows={comparison}
+          />
         </Reveal>
+      </section>
+
+      <section className="mx-auto max-w-[1080px] px-6 pb-[70px]">
+        <Reveal className="mx-auto mb-12 max-w-[700px] text-center">
+          <h2 className="m-0 font-serif text-[clamp(28px,4vw,42px)] font-semibold tracking-[-0.02em] text-ink">
+            From hotkey to cursor
+          </h2>
+          <p className="mt-4 text-base leading-relaxed text-muted">
+            The InsertGo path, in four steps.
+          </p>
+        </Reveal>
+        <HowToSteps steps={HOTKEY_WORKFLOW_STEPS} />
       </section>
 
       <section className="section-tint px-6 py-[80px]">
@@ -256,64 +265,59 @@ export default function RaycastWindowsAlternativePage() {
         <FaqBlocks items={faqs} />
       </section>
 
-      <section className="mx-auto max-w-[900px] px-6 pb-8">
-        <Reveal>
-          <div className="glass-card p-7 text-sm leading-relaxed text-muted">
-            <h2 className="mt-0 font-serif text-xl font-semibold text-ink">
-              Sources checked
-            </h2>
-            <p className="mb-0">
-              Raycast facts:{" "}
-              <a
-                href="https://manual.raycast.com/quickstart"
-                className="text-brand hover:underline"
-              >
-                Windows requirements
-              </a>
-              ,{" "}
-              <a
-                href="https://manual.raycast.com/ai/ai-commands"
-                className="text-brand hover:underline"
-              >
-                AI Commands
-              </a>
-              ,{" "}
-              <a
-                href="https://manual.raycast.com/dynamic-placeholders"
-                className="text-brand hover:underline"
-              >
-                Dynamic Placeholders
-              </a>
-              , and{" "}
-              <a
-                href="https://manual.raycast.com/billing"
-                className="text-brand hover:underline"
-              >
-                plans and Cloud Sync
-              </a>
-              . AI Blaze facts:{" "}
-              <a
-                href="https://blaze.today/aiblaze/docs/quickstart/"
-                className="text-brand hover:underline"
-              >
-                official quickstart
-              </a>
-              . InsertGo details:{" "}
-              <Link href="/how-it-works" className="text-brand hover:underline">
-                insertion workflow
-              </Link>{" "}
-              and{" "}
-              <Link
-                href="/features/prompt-library"
-                className="text-brand hover:underline"
-              >
-                dynamic prompt library
-              </Link>
-              .
-            </p>
-          </div>
-        </Reveal>
-      </section>
+      <SourceNote>
+            Raycast facts:{" "}
+            <a
+              href="https://manual.raycast.com/quickstart"
+              className="text-brand hover:underline"
+            >
+              Windows requirements
+            </a>
+            ,{" "}
+            <a
+              href="https://manual.raycast.com/ai/ai-commands"
+              className="text-brand hover:underline"
+            >
+              AI Commands
+            </a>
+            ,{" "}
+            <a
+              href="https://manual.raycast.com/dynamic-placeholders"
+              className="text-brand hover:underline"
+            >
+              Dynamic Placeholders
+            </a>
+            , and{" "}
+            <a
+              href="https://manual.raycast.com/billing"
+              className="text-brand hover:underline"
+            >
+              plans and Cloud Sync
+            </a>
+            . AI Blaze facts:{" "}
+            <a
+              href="https://blaze.today/aiblaze/docs/quickstart/"
+              className="text-brand hover:underline"
+            >
+              official quickstart
+            </a>
+            . InsertGo details:{" "}
+            <Link href="/how-it-works" className="text-brand hover:underline">
+              insertion workflow
+            </Link>{" "}
+            and{" "}
+            <Link
+              href="/features/prompt-library"
+              className="text-brand hover:underline"
+            >
+              dynamic prompt library
+            </Link>
+            .
+      </SourceNote>
+
+      {/* End-of-article slot. Below the comparison the reader came for,
+          above the CTA — and height-reserved, so it cannot shift either. */}
+      <AdUnit className="pb-10" />
 
       <SeoCta
         title="Want prompt insertion, not another launcher?"

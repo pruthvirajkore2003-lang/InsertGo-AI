@@ -412,8 +412,7 @@ mod tests {
         // An explicit empty array must survive (real "user cleared the bar"
         // state) — distinct from the field being absent (→ full default set).
         let back: Settings =
-            serde_json::from_str(r#"{"theme":"dark","hotkey":"x","enabledSkillIds":[]}"#)
-                .unwrap();
+            serde_json::from_str(r#"{"theme":"dark","hotkey":"x","enabledSkillIds":[]}"#).unwrap();
         assert!(back.enabled_skill_ids.is_empty());
     }
 }

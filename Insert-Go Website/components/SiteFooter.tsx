@@ -5,6 +5,7 @@ import { HOTKEYS } from "@/lib/constants/hotkeys";
 
 const productLinks = [
   { label: "Features", href: "/features" },
+  { label: "AI text expander", href: "/features/ai-text-expander" },
   { label: "Auto text insert", href: "/features/auto-text-insert" },
   { label: "Prompt library", href: "/features/prompt-library" },
   { label: "Desktop assistant", href: "/features/desktop-assistant" },
@@ -15,8 +16,16 @@ const productLinks = [
 
 const learnLinks = [
   { label: "Windows AI guide", href: "/blog/windows-ai-productivity-guide" },
-  { label: "InsertGo vs Raycast", href: "/alternatives/raycast-windows" },
+  { label: "For developers", href: "/use-cases/developers" },
+  { label: "For customer support", href: "/use-cases/customer-support" },
   { label: "FAQ", href: "/faq" },
+];
+
+const compareLinks = [
+  { label: "vs Raycast", href: "/alternatives/raycast-windows" },
+  { label: "vs Text Blaze", href: "/alternatives/text-blaze-windows" },
+  { label: "vs TextExpander", href: "/alternatives/textexpander-windows" },
+  { label: "vs Windows Copilot", href: "/alternatives/windows-copilot" },
 ];
 
 const supportLinks = [
@@ -27,6 +36,7 @@ const supportLinks = [
 const legalLinks = [
   { label: "Terms & Conditions", href: "/terms" },
   { label: "Privacy Policy", href: "/privacy" },
+  { label: "Cancellation & Refunds", href: "/cancel" },
 ];
 
 export function SiteFooter() {
@@ -90,6 +100,21 @@ export function SiteFooter() {
             Learn
           </span>
           {learnLinks.map((l) => (
+            <Link
+              key={l.label}
+              href={l.href}
+              className="text-sm text-muted transition-colors duration-200 hover:text-accent-primary"
+            >
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+
+        <nav aria-label="Compare" className="flex flex-col gap-3">
+          <span className="text-xs font-medium tracking-[0.12em] text-muted uppercase">
+            Compare
+          </span>
+          {compareLinks.map((l) => (
             <Link
               key={l.label}
               href={l.href}

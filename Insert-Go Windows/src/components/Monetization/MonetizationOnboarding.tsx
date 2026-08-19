@@ -2,9 +2,7 @@
  * Plan panel for the managed model (Monetization & Trust layer). The catalog
  * comes from the website over /api/desktop/pricing (useMonetizationStore) —
  * Free / Plus / Pro subscriptions side-by-side, with consumable add-on credit
- * packs in a subordinate grid below. Conversion is optimized by being
- * radically transparent: a PrivacyIndicator shows the literal data path
- * BEFORE the user commits, and Plus carries the "Most Popular" marker
+ * packs in a subordinate grid below. Plus carries the "Most Popular" marker
  * (side-by-side comparison, highlighted middle tier).
  *
  * This is the ONE authoritative plan/purchase call to action on the Profile
@@ -18,7 +16,6 @@
  */
 import { useEffect, useState } from "react";
 import { motion, MotionConfig } from "framer-motion";
-import { PrivacyIndicator } from "./PrivacyIndicator";
 import { TIER_LABELS, useMonetizationStore } from "@/store/monetizationStore";
 import { isPro, totalCredits, useAuthStore } from "@/store/authStore";
 import {
@@ -254,9 +251,6 @@ export function MonetizationOnboarding() {
           <h3 className="ig-section-label">Your plan</h3>
           <span className="ig-plan__current">{TIER_LABELS[tier]}</span>
         </div>
-
-        {/* Trust before commitment: the literal data path, above the cards. */}
-        <PrivacyIndicator />
 
         <motion.div
           initial={{ opacity: 0, y: 8 }}

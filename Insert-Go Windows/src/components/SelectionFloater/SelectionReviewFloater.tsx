@@ -130,6 +130,10 @@ export function SelectionReviewFloater() {
         if (prev.isSending && !s.isSending && s.result && !s.error) {
           useHistoryStore.getState().record({
             body: s.body,
+            // The skill label is the only human-readable handle these entries
+            // get — `body` stays "" here by design, so without it the panel
+            // shows "Untitled run". A label is not selection text (SPEC §10).
+            title: s.activeSkill?.label || "Selection Run",
             outputTokens: s.metrics?.outputTokens ?? null,
             totalMs: s.metrics?.totalMs ?? null,
           });

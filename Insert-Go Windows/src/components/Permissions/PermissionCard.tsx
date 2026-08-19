@@ -41,6 +41,9 @@ export type PermissionCardProps = {
   onCheck: () => void;
   /** Only for the optional autostart card — turns the feature on/off. */
   onToggle?: (enabled: boolean) => void;
+  /** Label rendered inside the toggle's <label>, next to the checkbox. Copy
+   *  belongs to the caller, not here — only meaningful with `onToggle`. */
+  toggleLabel?: string;
 };
 
 export function PermissionCard({
@@ -53,6 +56,7 @@ export function PermissionCard({
   recovery,
   onCheck,
   onToggle,
+  toggleLabel,
 }: PermissionCardProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const badge = BADGE[status];
@@ -66,10 +70,14 @@ export function PermissionCard({
   const showDetails = detailsOpen || needsRecovery;
 
   return (
-    <article className="ig-glass-card ig-permcard ig-permcard--compact">
+    <article
+      className={`ig-glass-card ig-permcard ig-permcard--compact ig-permcard--${status}`}
+    >
       <div className="ig-permcard__main">
         <header className="ig-permcard__head">
-          <i className={`fa-solid ${icon} ig-permcard__icon`} aria-hidden="true" />
+          <span className="ig-permcard__icon-chip" aria-hidden="true">
+            <i className={`fa-solid ${icon} ig-permcard__icon`} />
+          </span>
           <h4 className="ig-permcard__title">{title}</h4>
           {chord && <kbd className="ig-kbd ig-permcard__chord">{chord}</kbd>}
           <button
@@ -84,23 +92,37 @@ export function PermissionCard({
         </header>
 
         <div className="ig-permcard__actions">
-          <span
-            className={`ig-permcard__badge ${badge.modifier}`}
-            // Status changes silently otherwise — announce them for screen
-            // readers the same moment the badge repaints.
-            role="status"
-          >
-            {badge.label}
-          </span>
+          {/* The checkbox already states on/off; a badge beside it would say
+              the same thing twice. Cards without a toggle keep the badge as
+              their only status. */}
+          {!onToggle && (
+            <span
+              className={`ig-permcard__badge ${badge.modifier}`}
+              // Status changes silently otherwise — announce them for screen
+              // readers the same moment the badge repaints.
+              role="status"
+            >
+              {badge.label}
+            </span>
+          )}
           {onToggle && (
-            <label className="ig-check ig-permcard__toggle">
+            /* Switch, not a bare checkbox: the card's only writable control
+               should read as a control, and the on/off position carries the
+               state the hidden badge used to. Input stays a real checkbox
+               (role, label, keyboard) — the track is paint only. */
+            <label className="ig-check ig-permcard__toggle ig-switch">
               <input
                 type="checkbox"
                 checked={status === "granted"}
                 disabled={busy}
                 onChange={(e) => onToggle(e.target.checked)}
               />
-              Start InsertGo when I sign in
+              <span className="ig-switch__track" aria-hidden="true">
+                <span className="ig-switch__thumb" />
+              </span>
+              {/* Falls back to the title so the checkbox is never nameless if
+                  a caller forgets the copy. */}
+              <span className="ig-switch__text">{toggleLabel ?? title}</span>
             </label>
           )}
           <button

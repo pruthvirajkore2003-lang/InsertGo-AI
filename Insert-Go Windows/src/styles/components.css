@@ -1918,6 +1918,35 @@ textarea.ig-input {
   }
 }
 
+/* Blocked-outside-click ping: while the dismiss guard holds (run streaming or
+   a deliverable on screen) the component sets --blocked for ~480ms and the
+   card nudges, so the refused click reads as feedback, not dead UI. Replaces
+   the (long-finished, no fill-mode) entrance animation while active; the
+   hover scale resumes afterwards — an animation wins over the :hover
+   transform only during the ping. */
+.ig-modal__card.ig-skillfloater--blocked {
+  animation: ig-skillfloater-nudge 420ms var(--ig-ease-pop);
+}
+
+@keyframes ig-skillfloater-nudge {
+  0%,
+  100% {
+    transform: none;
+  }
+
+  25% {
+    transform: translateX(-5px);
+  }
+
+  55% {
+    transform: translateX(4px);
+  }
+
+  80% {
+    transform: translateX(-2px);
+  }
+}
+
 .ig-skillfloater__head {
   display: flex;
   align-items: center;
@@ -1990,6 +2019,22 @@ textarea.ig-input {
   box-shadow: var(--ig-inset-well);
   padding: var(--ig-space-4);
   border-radius: var(--ig-radius-card);
+  /* Land animation: plays once when the deliverable element mounts (the
+     hasDeliverable flip). Streamed updates reuse the same node, so there is
+     no replay flicker mid-run. */
+  animation: ig-result-in 240ms var(--ig-ease);
+}
+
+@keyframes ig-result-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* The screen is the flex child that soaks up the card's remaining height and
@@ -2007,9 +2052,22 @@ textarea.ig-input {
 }
 
 .ig-skillfloater__screen .ig-working {
+  /* Column stack (orb over the "Working…" label) — the base .ig-working is a
+     row flex for its dot-pulse hosts (e.g. AuthPanel), so the direction and
+     the wider gap stay scoped to this screen. */
+  flex-direction: column;
   justify-content: center;
+  gap: var(--ig-space-2);
   padding: var(--ig-space-4) 0;
   border-top: none;
+}
+
+/* Visible loading text paired with the orb — a bare spinner reads as stalled,
+   naming the state is the AI loading pattern. Rendered only by this floater's
+   working block; still scoped so other .ig-working hosts keep their layout. */
+.ig-skillfloater__screen .ig-working__label {
+  font-size: var(--ig-text-2xs);
+  color: var(--ig-muted);
 }
 
 /* Live <analysis> reasoning, streamed as collapsible "thinking" (L1 latency
@@ -2120,6 +2178,24 @@ textarea.ig-input {
   box-shadow:
     var(--ig-inset-well),
     0 0 0 3px var(--ig-accent-soft);
+}
+
+/* Persistent protected-state hint, rendered just above the action bar while
+   the outside-click guard holds: the nudge says the click was refused, this
+   says why and what still closes the card (Esc / ✕). Muted 2xs so it informs
+   without competing with the deliverable; accent-tinted lock icon. */
+.ig-skillfloater__hint {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-space-1);
+  font-size: var(--ig-text-2xs);
+  line-height: var(--ig-leading-normal);
+  color: var(--ig-muted);
+}
+
+.ig-skillfloater__hint .fa-solid {
+  flex: none;
+  color: var(--ig-accent);
 }
 
 /* Action bar rhythm: even 8px between buttons, a breath above the row. */
@@ -2338,6 +2414,13 @@ textarea.ig-input {
      rule near the end of this file also caps durations; this states intent
      locally and covers the entrance specifically). */
   .ig-selbar-shell>.ig-skillbar {
+    animation: none;
+  }
+
+  /* Skill floater: no blocked-click nudge and no deliverable land-in — off
+     entirely here, not merely compressed by the global duration cap. */
+  .ig-modal__card.ig-skillfloater--blocked,
+  .ig-skillfloater .ig-result__text {
     animation: none;
   }
 }
@@ -3174,17 +3257,20 @@ textarea.ig-input {
   padding: var(--ig-space-3) 0;
 }
 
-/* ── Toggle switch (skill cards) ──────────────────────────────────────────── */
+/* ── Toggle switch ──────────────────────────────────────────────────────────
+   One definition, shared by skill cards and the Access tab's autostart row.
+   The native checkbox stays but is visually replaced by the track/thumb; it
+   remains the focus/keyboard/AT target (never display:none — that drops it
+   from the a11y tree). */
 .ig-switch {
   position: relative;
   display: inline-flex;
+  align-items: center;
+  gap: var(--ig-space-2);
   flex-shrink: 0;
   cursor: pointer;
 }
 
-/* The native checkbox stays but is visually replaced by the track/thumb; it
-   remains the focus/keyboard/AT target (never display:none — that drops it
-   from the a11y tree). */
 .ig-switch input {
   position: absolute;
   inset: 0;
@@ -3225,6 +3311,16 @@ textarea.ig-input {
 
 .ig-switch input:focus-visible + .ig-switch__track {
   box-shadow: 0 0 0 3px var(--ig-accent-soft);
+}
+
+/* Disabled (Access tab disables while its probe runs): dim track and, when
+   the switch carries a text label, the label too. */
+.ig-switch input:disabled + .ig-switch__track {
+  opacity: 0.5;
+}
+
+.ig-switch input:disabled ~ .ig-switch__text {
+  color: var(--ig-faint);
 }
 
 /* ── Create Skill wizard ──────────────────────────────────────────────────── */
@@ -3365,6 +3461,47 @@ textarea.ig-input {
   flex-direction: column;
   gap: var(--ig-space-2);
   padding: var(--ig-space-3);
+  /* Status rail: always 2px so a state change repaints color only, never
+     layout. Transparent until a check says something worth showing. */
+  border-left-width: 2px;
+  border-left-color: transparent;
+  transition:
+    background var(--ig-fast) var(--ig-ease),
+    border-color var(--ig-fast) var(--ig-ease),
+    box-shadow var(--ig-fast) var(--ig-ease),
+    transform var(--ig-fast) var(--ig-ease);
+}
+
+/* State reads at a glance from the rail + icon chip — the badge carries the
+   same colors for the precise word. */
+.ig-permcard--granted {
+  border-left-color: var(--ig-success);
+}
+
+.ig-permcard--unavailable,
+.ig-permcard--blocked {
+  border-left-color: var(--ig-warn);
+}
+
+.ig-permcard--checking {
+  border-left-color: var(--ig-accent);
+  animation: ig-permcard-rail-pulse 1.2s var(--ig-ease) infinite;
+}
+
+@keyframes ig-permcard-rail-pulse {
+  0%,
+  100% {
+    border-left-color: var(--ig-accent);
+  }
+  50% {
+    border-left-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ig-permcard--checking {
+    animation: none;
+  }
 }
 
 /* Tiles are informational, not clickable — suppress .ig-glass-card's hover
@@ -3379,8 +3516,35 @@ textarea.ig-input {
   gap: var(--ig-space-2);
 }
 
-.ig-permcard__icon {
+/* Capability glyph sits in a tinted chip so the row has a visual anchor;
+   the chip echoes the status color once a check has run. */
+.ig-permcard__icon-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ig-control-lg);
+  height: var(--ig-control-lg);
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: var(--ig-accent-tint);
   color: var(--ig-accent);
+  transition:
+    background var(--ig-fast) var(--ig-ease),
+    color var(--ig-fast) var(--ig-ease);
+}
+
+.ig-permcard--granted .ig-permcard__icon-chip {
+  background: var(--ig-success-soft);
+  color: var(--ig-success);
+}
+
+.ig-permcard--unavailable .ig-permcard__icon-chip,
+.ig-permcard--blocked .ig-permcard__icon-chip {
+  background: var(--ig-warn-soft);
+  color: var(--ig-warn);
+}
+
+.ig-permcard__icon {
   flex-shrink: 0;
 }
 
@@ -3391,6 +3555,9 @@ textarea.ig-input {
 }
 
 .ig-permcard__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-space-1);
   flex-shrink: 0;
   padding: 2px var(--ig-space-2);
   border: 1px solid var(--ig-border);
@@ -3402,6 +3569,16 @@ textarea.ig-input {
   letter-spacing: 0.06em;
   color: var(--ig-faint);
   white-space: nowrap;
+}
+
+/* Status dot: shape carries the state even where color alone would not
+   (color-blind safe pairing with the word). */
+.ig-permcard__badge::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: var(--ig-radius-pill);
+  background: currentColor;
 }
 
 .ig-permcard__badge--ok {

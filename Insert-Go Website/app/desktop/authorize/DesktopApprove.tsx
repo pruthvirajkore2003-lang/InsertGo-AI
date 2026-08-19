@@ -100,8 +100,8 @@ export function DesktopApprove({
           {error}
         </p>
       )}
-      <p className="flex items-start justify-center gap-2 text-center text-[13px] leading-relaxed text-muted">
-        <LinearShieldTick size={15} className="mt-px shrink-0 text-brand" />
+      <p className="flex items-center justify-center gap-2 text-center text-[13px] leading-relaxed text-muted">
+        <LinearShieldTick size={15} className="shrink-0 text-brand" />
         Only approve if you just started sign-in from the InsertGo desktop app
         on your own computer.
       </p>

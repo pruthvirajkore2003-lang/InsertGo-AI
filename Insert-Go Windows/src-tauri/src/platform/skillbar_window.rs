@@ -70,27 +70,24 @@ struct ShowPayload {
 /// [`imp::apply_noactivate`] re-asserts it (plus `WS_EX_TOOLWINDOW`, keeping
 /// the bar out of Alt+Tab) directly on the extended style.
 pub fn create_skillbar(app: &AppHandle) -> AppResult<()> {
-    let window = WebviewWindowBuilder::new(
-        app,
-        SKILLBAR_LABEL,
-        WebviewUrl::App("skillbar.html".into()),
-    )
-    .title("InsertGo Skillbar")
-    .inner_size(BAR_LOGICAL_WIDTH, BAR_LOGICAL_HEIGHT)
-    .decorations(false)
-    .transparent(true)
-    .always_on_top(true)
-    .skip_taskbar(true)
-    .shadow(false)
-    .resizable(false)
-    .minimizable(false)
-    .maximizable(false)
-    .closable(false)
-    .focusable(false)
-    .focused(false)
-    .visible(false)
-    .accept_first_mouse(true)
-    .build()?;
+    let window =
+        WebviewWindowBuilder::new(app, SKILLBAR_LABEL, WebviewUrl::App("skillbar.html".into()))
+            .title("InsertGo Skillbar")
+            .inner_size(BAR_LOGICAL_WIDTH, BAR_LOGICAL_HEIGHT)
+            .decorations(false)
+            .transparent(true)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .shadow(false)
+            .resizable(false)
+            .minimizable(false)
+            .maximizable(false)
+            .closable(false)
+            .focusable(false)
+            .focused(false)
+            .visible(false)
+            .accept_first_mouse(true)
+            .build()?;
 
     let hwnd = window_hwnd(&window)?;
     imp::apply_noactivate(hwnd);
@@ -116,9 +113,7 @@ pub fn show_at(app: &AppHandle, sel: &SelectionRead) -> AppResult<()> {
     // rect at the cursor (the clipboard-fallback path).
     let anchor = sel
         .rect
-        .or_else(|| {
-            imp::cursor_pos().map(|(x, y)| ScreenRect { x, y, w: 0, h: 0 })
-        })
+        .or_else(|| imp::cursor_pos().map(|(x, y)| ScreenRect { x, y, w: 0, h: 0 }))
         .unwrap_or(ScreenRect {
             x: 0,
             y: 0,
@@ -179,10 +174,7 @@ pub fn is_point_in_bar(app: &AppHandle, x: i32, y: i32) -> bool {
     let (Ok(pos), Ok(size)) = (window.outer_position(), window.outer_size()) else {
         return false;
     };
-    x >= pos.x
-        && x < pos.x + size.width as i32
-        && y >= pos.y
-        && y < pos.y + size.height as i32
+    x >= pos.x && x < pos.x + size.width as i32 && y >= pos.y && y < pos.y + size.height as i32
 }
 
 /// Hide the bar and drop the paste target. Emits `selection:hide` so the bar
@@ -213,7 +205,10 @@ pub async fn hide_selection_bar(app: AppHandle) -> AppResult<()> {
 /// Last on-screen bar anchor, for positioning the selection review floater
 /// next to the selection the user acted on.
 pub(crate) fn last_bar_anchor() -> (i32, i32) {
-    (LAST_X.load(Ordering::Relaxed), LAST_Y.load(Ordering::Relaxed))
+    (
+        LAST_X.load(Ordering::Relaxed),
+        LAST_Y.load(Ordering::Relaxed),
+    )
 }
 
 /// Payload of `selection:review` — the skill the bar chose plus the selected
@@ -371,7 +366,10 @@ fn fallback(app: &AppHandle, text: String, reason: &str) -> AppResult<()> {
 
     // Un-park back to the last on-screen anchor (the apply parked the bar
     // off-screen; a plain re-show would leave it there) so the notice is seen.
-    let (x, y) = (LAST_X.load(Ordering::Relaxed), LAST_Y.load(Ordering::Relaxed));
+    let (x, y) = (
+        LAST_X.load(Ordering::Relaxed),
+        LAST_Y.load(Ordering::Relaxed),
+    );
     PARKED.store(false, Ordering::Relaxed);
     if let Some(window) = app.get_webview_window(SKILLBAR_LABEL) {
         if let Ok(hwnd) = window_hwnd(&window) {

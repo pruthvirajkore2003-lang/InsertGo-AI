@@ -69,15 +69,45 @@ so `:3005` works out of the box — just point `VITE_API_URL` at it too.
 
 ### Contact form (`/contact` → `POST /api/contact`)
 
-Shares the OTP mailer. Without `RESEND_API_KEY` the submission is **printed to
-the dev server console** instead of sent, same as the OTP path; in production
-that branch returns 503 rather than reporting a false success.
+Shares the OTP mailer, and sends **two** mails per submission:
+
+| # | To | Reply-to | Purpose |
+|---|----|----------|---------|
+| 1 | `CONTACT_TO` | the visitor | the enquiry — reply to it to answer the sender |
+| 2 | the visitor | `CONTACT_TO` | instant acknowledgement receipt |
+
+The receipt carries RFC 3834's `Auto-Submitted: auto-replied` and
+`X-Auto-Response-Suppress: All`, and is **withheld** from machine addresses
+(`noreply@`, `no-reply@`, `mailer-daemon@`, `postmaster@`, `bounce@`) — both
+guard against a mail loop with a vacation responder or bounce daemon. If only
+the receipt fails the route still answers `200 {ok, submissionId}`: the enquiry
+is already filed, and a 502 there would just duplicate the ticket.
+
+Without `RESEND_API_KEY` the submission is **printed to the dev server console**
+instead of sent, same as the OTP path, together with the envelope both mails
+would have used; in production that branch returns 503 rather than reporting a
+false success.
 
 Set `CONTACT_TO` to the inbox that should receive enquiries (default
-`support@insertgo.ai`). On an unverified Resend account the shared
-`onboarding@resend.dev` sender only delivers to the account owner's own
-address — any other `CONTACT_TO` comes back as a 403 and the route answers 502.
-Verify a domain and set `EMAIL_FROM` to an address on it before going live.
+`support@insertgo.ai`).
+
+**Resend sandbox rule — this is what bites in local dev.** On an unverified
+Resend account the shared `onboarding@resend.dev` sender only delivers to **the
+Resend account owner's own address**. That now applies to *both* mails, so to
+see the full flow locally:
+
+1. `RESEND_API_KEY=re_…` in `.env.local`.
+2. `CONTACT_TO=` your Resend account's own email.
+3. Type **that same address** into the form's Email field.
+
+Any other recipient comes back 403: on mail 1 the route answers 502, on mail 2
+it answers 200 and logs `[contact] acknowledgement failed`. Verify a domain in
+Resend and point `EMAIL_FROM` at an address on it to mail arbitrary visitors —
+required before going live.
+
+Rate limit: 5 submissions per hour per IP, enforced twice — `withinIpRateLimit`
+(shared via `UPSTASH_REDIS_REST_*`, fails open) plus a per-instance floor, so an
+unconfigured Redis still bounds mail sent to a caller-supplied address.
 
 ## 4. Verify the desktop flow
 

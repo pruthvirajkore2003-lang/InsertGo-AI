@@ -59,8 +59,6 @@ impl FallbackOps for WinFallbackOps {
 
     fn clipboard_change_token(&self) -> Option<u64> {
         // SAFETY: GetClipboardSequenceNumber takes no arguments.
-        Some(unsafe {
-            windows::Win32::System::DataExchange::GetClipboardSequenceNumber()
-        } as u64)
+        Some(unsafe { windows::Win32::System::DataExchange::GetClipboardSequenceNumber() } as u64)
     }
 }
