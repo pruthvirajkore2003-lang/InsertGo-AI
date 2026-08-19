@@ -28,7 +28,7 @@ jobs:
   log-hygiene:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Scoped to the website: the desktop app has its own boundary
       # (src/services/safeLog.ts) and its own rule in SECURITY.md.
@@ -78,7 +78,7 @@ jobs:
   npm-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -121,7 +121,7 @@ jobs:
   cargo-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Reads Cargo.lock only, so the Windows-only crate audits fine on Linux
       # and the job costs seconds instead of a cross-compile.
@@ -140,7 +140,7 @@ jobs:
   exception-review:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Runs on its own so a lapsed review date is reported as itself, not as a
       # side effect of whichever audit job happened to run first.
@@ -155,7 +155,7 @@ jobs:
   ropa:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 22
