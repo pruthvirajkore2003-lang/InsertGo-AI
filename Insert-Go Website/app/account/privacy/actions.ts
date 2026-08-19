@@ -5,7 +5,14 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { audit, clientIp } from "@/lib/auditLog";
-import { PURPOSES, recordConsent, type PurposeId } from "@/lib/consent";
+import {
+  currentConsent,
+  OPTIONAL_PURPOSES,
+  PURPOSES,
+  recordConsent,
+  type PurposeId,
+} from "@/lib/consent";
+import { writeConsentCookie } from "@/lib/writeConsentCookie";
 import { createDsr, eraseUser, fulfilDsr } from "@/lib/dsr";
 
 async function requireUserId(): Promise<{
@@ -56,6 +63,19 @@ export async function setPurpose(formData: FormData): Promise<void> {
     ip,
     userAgent,
   });
+
+  // Re-read rather than patching the previous cookie: this action toggles ONE
+  // purpose, and a cookie rebuilt from a stale local guess is how a withdrawal
+  // of `marketing` silently re-grants `analytics`.
+  try {
+    const state = await currentConsent(userId);
+    await writeConsentCookie(
+      OPTIONAL_PURPOSES.filter((id) => state.get(id)?.granted),
+    );
+  } catch {
+    // The record is written; the mirror can miss. ConsentSync re-reads on the
+    // next navigation, and a missing cookie reads as denied — the safe side.
+  }
 
   audit(granted ? "consent.grant" : "consent.withdraw", {
     outcome: "success",

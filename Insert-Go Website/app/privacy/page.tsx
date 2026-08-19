@@ -170,22 +170,36 @@ const sections: Array<{ heading: string; body: string }> = [
   {
     heading: "The website",
     body:
-      "The website sets cookies only to keep you signed in and to protect the " +
-      "sign-in flow. There are no advertising cookies and no third-party " +
-      "analytics or tracking scripts on it. Our hosting and infrastructure " +
-      "providers keep ordinary server logs — IP address, timestamp, request " +
-      "path, user agent and response status — for security, abuse prevention " +
-      "and debugging, under their own short retention schedules.",
+      "The website sets cookies to keep you signed in, to protect the sign-in " +
+      "flow, and to remember your privacy choices. It also carries advertising " +
+      "on our public articles and comparison pages — never on sign-in, account " +
+      "or app-authorisation screens — and measures how the site is used. " +
+      "Neither is switched on by default: until you grant the matching " +
+      "purpose, Google's consent signals are all set to denied, no advertising " +
+      "cookie is written, personalisation is off, and our product analytics " +
+      "run without any persistent identifier. Granting ‘measure how I use " +
+      "InsertGo’ turns on analytics storage; granting the marketing " +
+      "purpose turns on advertising cookies and personalisation. You can " +
+      "withdraw either at any time from your privacy settings, in one click. " +
+      "Our hosting and infrastructure providers keep ordinary server logs — " +
+      "IP address, timestamp, request path, user agent and response status — " +
+      "for security, abuse prevention and debugging, under their own short " +
+      "retention schedules.",
   },
   {
     heading: "What we do not do",
     body:
-      "We do not sell personal data, and we do not share it for cross-context " +
-      "behavioural advertising. We do not use your prompts, drafts or " +
+      "We do not sell personal data. We do not share it for cross-context " +
+      "behavioural advertising unless you have granted the marketing purpose, " +
+      "which is what lets Google personalise the adverts on our public " +
+      "articles; withdraw it and personalisation stops. We do not use your " +
+      "prompts, drafts or " +
       "generated output to train models, ours or anyone else's. We do not " +
       "read your content, except where you send it to us yourself in a " +
       "support message or where the law compels us. There is no advertising " +
-      "inside InsertGo.",
+      "inside the InsertGo application, and none on any signed-in page: the " +
+      "adverts on our public articles are Google AdSense, and they never see " +
+      "your prompts, your documents or anything you type into the app.",
   },
   {
     heading: "Who we share data with",
@@ -195,7 +209,10 @@ const sections: Array<{ heading: string; body: string }> = [
       "hosting the website and API; Supabase and its PostgreSQL database for " +
       "accounts, plans and usage; Upstash for the expiring caches described " +
       "above; Resend for one-time codes, support and transactional email; and " +
-      "Dodo Payments for checkout. Each receives only what its function " +
+      "Dodo Payments for checkout. If you grant the matching purpose, PostHog " +
+      "and Google Analytics receive website usage events, and Google AdSense " +
+      "and Google Ads receive the advertising and conversion signals described " +
+      "under ‘The website’. Each receives only what its function " +
       "needs. We may also disclose data where we are legally required to, or " +
       "where it is necessary to establish, exercise or defend legal claims, " +
       "and we may transfer account data to a successor if the business is " +

@@ -9,11 +9,7 @@ import {
   SeoCta,
 } from "@/components/SeoContent";
 import { FadeUp, Reveal } from "@/components/Reveal";
-import {
-  breadcrumbSchema,
-  faqSchema,
-  SITE_URL,
-} from "@/lib/seo";
+import { pageGraph } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "AI Prompt Library Software with Dynamic Templates",
@@ -77,25 +73,6 @@ const faqs = [
   },
 ];
 
-const howToSchema = {
-  "@context": "https://schema.org",
-  "@type": "HowTo",
-  name: "How to create a dynamic AI prompt template with form fields",
-  description:
-    "Build a reusable InsertGo prompt that collects changing values through a generated form.",
-  tool: {
-    "@type": "HowToTool",
-    name: "InsertGo.AI prompt library",
-  },
-  step: steps.map((step, index) => ({
-    "@type": "HowToStep",
-    position: index + 1,
-    name: step.title,
-    text: step.text,
-    url: `${SITE_URL}/features/prompt-library#step-${index + 1}`,
-  })),
-};
-
 const commandRows = [
   ["{formtext: name=topic}", "Single-line text field"],
   ["{formparagraph: name=context}", "Multi-line text area"],
@@ -113,9 +90,22 @@ const commandRows = [
 export default function PromptLibraryPage() {
   return (
     <main className="relative overflow-hidden">
-      <JsonLd data={breadcrumbSchema(breadcrumbs)} />
-      <JsonLd data={faqSchema(faqs)} />
-      <JsonLd data={howToSchema} />
+      <JsonLd
+        data={pageGraph({
+          path: "/features/prompt-library",
+          name: "Dynamic AI prompt template library for Windows",
+          description:
+            "Build reusable InsertGo prompt templates whose changing values are collected by a generated fill-in form before the AI call.",
+          breadcrumbs,
+          faqs,
+          howTo: {
+            name: "How to create a dynamic AI prompt template with form fields",
+            description:
+              "Build a reusable InsertGo prompt that collects changing values through a generated form.",
+            steps: steps.map((step) => ({ name: step.title, text: step.text })),
+          },
+        })}
+      />
       <GlowBackdrop />
       <Breadcrumbs items={breadcrumbs} />
 
@@ -144,10 +134,11 @@ export default function PromptLibraryPage() {
       <section className="px-6 py-10">
         <Reveal>
           <DirectAnswer title="How do you create dynamic AI prompt templates with form fields?">
-            Write a reusable prompt, replace changing details with commands such
-            as formtext, formparagraph, formmenu, formtoggle, or clipboard, then
-            save it. When selected, InsertGo generates a fill-in form and sends
-            only the fully expanded prompt to the managed InsertGo relay.
+            Write a reusable prompt, replace the changing details with commands
+            such as formtext, formparagraph, formmenu, formtoggle, or clipboard,
+            then save it under a category. When the template is selected,
+            InsertGo builds a fill-in form from those commands and sends only the
+            fully expanded prompt to the managed InsertGo relay.
           </DirectAnswer>
         </Reveal>
       </section>

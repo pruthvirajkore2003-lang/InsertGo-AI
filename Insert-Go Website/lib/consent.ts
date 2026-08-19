@@ -45,7 +45,7 @@ import { rpc } from "./db";
  * bump stays valid *for the text it named* — that is the entire reason the
  * version is stored per row rather than assumed to be "current".
  */
-export const NOTICE_VERSION = "1.3.0";
+export const NOTICE_VERSION = "1.4.0";
 
 export type PurposeId =
   | "account"
@@ -140,25 +140,66 @@ export const PURPOSES: readonly Purpose[] = [
   },
   {
     id: "analytics",
-    label: "Use anonymous usage statistics to improve InsertGo",
+    // Reworded in 1.4.0. It used to say "anonymous ... aggregate counts", which
+    // stopped being true the moment the website gained product analytics: an
+    // analytics cookie that follows one browser between pages is not anonymous,
+    // whatever the dashboard shows. Until this is granted, the website's
+    // analytics run cookie-less — no persistent identifier, no session replay —
+    // which is the state a visitor who never signs in stays in.
+    label: "Measure how I use InsertGo, so it can be improved",
     description:
-      "Aggregate counts of which features are used. Never your text. " +
+      "Which features and pages are used, on the website and in the app. " +
+      "Never your text, and never the content of what you type — website " +
+      "session replays mask every input field, including passwords. " +
       "Declining changes nothing about how InsertGo works for you.",
     required: false,
-    dataItems: ["aggregate event counts"],
-    recipients: [],
-    retention: "Aggregated; not linked to you after collection.",
+    dataItems: [
+      "page and feature event counts",
+      "device, browser and referrer",
+      "approximate location derived from IP",
+      "input-masked website session replay",
+    ],
+    recipients: [
+      { name: "PostHog (product analytics)", country: "United States" },
+      { name: "Google (Analytics 4)", country: "Outside India" },
+      { name: "Vercel (web analytics and Core Web Vitals)", country: "United States" },
+    ],
+    retention:
+      "Held by the analytics providers on rolling retention (12 months or " +
+      "less) and deleted with your account.",
     retentionClass: "A",
   },
   {
     id: "marketing",
-    label: "Email me about new features and offers",
+    // 1.4.0 widened this from email to marketing generally, because the public
+    // website now carries advertising and Google Ads conversion measurement,
+    // and both are marketing uses of personal data. Consent Mode v2 holds every
+    // advertising signal at `denied` until this purpose is granted
+    // (components/analytics/ConsentSync.tsx).
+    //
+    // ponytail: one purpose covers promotional email AND advertising. That is
+    // defensible — both are marketing, both are declinable, neither is a
+    // precondition — but the more specific reading of §6(1) would split them.
+    // Upgrade path: add an `advertising` purpose here, add it to
+    // `consentRecord_purpose_ck` (supabase-consent-dsr.sql) with an ALTER on
+    // deployed databases, and map it in ConsentSync instead of `marketing`.
+    label: "Send me product email, and let advertising be measured and personalised",
     description:
-      "Occasional product email. Separate from the sign-in codes and receipts " +
-      "we have to send you, which are not marketing and continue either way.",
+      "Occasional product email — separate from the sign-in codes and receipts " +
+      "we have to send you, which are not marketing and continue either way. " +
+      "It also lets Google measure which advert brought you to us and " +
+      "personalise the ads on our public articles. Decline and the ads stay, " +
+      "but they are not personalised and no advertising cookie is set.",
     required: false,
-    dataItems: ["user.email"],
-    recipients: [{ name: "Resend (email delivery)", country: "United States" }],
+    dataItems: [
+      "user.email",
+      "advertising cookies and identifiers",
+      "order id and order value (conversion measurement)",
+    ],
+    recipients: [
+      { name: "Resend (email delivery)", country: "United States" },
+      { name: "Google (Ads and AdSense)", country: "Outside India" },
+    ],
     retention: "Until you withdraw.",
     retentionClass: "A",
   },

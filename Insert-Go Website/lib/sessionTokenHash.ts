@@ -100,6 +100,17 @@ function knownRaw(
   return map.size ? map : null;
 }
 
+/** A stored token, recognised by shape: 64 lowercase hex. `generateId(32)` is
+ *  32 mixed-case alphanumeric characters, so the two can never be confused —
+ *  the same discriminator supabase-session-hardening.sql uses for idempotency. */
+const HASHED = /^[0-9a-f]{64}$/;
+
+/** True when this row is a session still carrying its stored hash. */
+const stillHashed = (row: unknown): boolean => {
+  const token = (row as { token?: unknown } | null)?.token;
+  return typeof token === "string" && HASHED.test(token);
+};
+
 /** Swap a row's hashed token back for the raw one, when we hold it. A row we
  *  cannot reverse is returned untouched — see the divergence note above. */
 function restore<T>(row: T, map: Map<string, string> | null): T {
@@ -169,8 +180,8 @@ function overrides(base: DBTransactionAdapter) {
       model: string;
       where: Where[];
       update: Record<string, unknown>;
-    }): Promise<T | null> =>
-      restore(
+    }): Promise<T | null> => {
+      const updated = restore(
         await base.update<T>({
           ...args,
           where: hashWhere(args.model, args.where) as Where[],
@@ -180,7 +191,26 @@ function overrides(base: DBTransactionAdapter) {
               : args.update,
         }),
         knownRaw(args.model, args.where, args.update),
-      ),
+      );
+      // This return IS the next cookie. `updateSession` is the >24h
+      // `session.updateAge` refresh, and `/get-session` feeds its result
+      // straight to `setSessionCookie` — so a hash escaping here is re-issued
+      // as the user's credential, and `hash(hash)` matches nothing on the very
+      // next request: every signed-in client dropped at once, and the desktop
+      // app erases its keyring entry on that 401 (authStore `refreshStatus`).
+      //
+      // It cannot happen today: Better Auth only ever updates a session BY its
+      // token (internal-adapter `updateSession`, the sole session updater), so
+      // `knownRaw` always holds the raw. This is the guard for the day that
+      // stops being true — one failed request, loudly, instead of a silent
+      // estate-wide sign-out nobody can attribute.
+      if (args.model === MODEL && stillHashed(updated)) {
+        throw new Error(
+          "session update returned a hashed token; refusing to re-issue it as a credential",
+        );
+      }
+      return updated;
+    },
 
     updateMany: (args: {
       model: string;

@@ -9,6 +9,8 @@ import { LinearKey } from "@/components/icons/LinearKey";
 import { LinearKeyboard } from "@/components/icons/LinearKeyboard";
 import { Reveal, FadeUp } from "@/components/Reveal";
 import { GlowBackdrop } from "@/components/PageHero";
+import { TrackClick } from "@/components/analytics/TrackClick";
+import { AnalyticsEvent } from "@/lib/analytics";
 import { HOTKEYS } from "@/lib/constants/hotkeys";
 
 export const metadata: Metadata = {
@@ -100,15 +102,19 @@ async function DownloadCta() {
           </>
         ) : downloadUrl ? (
           <>
-            <a
-              href={downloadUrl}
-              download
-              rel="noopener noreferrer"
-              className="inline-flex animate-glow-cta items-center gap-3 rounded-full bg-terracotta px-9 py-[18px] text-lg font-medium text-on-accent transition-transform duration-200 hover:-translate-y-0.5"
-            >
-              <WindowsLogo size={20} />
-              Download InsertGo-Setup.exe
-            </a>
+            {/* The one event that means "an installer actually left". Every
+                other download CTA on the site only navigates here. */}
+            <TrackClick event={AnalyticsEvent.DownloadStarted} properties={{ platform: "windows" }}>
+              <a
+                href={downloadUrl}
+                download
+                rel="noopener noreferrer"
+                className="inline-flex animate-glow-cta items-center gap-3 rounded-full bg-terracotta px-9 py-[18px] text-lg font-medium text-on-accent transition-transform duration-200 hover:-translate-y-0.5"
+              >
+                <WindowsLogo size={20} />
+                Download InsertGo-Setup.exe
+              </a>
+            </TrackClick>
             <span className="text-[13px] text-muted">
               Version 2.4.1 · 14 MB · Windows 10 &amp; 11 (64-bit) · Signed
               installer · Sign in to the app as{" "}

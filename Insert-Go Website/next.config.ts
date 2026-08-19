@@ -27,9 +27,33 @@ const SECURITY_HEADERS = [
   },
 ];
 
+/**
+ * PostHog ingestion, reverse-proxied through this origin.
+ *
+ * Two reasons, and the second is the one that matters here: an ad blocker that
+ * drops `*.i.posthog.com` takes the product funnel with it, and a third-party
+ * analytics host in `connect-src` widens the CSP for every page. Proxied, the
+ * browser only ever talks to `insertgo.ai/_phex/*`, so `connect-src 'self'`
+ * covers it (middleware.ts) and there is no host for a blocker to match.
+ *
+ * `/static` is the asset/recorder bundle host, `/_phex/*` is the event API.
+ * `skipTrailingSlashRedirect` below is required: without it Next 308s
+ * `/_phex/decide/` and PostHog's client does not follow the redirect.
+ */
+const POSTHOG_ASSET_HOST = "https://us-assets.i.posthog.com";
+const POSTHOG_API_HOST = "https://us.i.posthog.com";
+
 const nextConfig: NextConfig = {
+  skipTrailingSlashRedirect: true,
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+  },
+  async rewrites() {
+    return [
+      { source: "/_phex/static/:path*", destination: `${POSTHOG_ASSET_HOST}/static/:path*` },
+      { source: "/_phex/array/:path*", destination: `${POSTHOG_ASSET_HOST}/array/:path*` },
+      { source: "/_phex/:path*", destination: `${POSTHOG_API_HOST}/:path*` },
+    ];
   },
 };
 

@@ -7,7 +7,11 @@ import { LinearMouse } from "@/components/icons/LinearMouse";
 import { LinearSend2 } from "@/components/icons/LinearSend2";
 import { LinearGlobal } from "@/components/icons/LinearGlobal";
 import { LinearShieldTick } from "@/components/icons/LinearShieldTick";
+import { LinearMagicStar } from "@/components/icons/LinearMagicStar";
+import { LinearCode } from "@/components/icons/LinearCode";
+import { LinearHeadphone } from "@/components/icons/LinearHeadphone";
 import { Reveal } from "@/components/Reveal";
+import { CustomSkillBuilderShowcase } from "@/components/demos/CustomSkillBuilderShowcase";
 import { FeatureAnimatedDemo } from "@/components/FeatureAnimatedDemo";
 import { PageHero, GlowBackdrop } from "@/components/PageHero";
 import { DownloadButton, GhostButton } from "@/components/Buttons";
@@ -97,6 +101,47 @@ const blocks = [
   },
 ] as const;
 
+const customPersonas = [
+  {
+    icon: LinearCode,
+    tile: "var(--color-tile-sky)",
+    persona: "Developer",
+    recipe: "Git Diff → Clean PR Description",
+    desc: "A raw diff becomes a structured PR: one-sentence summary, key changes, testing notes.",
+  },
+  {
+    icon: LinearMagicStar,
+    tile: "var(--color-tile-mist)",
+    persona: "Writer",
+    recipe: "De-AI Buzzword Stripper",
+    desc: "Cuts the tells — 'leverage', 'delve', 'seamless' — so the draft reads like a person wrote it.",
+  },
+  {
+    icon: LinearHeadphone,
+    tile: "var(--color-tile-clay)",
+    persona: "Support",
+    recipe: "Angry Customer Ticket → Empathetic Resolution",
+    desc: "Acknowledges the frustration, owns the issue, ends with one concrete next step.",
+  },
+  {
+    icon: LinearNote2,
+    tile: "var(--color-tile-stone)",
+    persona: "Ops",
+    recipe: "Messy Meeting Notes → Action Items & Slack Recap",
+    desc: "Chaotic notes become owners, deadlines, and a channel-ready recap.",
+  },
+] as const;
+
+const customApps = [
+  "VS Code",
+  "Chrome",
+  "Outlook",
+  "Slack",
+  "Discord",
+  "Terminal",
+  "Any app with Ctrl+V",
+];
+
 export default function FeaturesPage() {
   return (
     <main className="relative overflow-hidden">
@@ -106,7 +151,32 @@ export default function FeaturesPage() {
         kicker="Features"
         title="Everything between your idea and the insert"
         sub="Six capabilities, one floating window. Built so the AI meets you where you work — not the other way around."
-      />
+      >
+        <p className="mt-6 text-sm text-muted">
+          Looking for the{" "}
+          <Link
+            href="/features/ai-text-expander"
+            className="text-brand hover:underline"
+          >
+            AI text expander
+          </Link>{" "}
+          workflow, or a walkthrough for{" "}
+          <Link
+            href="/use-cases/developers"
+            className="text-brand hover:underline"
+          >
+            developers
+          </Link>{" "}
+          and{" "}
+          <Link
+            href="/use-cases/customer-support"
+            className="text-brand hover:underline"
+          >
+            customer support
+          </Link>
+          ?
+        </p>
+      </PageHero>
 
       <section className="mx-auto flex max-w-[1000px] flex-col gap-[26px] px-6 pt-[60px] pb-10">
         {blocks.map((b) => (
@@ -170,6 +240,71 @@ export default function FeaturesPage() {
             </div>
           </Reveal>
         ))}
+      </section>
+
+      {/* CUSTOM SKILLS & AUTOMATION */}
+      <section className="section-tint px-6 py-[80px]">
+        <div className="mx-auto max-w-[1000px]">
+          <Reveal className="mb-12 max-w-[720px]">
+            <p className="mb-3.5 text-xs font-medium tracking-[0.16em] text-brand uppercase">
+              Custom skills &amp; automation
+            </p>
+            <h2 className="m-0 font-serif text-[clamp(30px,4vw,44px)] font-semibold tracking-[-0.02em] text-ink">
+              Describe the skill in plain English — the AI builds it
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-muted">
+              Two steps: type what you want — &ldquo;turn a git diff into a PR
+              description&rdquo; — and the AI Skill Generator composes the full
+              prompt template, with a dynamic [PASTE …] placeholder where your
+              text goes on every run. Or write it yourself in the Manual Prompt
+              Studio. Skills get their own floating chips and hotkeys, run on
+              the managed relay with zero API keys, and work OS-wide.
+            </p>
+          </Reveal>
+          <div className="grid gap-[18px] md:grid-cols-2">
+            {customPersonas.map((p, i) => (
+              <Reveal key={p.persona} delay={(i % 2) * 0.08}>
+                <div className="glass-card flex h-full flex-col gap-3 p-7">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="flex h-10 w-10 items-center justify-center rounded-xl text-ink"
+                      style={{ background: p.tile }}
+                    >
+                      <p.icon size={20} />
+                    </span>
+                    <span className="text-[11px] font-medium tracking-[0.14em] text-brand uppercase">
+                      {p.persona}
+                    </span>
+                  </div>
+                  <h3 className="m-0 font-serif text-[19px] font-semibold tracking-[-0.01em] text-ink">
+                    {p.recipe}
+                  </h3>
+                  <p className="m-0 text-[15px] leading-relaxed text-muted">
+                    {p.desc}
+                  </p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+          <Reveal className="mt-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[13px] text-muted">
+                One skill, every Windows app:
+              </span>
+              {customApps.map((a) => (
+                <span
+                  key={a}
+                  className="rounded-full bg-muted/10 px-[11px] py-[5px] text-xs font-medium text-ink"
+                >
+                  {a}
+                </span>
+              ))}
+            </div>
+          </Reveal>
+          <Reveal className="mt-10" delay={0.08}>
+            <CustomSkillBuilderShowcase />
+          </Reveal>
+        </div>
       </section>
 
       <section className="px-6 pt-20 pb-[110px] text-center">

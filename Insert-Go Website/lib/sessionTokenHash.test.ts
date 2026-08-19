@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { memoryAdapter } from "better-auth/adapters/memory";
+import { bearer } from "better-auth/plugins";
 import type { DBAdapter, Where } from "better-auth/adapters";
 import { hashSessionToken, withHashedSessionTokens } from "./sessionTokenHash";
 
@@ -213,5 +216,230 @@ describe("the stored hash is not a credential", () => {
     expect(
       await adapter.findOne({ model: "session", where: eq("token", hashSessionToken(RAW)) }),
     ).toBeNull();
+  });
+});
+
+describe("a session row that cannot be reversed never becomes a cookie", () => {
+  it("throws rather than return a hash from update", async () => {
+    // Better Auth only ever updates a session BY its token, so this is the
+    // shape of a FUTURE regression, not a path reachable today: an update keyed
+    // by anything else leaves the wrapper with no way to recover the raw token.
+    // Returning the hash there is what would re-issue it as the user's cookie
+    // and sign every client out on the next request, so it has to fail here.
+    const { adapter } = fakeAdapter();
+    const created = await adapter.create<{ token: string; userId: string }>({
+      model: "session",
+      data: { token: RAW, userId: "u1" },
+    });
+    expect(created.token).toBe(RAW);
+    await expect(
+      adapter.update({
+        model: "session",
+        where: eq("userId", "u1"),
+        update: { expiresAt: "2026-09-01" },
+      }),
+    ).rejects.toThrow(/hashed token/);
+  });
+
+  it("leaves updates to other models alone", async () => {
+    const { adapter } = fakeAdapter();
+    await adapter.create({ model: "user", data: { id: "u1", name: "before" } });
+    const updated = await adapter.update<{ name: string }>({
+      model: "user",
+      where: eq("id", "u1"),
+      update: { name: "after" },
+    });
+    expect(updated?.name).toBe("after");
+  });
+});
+
+/**
+ * The next-day regression, driven through the real library.
+ *
+ * Everything above tests the wrapper against a fake. This boots actual Better
+ * Auth over the in-memory adapter with the SAME session config as lib/auth.ts
+ * and walks the lifecycle that gets reported as "signed out the next day":
+ * sign in, let `session.updateAge` elapse, come back.
+ *
+ * The assertion that matters is that the credential re-issued by the refresh is
+ * the RAW token. `setSessionCookie` writes it straight from the row
+ * `updateSession` returns, so a hash escaping the adapter at that one point
+ * becomes a cookie that fails `hash(hash) != hash` on the very next request —
+ * every signed-in client dropped roughly a day after signing in, and the
+ * desktop app erasing its keyring entry on the resulting 401.
+ */
+describe("the >24h refresh keeps the session alive", () => {
+  const EXPIRES_IN = 60 * 60 * 24 * 30; // mirrors lib/auth.ts
+  const UPDATE_AGE = 60 * 60 * 24;
+  const PAST_UPDATE_AGE_MS = 25 * 60 * 60 * 1000;
+  const EMAIL = "refresh@example.com";
+
+  type Row = Record<string, unknown>;
+
+  function boot() {
+    const db: Record<string, Row[]> = {
+      user: [],
+      session: [],
+      account: [],
+      verification: [],
+    };
+    const auth = betterAuth({
+      secret: "test-secret-value-32-bytes-long!!",
+      baseURL: "http://localhost:3000",
+      database: (options: BetterAuthOptions) =>
+        withHashedSessionTokens(
+          memoryAdapter(db)(options) as unknown as DBAdapter,
+        ),
+      // Only so the harness can mint a session through a real endpoint; the app
+      // itself is OTP / OAuth / SSO and pins `account.password` to null.
+      emailAndPassword: { enabled: true },
+      session: {
+        expiresIn: EXPIRES_IN,
+        updateAge: UPDATE_AGE,
+        cookieCache: { enabled: true, maxAge: 60 * 5 },
+      },
+      plugins: [bearer()],
+    });
+    return { db, auth };
+  }
+
+  /** Apply a response's Set-Cookie headers to a jar, the way a browser would. */
+  function apply(jar: Map<string, string>, res: Response): Map<string, string> {
+    for (const entry of res.headers.getSetCookie()) {
+      const pair = entry.split(";")[0]!;
+      const i = pair.indexOf("=");
+      const name = pair.slice(0, i).trim();
+      const value = pair.slice(i + 1);
+      if (!value || /(^|;)\s*max-age=0/i.test(entry)) jar.delete(name);
+      else jar.set(name, value);
+    }
+    return jar;
+  }
+
+  const header = (jar: Map<string, string>) =>
+    [...jar].map(([k, v]) => `${k}=${v}`).join("; ");
+
+  /** The `<token>.<signature>` pair the browser holds, decoded. */
+  const sessionCookie = (jar: Map<string, string>) =>
+    decodeURIComponent([...jar].find(([k]) => k.endsWith("session_token"))![1]);
+
+  /**
+   * Drop the 5-minute `cookieCache` cookie, which is what a user coming back
+   * the NEXT DAY sends: it expired hours ago. Without this the cache branch of
+   * `/get-session` answers from the cookie and returns before the refresh is
+   * ever considered, so a test that skipped it would assert nothing.
+   */
+  function staleCookieCache(jar: Map<string, string>): Map<string, string> {
+    for (const name of [...jar.keys()]) {
+      if (name.endsWith("session_data")) jar.delete(name);
+    }
+    return jar;
+  }
+
+  /**
+   * Rewind the stored session so `updateAge` has elapsed since its last
+   * extension. `shouldBeUpdated` is derived from `expiresAt`, not from a clock
+   * this test can move, so ageing the row is how the day is simulated.
+   */
+  function ageBy(db: Record<string, Row[]>, ms: number): Date {
+    const row = db.session[0]!;
+    const expiresAt = new Date(Date.now() + EXPIRES_IN * 1000 - ms);
+    row.expiresAt = expiresAt;
+    row.updatedAt = new Date(Date.now() - ms);
+    return expiresAt;
+  }
+
+  async function signUp(auth: ReturnType<typeof boot>["auth"]) {
+    const res = await auth.api.signUpEmail({
+      body: { email: EMAIL, password: "correct-horse-battery-staple", name: "R" },
+      asResponse: true,
+    });
+    const jar = apply(new Map<string, string>(), res);
+    return { jar, raw: sessionCookie(jar).split(".")[0]! };
+  }
+
+  it("stores the hash and hands the browser the raw token", async () => {
+    const { db, auth } = boot();
+    const { raw } = await signUp(auth);
+    expect(db.session[0]!.token).toBe(hashSessionToken(raw));
+    expect(db.session[0]!.token).not.toBe(raw);
+  });
+
+  it("re-issues the RAW token — never the hash — on the cookie lane", async () => {
+    const { db, auth } = boot();
+    const { jar, raw } = await signUp(auth);
+    ageBy(db, PAST_UPDATE_AGE_MS);
+    staleCookieCache(jar);
+
+    const res = await auth.api.getSession({
+      headers: new Headers({ cookie: header(jar) }),
+      asResponse: true,
+    });
+    expect(res.status).toBe(200);
+    // A refresh actually happened — otherwise the checks below would be reading
+    // back the cookie the browser already had.
+    expect(res.headers.getSetCookie().some((c) => c.includes("session_token="))).toBe(
+      true,
+    );
+
+    const reissued = sessionCookie(apply(jar, res)).split(".")[0]!;
+    expect(reissued).toBe(raw);
+    expect(reissued).not.toBe(hashSessionToken(raw));
+    // ...and the database still holds only the hash (R-04).
+    expect(db.session[0]!.token).toBe(hashSessionToken(raw));
+
+    // The whole point: the very next request still authenticates.
+    const after = await auth.api.getSession({
+      headers: new Headers({ cookie: header(jar) }),
+    });
+    expect(after?.user?.email).toBe(EMAIL);
+  });
+
+  it("slides the window back out to the full 30 days on use", async () => {
+    const { db, auth } = boot();
+    const { jar } = await signUp(auth);
+    ageBy(db, PAST_UPDATE_AGE_MS);
+    staleCookieCache(jar);
+
+    await auth.api.getSession({ headers: new Headers({ cookie: header(jar) }) });
+
+    const extended = new Date(db.session[0]!.expiresAt as string).getTime();
+    // Back out to ~now + 30d, not merely further than it was.
+    expect(extended - Date.now()).toBeGreaterThan((EXPIRES_IN - 60) * 1000);
+  });
+
+  it("survives the refresh on the desktop bearer lane", async () => {
+    // The desktop holds the raw token in the OS keyring and never sees a
+    // cookie. If the refresh corrupted the stored row this 401s, and
+    // authStore.refreshStatus() erases the keyring entry on that 401.
+    const { db, auth } = boot();
+    const { raw } = await signUp(auth);
+    ageBy(db, PAST_UPDATE_AGE_MS);
+
+    const refreshed = await auth.api.getSession({
+      headers: new Headers({ authorization: `Bearer ${raw}` }),
+    });
+    expect(refreshed?.user?.email).toBe(EMAIL);
+
+    const after = await auth.api.getSession({
+      headers: new Headers({ authorization: `Bearer ${raw}` }),
+    });
+    expect(after?.user?.email).toBe(EMAIL);
+    expect(db.session[0]!.token).toBe(hashSessionToken(raw));
+  });
+
+  it("does not extend a session that is only a few hours old", async () => {
+    // The write-amortisation half of `updateAge`: a session touched every
+    // minute must not produce a database write every minute.
+    const { db, auth } = boot();
+    const { jar } = await signUp(auth);
+    const before = ageBy(db, 60 * 60 * 1000);
+    staleCookieCache(jar);
+
+    await auth.api.getSession({ headers: new Headers({ cookie: header(jar) }) });
+
+    expect(new Date(db.session[0]!.expiresAt as string).getTime()).toBe(
+      before.getTime(),
+    );
   });
 });

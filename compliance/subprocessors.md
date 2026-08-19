@@ -161,9 +161,11 @@ stands as the disclosure.
 
 ## 3. The register
 
-Seven processors. **R-18 scopes contracts to five** — it does not list the two Upstash
-services, which were found while compiling this register (§3.1). R-18's acceptance
-("signed terms on file for all five") must be re-scoped to seven.
+Ten processors. **R-18 scopes contracts to five** — it does not list the two Upstash
+services, which were found while compiling this register (§3.1), nor the three
+measurement/advertising processors added on 2026-08-19 with the website's AdSense and
+Google Ads integration (§3.2). R-18's acceptance ("signed terms on file for all five")
+must be re-scoped to ten.
 
 | # | Entity | Role | Purpose | Personal data categories | Hosting region | Verified | §8(2) contract |
 |---|---|---|---|---|---|---|---|
@@ -174,8 +176,31 @@ services, which were found while compiling this register (§3.1). R-18's accepta
 | 5 | **Upstash** (Redis) | Processor | Grounding cache + Edge session memo (`lib/edgeSession.ts`) | Only `{id, subscriptionStatus, credits}` keyed by `sha256(token)`. `narrow()` is a deliberate security boundary — no email, no name, **no session token** | Database-creation region — **unverified** | ❌ not verified | ❌ **absent from R-18** |
 | 6 | **Dodo Payments** | **Merchant of record**, not a processor | Checkout, subscriptions, credit packs | Name, email, billing address, payment instrument — **held by Dodo as principal; no card data reaches our systems** | Dodo's own estate | ⚠️ asserted | ❌ R-18 |
 | 7 | **Resend** | Processor | Transactional email: sign-in OTP, operator alerts | **Email address, and the OTP code in transit.** Delivery logs on their side | US (AWS) | ⚠️ asserted | ❌ R-18 |
+| 8 | **Google** (AdSense + Ads) | Processor for conversion measurement; **independent controller** for ad serving and personalisation | Adverts on public content pages; Google Ads conversion tracking with Enhanced Conversions | Advertising cookies and identifiers, IP, page URL and referrer. On a completed purchase: **order id, order value, and the buyer's email hashed in the browser** (`lib/google-ads.ts`). Nothing reaches it until the `marketing` purpose is granted — Consent Mode v2 defaults are `denied` | Google global | ⚠️ asserted from Google's published terms | ❌ **absent from R-18** |
+| 9 | **PostHog** | Processor | Product analytics and input-masked session replay for the website | Page and feature events, device/browser, IP-derived approximate location, masked replay. **Cookie-less (`persistence: "memory"`) until the `analytics` purpose is granted**; ingestion is reverse-proxied through `/_phex` on our own origin | US Cloud (`us.i.posthog.com`) | ⚠️ asserted | ❌ **absent from R-18** |
+| 10 | **Vercel** (Web Analytics + Speed Insights) | Processor | Aggregate traffic counts and Core Web Vitals | Page path, referrer, device class, vitals timings. Same entity as row 2, listed separately because it is a **different product with a different data flow** | Vercel global edge | ⚠️ asserted | ❌ **absent from R-18** |
 
 Legend: ✅ verified with a command in §6 · ⚠️ asserted from documentation · ❌ open.
+
+### 3.2 The measurement and advertising rows (added 2026-08-19)
+
+Three things about rows 8–10 that a reader should not have to infer:
+
+1. **Google AdSense is not a pure processor.** For ad serving and personalisation Google
+   determines its own purposes, which makes it an independent controller for that limb
+   and us a joint discloser — not a controller/processor pair. That is why the row says
+   both, and why the notice (`lib/consent.ts`, `marketing`) had to name advertising
+   explicitly rather than hide it inside "email me about offers". `NOTICE_VERSION` moved
+   1.3.0 → 1.4.0 for it, which re-prompts every existing user through the consent gate.
+2. **Nothing in rows 8–10 receives anything before consent.** Consent Mode v2 initialises
+   all four signals to `denied` before any Google tag executes
+   (`components/analytics/ConsentMode.tsx`); PostHog initialises with in-memory
+   persistence and session recording off. The grant comes from the DPDP record
+   (`consentRecord`), mirrored to the browser by the two server actions that write it.
+3. **Ads are excluded from every authenticated surface** — `/account/*`, `/login`,
+   `/consent`, `/desktop/authorize` — by one allowlist consulted by both the loader
+   script and every slot (`lib/adPlacement.ts`). The desktop application is unaffected:
+   it carries no adverts and no analytics.
 
 ### 3.1 Why Upstash was missing
 
@@ -303,6 +328,7 @@ one that never happened, which is the failure this register exists to prevent.
 | Date | Region re-verified | §16(1) restrictions | Notes | By |
 |---|---|---|---|---|
 | 2026-08-08 | ❌ **`ap-northeast-1`, non-conforming** | None notified affecting §3 | Register opened. Finding §1 raised; migration decided (§2); R-02 moved to Blocked; Upstash added as processors 4–5 | Compliance audit |
+| 2026-08-19 | — *(not re-run; this entry adds rows, it does not re-verify §1)* | None notified affecting §3 | Rows 8–10 added: Google AdSense/Ads, PostHog, Vercel Web Analytics + Speed Insights, with the website monetization and analytics work. `NOTICE_VERSION` 1.3.0 → 1.4.0 (§3.2) | Engineering |
 | 2026-09-08 | *(due)* | *(due)* | Migration expected complete by this check | |
 
 **Interim position while §1 stands:** the 180-day store is outside India and the

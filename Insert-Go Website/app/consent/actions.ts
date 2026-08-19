@@ -10,6 +10,7 @@ import {
   recordConsent,
   type PurposeId,
 } from "@/lib/consent";
+import { writeConsentCookie } from "@/lib/writeConsentCookie";
 
 /**
  * Record the consent gate's decisions (R-09, R-14).
@@ -59,6 +60,12 @@ export async function submitConsent(formData: FormData): Promise<void> {
       userAgent,
     });
   }
+
+  // Mirror the optional purposes into the browser so the tags can read them
+  // (lib/consentCookie.ts). Written after the authoritative rows, never
+  // instead of them: the cookie is a transport, and if the two ever disagree
+  // the database is the one a regulator is shown.
+  await writeConsentCookie(OPTIONAL_PURPOSES.filter(ticked));
 
   audit("consent.grant", {
     outcome: "success",

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "@/lib/auth-client";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import { safeNext } from "./safeNext";
 
 type Lane = "menu" | "otp-email" | "otp-code" | "sso";
@@ -99,6 +100,9 @@ export function LoginForm() {
   async function continueWithGoogle() {
     setBusy(true);
     setError(null);
+    // Sign-in intent, by lane. Fired before the redirect, because a social
+    // sign-in leaves the page and nothing after `await` is guaranteed to run.
+    trackEvent(AnalyticsEvent.SignUpStarted, { method: "google" });
     const { error } = await authClient.signIn.social({
       provider: "google",
       callbackURL: next,
@@ -115,6 +119,7 @@ export function LoginForm() {
     }
     setBusy(true);
     setError(null);
+    trackEvent(AnalyticsEvent.SignUpStarted, { method: "email_otp" });
     const { error } = await authClient.emailOtp.sendVerificationOtp({
       email,
       type: "sign-in",

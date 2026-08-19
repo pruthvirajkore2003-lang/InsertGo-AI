@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FadeUp } from "@/components/Reveal";
 import { GlowBackdrop } from "@/components/PageHero";
 import { DownloadButton, GhostButton } from "@/components/Buttons";
+import { AdUnit } from "@/components/ads/AdUnit";
 import { FaqAccordion } from "./FaqAccordion";
 
 export default function FAQPage() {
@@ -40,6 +41,8 @@ export default function FAQPage() {
           <FaqAccordion />
         </section>
       </FadeUp>
+
+      <AdUnit className="pb-12" />
 
       <section className="px-6 pt-5 pb-[110px] text-center">
         <h2 className="m-0 font-serif text-[clamp(26px,3.5vw,36px)] font-semibold tracking-[-0.02em] text-ink">

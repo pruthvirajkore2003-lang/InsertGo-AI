@@ -10,11 +10,7 @@ import {
 } from "@/components/SeoContent";
 import { FadeUp, Reveal } from "@/components/Reveal";
 import { HOTKEYS } from "@/lib/constants/hotkeys";
-import {
-  breadcrumbSchema,
-  faqSchema,
-  SITE_URL,
-} from "@/lib/seo";
+import { pageGraph } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "AI Text Auto-Insert for Windows Desktop Apps",
@@ -78,32 +74,26 @@ const faqs = [
   },
 ];
 
-const howToSchema = {
-  "@context": "https://schema.org",
-  "@type": "HowTo",
-  name: "How to insert AI-generated text into a Windows app",
-  description:
-    "Use InsertGo to generate and insert AI text into the Windows application you were already using.",
-  totalTime: "PT1M",
-  tool: {
-    "@type": "HowToTool",
-    name: "InsertGo.AI for Windows",
-  },
-  step: steps.map((step, index) => ({
-    "@type": "HowToStep",
-    position: index + 1,
-    name: step.title,
-    text: step.text,
-    url: `${SITE_URL}/features/auto-text-insert#step-${index + 1}`,
-  })),
-};
-
 export default function AutoTextInsertPage() {
   return (
     <main className="relative overflow-hidden">
-      <JsonLd data={breadcrumbSchema(breadcrumbs)} />
-      <JsonLd data={faqSchema(faqs)} />
-      <JsonLd data={howToSchema} />
+      <JsonLd
+        data={pageGraph({
+          path: "/features/auto-text-insert",
+          name: "AI text auto-insert for Windows desktop apps",
+          description:
+            "Generate text in a floating assistant and insert it at the cursor of the Windows app you started in, with focus verification and clipboard restore.",
+          breadcrumbs,
+          faqs,
+          howTo: {
+            name: "How to insert AI-generated text into a Windows app",
+            description:
+              "Use InsertGo to generate and insert AI text into the Windows application you were already using.",
+            totalTime: "PT1M",
+            steps: steps.map((step) => ({ name: step.title, text: step.text })),
+          },
+        })}
+      />
       <GlowBackdrop />
       <Breadcrumbs items={breadcrumbs} />
 

@@ -303,9 +303,33 @@ export const auth = betterAuth({
     },
   },
 
+  /**
+   * A 30-day SLIDING window, not a 30-day fixed one.
+   *
+   * `updateAge` is what makes it sliding: on the first request more than 24h
+   * after the last extension, `/get-session` pushes `expiresAt` back out to
+   * now + `expiresIn` and re-issues the cookie. So the window only ever runs
+   * down while nobody is using the account — an active user is never signed
+   * out, and an abandoned session still dies 30 days after its last use. That
+   * is the property the old 7-day value was reaching for and got wrong: it
+   * capped the ACTIVE user too, and the desktop client turns any expiry into a
+   * full re-auth through the system browser (authStore.ts `refreshStatus`).
+   *
+   * Why 24h and not shorter: every extension is a database write on the hot
+   * path of every request. At 24h the write amortises to once per user per
+   * day; at, say, an hour it would be 24× that for no security gain, because
+   * revocation does not run through expiry at all — `/sign-out` and
+   * `/revoke-session` delete the row, and the next lookup misses immediately.
+   *
+   * The 5-minute `cookieCache` is the read-side counterpart: it serves the
+   * session from a signed cookie so the 30-day window costs a database read
+   * only once per 5 minutes per client. It is deliberately short — a
+   * server-side revocation is invisible for at most that long, and
+   * customSession entitlement fields are never cached in it at all.
+   */
   session: {
-    expiresIn: 60 * 60 * 24 * 7, // 7 days — tool spends money/credits, keep the window short
-    updateAge: 60 * 60 * 24, // refresh expiry at most once a day
+    expiresIn: 60 * 60 * 24 * 30, // 30 days, refreshed on use — see above
+    updateAge: 60 * 60 * 24, // extend at most once a day (one write/user/day)
     cookieCache: { enabled: true, maxAge: 60 * 5 },
   },
 

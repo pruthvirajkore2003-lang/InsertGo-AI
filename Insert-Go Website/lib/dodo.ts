@@ -103,6 +103,22 @@ export async function createCheckoutSession(input: {
   if (input.item.kind === "plan") metadata.planTier = input.item.tier;
   else metadata.packCredits = String(input.item.credits);
 
+  // Our own order id, minted here so it exists on BOTH sides of the gateway:
+  // it rides the return URL (where the browser reports the Google Ads
+  // conversion) and the metadata (where the webhook sees it). Google dedups
+  // conversions on `transaction_id`, so a buyer who refreshes the return page
+  // — or comes back to it — is counted once. Dodo's own payment id would be
+  // ideal, but it does not exist yet at the moment this URL has to be built.
+  metadata.transactionId = crypto.randomUUID();
+  const itemKey =
+    input.item.kind === "plan"
+      ? `plan:${input.item.tier}`
+      : `pack:${input.item.credits}`;
+  const returnUrl =
+    `${siteUrl}/account?upgraded=1` +
+    `&tx=${encodeURIComponent(metadata.transactionId)}` +
+    `&item=${encodeURIComponent(itemKey)}`;
+
   const res = await fetch(`${dodoApiBase()}/checkouts`, {
     method: "POST",
     // A hung gateway socket otherwise pins the whole serverless invocation
@@ -115,7 +131,7 @@ export async function createCheckoutSession(input: {
     body: JSON.stringify({
       product_cart: [{ product_id: productId, quantity: 1 }],
       customer: { email: input.email, name: input.name },
-      return_url: `${siteUrl}/account?upgraded=1`,
+      return_url: returnUrl,
       metadata,
     }),
   });

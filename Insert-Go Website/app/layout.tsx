@@ -1,10 +1,20 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Fraunces } from "next/font/google";
 import { headers } from "next/headers";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { JsonLd } from "@/components/SeoContent";
+import { AdSenseScript } from "@/components/ads/AdSenseScript";
+import { ConsentMode } from "@/components/analytics/ConsentMode";
+import { ConsentSync } from "@/components/analytics/ConsentSync";
+import { GoogleTag } from "@/components/analytics/GoogleTag";
+import { PostHogProvider } from "@/components/providers/PostHogProvider";
+import { PostHogPageview } from "@/components/providers/PostHogPageview";
+import { WebVitalsReporter } from "@/components/providers/WebVitalsReporter";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -100,20 +110,40 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={fraunces.variable}>
+      {/* Consent Mode v2 defaults, as a direct child of <html> — Next's
+          documented placement for `beforeInteractive`, and the one that puts
+          the tag in <head> ahead of every bundle. The ORDER relative to the
+          two loaders below is the whole control: a default that lands after a
+          tag has already run is not a default. */}
+      <ConsentMode />
       <body>
         <JsonLd data={siteLd} />
+        <GoogleTag />
+        <AdSenseScript />
         {/* Keyboard users otherwise tab through the whole nav on every page.
             Off-screen until focused, then it lands on the fixed pill's line. */}
         <a href="#main-content" className="skip-link">
           Skip to content
         </a>
-        <SiteNav />
-        {/* tabIndex -1 so the skip link can actually move focus here; without
-            it the browser scrolls but focus stays on the link. */}
-        <div id="main-content" tabIndex={-1}>
-          {children}
-        </div>
-        <SiteFooter />
+        <PostHogProvider>
+          <SiteNav />
+          {/* tabIndex -1 so the skip link can actually move focus here; without
+              it the browser scrolls but focus stays on the link. */}
+          <div id="main-content" tabIndex={-1}>
+            {children}
+          </div>
+          <SiteFooter />
+          {/* useSearchParams opts its subtree out of static rendering, so the
+              pageview reporter is suspended on its own rather than taking the
+              page with it. */}
+          <Suspense fallback={null}>
+            <PostHogPageview />
+          </Suspense>
+          <ConsentSync />
+          <WebVitalsReporter />
+        </PostHogProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

@@ -9,6 +9,7 @@ import {
   SeoCta,
 } from "@/components/SeoContent";
 import { FadeUp, Reveal } from "@/components/Reveal";
+import { AdUnit } from "@/components/ads/AdUnit";
 import { HOTKEYS } from "@/lib/constants/hotkeys";
 import {
   breadcrumbSchema,
@@ -429,6 +430,11 @@ export default function WindowsAiProductivityGuidePage() {
         </section>
       </article>
 
+      {/* In-article slot: after the body, before the FAQ block. Height is
+          reserved by the unit itself, so an ad that fills late cannot push the
+          FAQ down the page. */}
+      <AdUnit className="py-6" />
+
       <section className="mx-auto max-w-[1080px] px-6 py-[80px]">
         <Reveal className="mb-10">
           <h2 className="m-0 font-serif text-[clamp(28px,4vw,42px)] font-semibold tracking-[-0.02em] text-ink">
@@ -437,6 +443,8 @@ export default function WindowsAiProductivityGuidePage() {
         </Reveal>
         <FaqBlocks items={faqs} />
       </section>
+
+      <AdUnit className="pb-10" />
 
       <SeoCta
         title="Try a focused system-wide AI workflow"

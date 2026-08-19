@@ -21,7 +21,9 @@
  */
 import { pool } from "@/lib/pgPool";
 import { alertOps } from "@/lib/alert";
+import { captureServerEvent } from "@/lib/analytics-server";
 import { audit } from "@/lib/auditLog";
+import { currentConsent } from "@/lib/consent";
 import { BodyTooLargeError, readBodyCapped } from "@/lib/httpBody";
 import {
   eventTimestampSeconds,
@@ -245,5 +247,54 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "Processing failed." }, { status: 500 });
   }
 
+  await reportRevenue({ eventType, userId, payload, nextTier, packCredits });
+
   return Response.json({ received: true });
+}
+
+/**
+ * Product-analytics copy of a revenue event, server side.
+ *
+ * Gated on the user's `analytics` consent, and that check is not optional
+ * politeness: `analytics` is an OPTIONAL purpose in the DPDP §6 catalogue
+ * (lib/consent.ts), so capturing an identified event for someone who declined
+ * it is processing without a lawful basis — the exact failure the catalogue
+ * exists to prevent. No consent record, no capture.
+ *
+ * Never throws and never blocks fulfilment: by the time this runs the money
+ * has moved and the entitlement is written.
+ */
+async function reportRevenue(args: {
+  eventType: string;
+  userId: string | null;
+  payload: DodoWebhookPayload;
+  nextTier: string | null;
+  packCredits: number | null;
+}): Promise<void> {
+  const { eventType, userId, payload, nextTier, packCredits } = args;
+  // Attribution needs a user id; the email-only fallback identifies a person we
+  // cannot check consent for, so it is dropped rather than guessed at.
+  if (!userId) return;
+  if (nextTier === "free" || (nextTier === null && packCredits === null)) return;
+
+  try {
+    const state = await currentConsent(userId);
+    if (!state.get("analytics")?.granted) return;
+
+    const meta = payload.data?.metadata;
+    await captureServerEvent(userId, "purchase_confirmed", {
+      event_type: eventType,
+      tier: nextTier ?? undefined,
+      pack_credits: packCredits ?? undefined,
+      // Same id the browser reported the Google Ads conversion under, so the
+      // two sides of a purchase can be joined without sharing an email.
+      transaction_id:
+        meta && typeof meta.transactionId === "string" ? meta.transactionId : undefined,
+    });
+  } catch (e) {
+    console.error(
+      "[billing] revenue analytics failed:",
+      e instanceof Error ? e.message : String(e),
+    );
+  }
 }

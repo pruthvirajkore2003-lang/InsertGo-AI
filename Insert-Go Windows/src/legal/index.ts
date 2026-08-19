@@ -26,7 +26,7 @@
  *  1.3.0 (2026-08-08, R-15): every claim that InsertGo supports a user-supplied
  *  API key or a local model was removed. BYOK is a decided non-feature, and
  *  both documents had described it as though it shipped. */
-export const LEGAL_VERSION = "1.3.0";
+export const LEGAL_VERSION = "1.4.0";
 
 /** Effective date rendered in both documents. Kept beside the version because
  *  they only ever change together. */
@@ -563,23 +563,37 @@ export const PRIVACY: LegalDocument = {
     {
       heading: "The website",
       body:
-        "The website sets cookies only to keep you signed in and to protect " +
-        "the sign-in flow. There are no advertising cookies and no " +
-        "third-party analytics or tracking scripts on it. Our hosting and " +
-        "infrastructure providers keep ordinary server logs — IP address, " +
-        "timestamp, request path, user agent and response status — for " +
-        "security, abuse prevention and debugging, under their own short " +
-        "retention schedules.",
+        "The website sets cookies to keep you signed in, to protect the " +
+        "sign-in flow, and to remember your privacy choices. It also carries " +
+        "advertising on our public articles and comparison pages — never on " +
+        "sign-in, account or app-authorisation screens — and measures how the " +
+        "site is used. Neither is switched on by default: until you grant the " +
+        "matching purpose, Google's consent signals are all set to denied, no " +
+        "advertising cookie is written, personalisation is off, and our " +
+        "product analytics run without any persistent identifier. You can " +
+        "withdraw either at any time from your privacy settings, in one " +
+        "click. None of this applies to the desktop application, which sends " +
+        "no analytics and carries no adverts. Our hosting and infrastructure " +
+        "providers keep ordinary server logs — IP address, timestamp, request " +
+        "path, user agent and response status — for security, abuse " +
+        "prevention and debugging, under their own short retention " +
+        "schedules.",
     },
     {
       heading: "What we do not do",
       body:
-        "We do not sell personal data, and we do not share it for " +
-        "cross-context behavioural advertising. We do not use your prompts, " +
+        "We do not sell personal data. We do not share it for cross-context " +
+        "behavioural advertising unless you have granted the marketing " +
+        "purpose, which is what lets Google personalise the adverts on our " +
+        "public articles; withdraw it and personalisation stops. We do not " +
+        "use your prompts, " +
         "drafts or generated output to train models, ours or anyone else's. " +
         "We do not read your content, except where you send it to us yourself " +
         "in a support message or where the law compels us. There is no " +
-        "advertising inside InsertGo.",
+        "advertising inside the InsertGo application, and none on any " +
+        "signed-in page: the adverts on our public articles are Google " +
+        "AdSense, and they never see your prompts, your documents or anything " +
+        "you type into the app.",
     },
     {
       heading: "Who we share data with",
@@ -587,7 +601,10 @@ export const PRIVACY: LegalDocument = {
         "A small set of processors runs the service on our instructions: " +
         "Google for the Gemini models and, in grounded mode, Search; Vercel " +
         "for hosting the website and API; Supabase and its PostgreSQL " +
-        "database for accounts, plans and usage; Upstash for the expiring " +
+        "database for accounts, plans and usage; PostHog, Google Analytics, " +
+        "Google Ads and Google AdSense for the consent-gated website " +
+        "measurement and advertising described above; Upstash for the " +
+        "expiring " +
         "caches described above; Resend for one-time codes, support and " +
         "transactional email; and Dodo Payments for checkout. Each receives " +
         "only what its function needs. We may also disclose data where we are " +

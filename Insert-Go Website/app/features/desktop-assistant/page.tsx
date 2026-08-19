@@ -5,12 +5,13 @@ import {
   Breadcrumbs,
   DirectAnswer,
   FaqBlocks,
+  HowToSteps,
   JsonLd,
   SeoCta,
 } from "@/components/SeoContent";
 import { FadeUp, Reveal } from "@/components/Reveal";
 import { HOTKEYS } from "@/lib/constants/hotkeys";
-import { breadcrumbSchema, faqSchema } from "@/lib/seo";
+import { HOTKEY_WORKFLOW_STEPS, pageGraph } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Windows Desktop AI Assistant and Overlay App",
@@ -85,8 +86,23 @@ const workflows = [
 export default function DesktopAssistantPage() {
   return (
     <main className="relative overflow-hidden">
-      <JsonLd data={breadcrumbSchema(breadcrumbs)} />
-      <JsonLd data={faqSchema(faqs)} />
+      <JsonLd
+        data={pageGraph({
+          path: "/features/desktop-assistant",
+          name: "Windows desktop AI assistant and overlay app",
+          description:
+            "A keyboard-first AI assistant that floats above your Windows apps, runs reusable prompts, improves selected text, and inserts results at the cursor.",
+          breadcrumbs,
+          faqs,
+          howTo: {
+            name: "How to use a floating AI assistant on Windows",
+            description:
+              "Open InsertGo over the active app, run a reusable prompt, and insert the reviewed result at the cursor.",
+            totalTime: "PT1M",
+            steps: HOTKEY_WORKFLOW_STEPS,
+          },
+        })}
+      />
       <GlowBackdrop />
       <Breadcrumbs items={breadcrumbs} />
 
@@ -110,10 +126,24 @@ export default function DesktopAssistantPage() {
           <DirectAnswer title="What is a Windows desktop AI assistant?">
             A Windows desktop AI assistant works across programs instead of
             living inside one website or editor. InsertGo appears as a floating
-            prompt window, runs an explicit request through the managed
-            InsertGo relay, then returns approved text to the app you were using.
+            prompt window above the app that had focus, runs an explicit request
+            through the managed InsertGo relay, then pastes the approved text
+            back at your cursor and restores the clipboard.
           </DirectAnswer>
         </Reveal>
+      </section>
+
+      <section className="mx-auto max-w-[1080px] px-6 pt-[40px]">
+        <Reveal className="mx-auto mb-12 max-w-[700px] text-center">
+          <h2 className="m-0 font-serif text-[clamp(28px,4vw,42px)] font-semibold tracking-[-0.02em] text-ink">
+            From hotkey to cursor
+          </h2>
+          <p className="mt-4 text-base leading-relaxed text-muted">
+            The overlay records where you were before it opens, so the text has
+            somewhere definite to go back to.
+          </p>
+        </Reveal>
+        <HowToSteps steps={HOTKEY_WORKFLOW_STEPS} />
       </section>
 
       <section className="mx-auto max-w-[1080px] px-6 py-[80px]">

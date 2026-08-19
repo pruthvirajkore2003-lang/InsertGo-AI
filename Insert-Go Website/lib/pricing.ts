@@ -92,3 +92,26 @@ export const packs: Pack[] = [
   { credits: 350, price: { USD: 5.99, INR: 399 } },
   { credits: 500, price: { USD: 7.99, INR: 499 } },
 ];
+
+/**
+ * Catalogue price in INR for a purchase-return item key (`"plan:plus"`,
+ * `"pack:150"`), or null when the key names nothing we sell.
+ *
+ * Reporting only — it is what the Google Ads conversion and the `purchase`
+ * event carry as order value. It is NOT what anyone was charged: Dodo is
+ * Merchant of Record and localises from the server-pinned product, so a buyer
+ * outside India paid the USD column. Reporting one currency keeps the
+ * conversion values comparable in the Ads account, which is the number bids are
+ * set from; mixing two currencies into one conversion action silently makes
+ * that number meaningless.
+ */
+export function inrPriceForItemKey(key: string): number | null {
+  const [kind, value] = key.split(":");
+  if (kind === "plan") {
+    return plans.find((p) => p.tier === value)?.price.INR ?? null;
+  }
+  if (kind === "pack") {
+    return packs.find((p) => String(p.credits) === value)?.price.INR ?? null;
+  }
+  return null;
+}

@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { LinearTickCircle } from "@/components/icons/LinearTickCircle";
 import { FadeUp } from "@/components/Reveal";
 import { packs, plans, type Currency } from "@/lib/pricing";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 
 /**
  * 3-tier pricing + non-expiring add-on credit packs.
@@ -89,6 +90,13 @@ export function PricingPlans({ currency }: { currency: Currency }) {
     setBusy(key);
     setError(null);
     const fail = (message: string) => setError({ key, message });
+    // Fired on intent, before the gateway round trip: the drop-off between
+    // this and the `purchase` event on the return page IS the checkout funnel,
+    // and an event fired after the redirect would never reach the browser.
+    trackEvent(AnalyticsEvent.CheckoutStarted, {
+      item: "tier" in body ? `plan:${body.tier}` : `pack:${body.pack}`,
+      currency,
+    });
     try {
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
