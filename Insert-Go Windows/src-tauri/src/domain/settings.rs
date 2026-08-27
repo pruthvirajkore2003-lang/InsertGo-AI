@@ -8,6 +8,33 @@ use crate::error::AppResult;
 
 const FILE: &str = "settings.json";
 
+/// The Terms & Privacy version this build ships. Hand-kept mirror of
+/// `LEGAL_VERSION` in `src/legal/index.ts` (which mirrors the website's
+/// `NOTICE_VERSION`); `src/legal/legalConsent.test.ts` reads this file and
+/// fails if the two drift.
+///
+/// Rust holds its own copy on purpose. The consent gate has to be answerable
+/// at process start, before the webview exists — a version-blind
+/// "consent was given once" check would arm low-level keyboard and mouse
+/// hooks for someone who accepted a materially different document.
+pub const LEGAL_VERSION: &str = "1.5.0";
+
+impl Settings {
+    /// True when the user has accepted the version this build actually ships.
+    ///
+    /// The single gate for every surface that reads or writes another
+    /// application's text: the WH_KEYBOARD_LL / WH_MOUSE_LL hooks, the global
+    /// hotkey, and the clipboard insert path. California's Invasion of Privacy
+    /// Act (Penal Code §§631, 632) attaches strict statutory liability to
+    /// intercepting communications without prior express consent, and the
+    /// cheapest defence is that the interception could not physically start
+    /// until the acceptance was recorded — which is what this function makes
+    /// true, rather than a paragraph in a policy claiming it.
+    pub fn consent_current(&self) -> bool {
+        self.accepted_terms_version.as_deref() == Some(LEGAL_VERSION)
+    }
+}
+
 /// One user-created custom skill (SPEC — customizable skills). Mirrors the TS
 /// `Skill` when `isCustom: true`; built-in skills are bundled from `src/skills`
 /// and never persisted here. Keys nothing — pure prompt text.
@@ -229,6 +256,25 @@ impl Default for Settings {
     }
 }
 
+/// Refuse a command that reads or writes another application's text unless
+/// this build's Terms & Privacy version has been accepted.
+///
+/// Belt to the brace in `lib.rs`: that gate stops the hooks from existing,
+/// this one stops the commands that move text even if a webview reached them
+/// some other way (a stale window, a dev build, a future surface). Fails
+/// CLOSED — an unreadable settings file is not consent.
+pub fn require_consent(app: &AppHandle) -> AppResult<()> {
+    if load_settings(app.clone())
+        .map(|s| s.consent_current())
+        .unwrap_or(false)
+    {
+        return Ok(());
+    }
+    Err(crate::error::AppError::Config(
+        "Accept the Terms & Privacy Policy before InsertGo can read or insert text.".into(),
+    ))
+}
+
 #[tauri::command]
 pub fn load_settings(app: AppHandle) -> AppResult<Settings> {
     // The allowlist is user-owned privacy scope (SPEC §10): a settings.json
@@ -251,6 +297,20 @@ pub fn save_settings(app: AppHandle, settings: Settings) -> AppResult<Settings> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn consent_gate_is_version_exact_and_fails_closed() {
+        let mut s = Settings::default();
+        // A fresh install has consented to nothing.
+        assert!(!s.consent_current());
+        // An acceptance of an older document is not an acceptance of this one:
+        // 1.5.0 added an arbitration clause and the interception authorisation,
+        // so inheriting a 1.3.0 tick would arm hooks nobody agreed to.
+        s.accepted_terms_version = Some("1.3.0".into());
+        assert!(!s.consent_current());
+        s.accepted_terms_version = Some(LEGAL_VERSION.into());
+        assert!(s.consent_current());
+    }
 
     #[test]
     fn default_settings_are_sane() {

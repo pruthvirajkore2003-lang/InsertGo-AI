@@ -98,3 +98,138 @@ describe("legal copy", () => {
     }
   });
 });
+
+/**
+ * The 1.5.0 clauses. Each of these exists because a specific statute or case
+ * makes its ABSENCE expensive, and each is a paragraph a future edit could
+ * quietly reword away — the version bump alone would not notice.
+ */
+describe("dispute resolution and jurisdiction", () => {
+  const TERMS = prose(COPIES.find(([n]) => n === "website terms")![1]);
+  const MIRROR = prose(COPIES.find(([n]) => n === "desktop mirror")![1]);
+
+  /** Both copies of the Terms — the published page and the offline mirror the
+   *  desktop shows at first run. A clause in only one of them is a clause the
+   *  other half of the userbase never assented to. */
+  const BOTH: Array<[string, string]> = [
+    ["website terms", TERMS],
+    ["desktop mirror", MIRROR],
+  ];
+
+  it("keeps the FAA-governed individual arbitration agreement for US residents", () => {
+    for (const [name, src] of BOTH) {
+      // Berman v. Freedom Financial Network, 30 F.4th 849: an Indian forum
+      // clause alone does not stop a US class action. These four elements are
+      // what does.
+      expect(src, `${name}: no arbitration agreement`).toContain(
+        "BINDING INDIVIDUAL ARBITRATION",
+      );
+      expect(src, `${name}: no FAA hook`).toContain("Federal Arbitration Act");
+      expect(src, `${name}: no administrator named`).toContain(
+        "American Arbitration Association",
+      );
+      expect(src, `${name}: no consumer rules`).toContain(
+        "Consumer Arbitration Rules",
+      );
+    }
+  });
+
+  it("keeps the class action and jury trial waivers", () => {
+    for (const [name, src] of BOTH) {
+      expect(src, `${name}: no class action waiver`).toContain(
+        "CLASS ACTION WAIVER",
+      );
+      expect(src, `${name}: no jury waiver`).toContain("JURY TRIAL WAIVER");
+    }
+  });
+
+  it("keeps the 30-day opt-out and the address it goes to", () => {
+    for (const [name, src] of BOTH) {
+      // An arbitration clause with no opt-out is the one most likely to be
+      // struck as unconscionable — the opt-out is what buys the rest of it.
+      expect(src, `${name}: no opt-out`).toContain("30-DAY RIGHT TO OPT OUT");
+      expect(src, `${name}: opt-out has no address`).toContain(
+        "legal@insertgo.ai",
+      );
+    }
+  });
+
+  it("preserves Indian statutory remedies rather than waiving them", () => {
+    for (const [name, src] of BOTH) {
+      expect(src, `${name}: no Indian consumer remedy`).toContain(
+        "Consumer Protection Act, 2019",
+      );
+      expect(src, `${name}: no DPB escalation`).toContain(
+        "Data Protection Board of India",
+      );
+    }
+  });
+
+  it("flags the arbitration section as conspicuous, not as ordinary prose", () => {
+    for (const [name, src] of BOTH) {
+      // `emphasis: true` is what boxes the section out in both renderers.
+      expect(src, `${name}: arbitration not visually flagged`).toContain(
+        "emphasis: true",
+      );
+    }
+    // ...and section 1 has to point at it, or a reader never gets there.
+    for (const [name, src] of BOTH) {
+      expect(src, `${name}: no upfront notice of the clause`).toContain(
+        "PLEASE READ SECTION 23 CAREFULLY",
+      );
+    }
+  });
+});
+
+describe("grievance officer", () => {
+  it("names a real officer in all three copies", () => {
+    for (const [name, src] of COPIES) {
+      // IT (Intermediary Guidelines) Rules 2021 r.3(2)(a) wants a named
+      // person. A placeholder shipped to production is an unappointed officer.
+      expect(src.includes("[Name to be appointed]"), `${name} still has the placeholder`)
+        .toBe(false);
+      expect(prose(src), `${name} names no Grievance Officer`).toContain(
+        "Pruthviraj Kore",
+      );
+      expect(prose(src), `${name} states no acknowledgement window`).toContain(
+        "forty-eight hours",
+      );
+    }
+  });
+});
+
+describe("high-risk use and buffer replacement", () => {
+  const TERMS = prose(COPIES.find(([n]) => n === "website terms")![1]);
+  const MIRROR = prose(COPIES.find(([n]) => n === "desktop mirror")![1]);
+
+  it("disclaims the domains InsertGo is not built for", () => {
+    for (const src of [TERMS, MIRROR]) {
+      expect(src).toContain("NOT designed, tested, licensed or authorised");
+      expect(src).toContain("life-critical");
+    }
+  });
+
+  it("says plainly that it overwrites another application's buffer", () => {
+    for (const src of [TERMS, MIRROR]) {
+      expect(src).toContain("REPLACES THE ENTIRE CONTENTS");
+      expect(src).toContain("third-party application");
+    }
+  });
+});
+
+describe("desktop interception consent", () => {
+  it("states in every copy that the OS hooks wait for an explicit tick", () => {
+    for (const [name, src] of COPIES) {
+      const text = prose(src);
+      // The claim the product's CIPA position rests on. If the code ever stops
+      // being true, this sentence has to change with it — and it is easier to
+      // notice a failing test than a false policy.
+      const claims =
+        text.includes("YOUR EXPRESS CONSENT COMES FIRST") ||
+        text.includes("NONE OF THIS RUNS UNTIL YOU ALLOW IT");
+      expect(claims, `${name} does not state that the hooks wait for consent`).toBe(
+        true,
+      );
+    }
+  });
+});

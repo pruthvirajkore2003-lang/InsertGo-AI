@@ -17,12 +17,12 @@ import { HOTKEY_WORKFLOW_STEPS, pageGraph } from "@/lib/seo";
 const PATH = "/use-cases/customer-support";
 
 export const metadata: Metadata = {
-  title: "AI Canned Response Assistant for Outlook and Zendesk",
+  title: "AI Canned Responses for Outlook and Zendesk",
   description:
-    "Draft support replies in Outlook, Zendesk, Freshdesk, or Intercom from one Windows hotkey. Form fields set tone and optional clauses; the reply pastes at your cursor for review.",
+    "Draft support replies in Outlook, Zendesk, Freshdesk, or Intercom from one Windows hotkey. Form fields set tone; the reply pastes at your cursor for review.",
   alternates: { canonical: PATH },
   openGraph: {
-    title: "AI Canned Response Assistant for Outlook and Zendesk",
+    title: "AI Canned Responses for Outlook and Zendesk",
     description:
       "Macros give the same paragraph. A prompt template gives the reply this ticket needs.",
     url: PATH,

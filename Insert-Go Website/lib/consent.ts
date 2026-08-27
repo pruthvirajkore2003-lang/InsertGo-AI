@@ -41,11 +41,19 @@ import { rpc } from "./db";
  * this; the desktop's `LEGAL_VERSION` (Insert-Go Windows/src/legal/index.ts) is
  * a hand-kept mirror and must be bumped with it.
  *
+ * 1.5.0 (2026-08-19): US binding individual arbitration + class action and
+ * jury waivers with a 30-day opt-out (Terms §23), a named Grievance Officer /
+ * DPO, express clickwrap authorisation for the desktop OS hooks before they
+ * install (CIPA §§631/632), auto-renewal disclosure at the point of purchase
+ * and self-service online cancellation (California ARL / ROSCA), and
+ * high-risk-domain disclaimers. Substantive on every axis, so every existing
+ * consent is re-asked rather than assumed forward.
+ *
  * Bump on any substantive wording change. Every consent recorded before the
  * bump stays valid *for the text it named* — that is the entire reason the
  * version is stored per row rather than assumed to be "current".
  */
-export const NOTICE_VERSION = "1.4.0";
+export const NOTICE_VERSION = "1.5.0";
 
 export type PurposeId =
   | "account"

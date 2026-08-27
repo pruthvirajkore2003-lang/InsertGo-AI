@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { totalCredits, useAuthStore } from "@/store/authStore";
+import { tierOf, totalCredits, useAuthStore } from "@/store/authStore";
 
 /** Background credit re-sync cadence. refreshStatus() is the existing
  *  server-authoritative session read; applyCredits()/applyBalance() already
@@ -37,10 +37,22 @@ export function CreditBadge() {
   const dailyMax = user.dailyCreditsMax;
   const addOn = user.addOnCredits;
   const tier = creditTier(total);
+  // Plan tier (server-authoritative) rides data-tier for the border glow and
+  // swaps the icon to the luxury mark: gem for Plus, crown for Pro. The
+  // green/amber/red balance status stays untouched — it is information, the
+  // tier cue is recognition.
+  const planTier = tierOf(user);
+  const icon =
+    planTier === "pro"
+      ? "fa-crown"
+      : planTier === "plus"
+        ? "fa-gem"
+        : "fa-coins";
   const hasBreakdown = daily !== undefined && dailyMax !== undefined;
   return (
     <span
       className={`ig-creditbadge ig-creditbadge--${tier}`}
+      data-tier={planTier}
       role="status"
       aria-live="polite"
       title={
@@ -50,7 +62,7 @@ export function CreditBadge() {
           : `${total} credit${total === 1 ? "" : "s"} remaining`
       }
     >
-      <i className="fa-solid fa-coins" aria-hidden="true" />
+      <i className={`fa-solid ${icon}`} aria-hidden="true" />
       {total}
       {hasBreakdown && dailyMax > 0 && (
         <span className="ig-creditbadge__bar" aria-hidden="true">

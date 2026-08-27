@@ -19,10 +19,12 @@ import {
   useAutoWindowHeight,
 } from "@/hooks/useAutoWindowHeight";
 import { useSettingsStore } from "@/store/settingsStore";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore, tierOf } from "@/store/authStore";
 import { initLicense } from "@/store/licenseStore";
 import { UpgradeModal } from "@/components/Monetization/UpgradeModal";
 import { PlanUpgradeModal } from "@/components/Monetization/PlanUpgradeModal";
+import { LegalConsentModal } from "@/components/Legal/LegalConsentModal";
+import { needsConsent } from "@/legal";
 
 type View = "composer" | "settings" | "profile";
 
@@ -80,7 +82,20 @@ export default function App() {
   }, []);
 
   const loadSettings = useSettingsStore((s) => s.load);
+  const updateSettings = useSettingsStore((s) => s.update);
+  // Consent stands ahead of sign-in, not behind it: the OS hooks are a
+  // property of the INSTALL, and an unsigned-in launch still had them armed
+  // before this gate existed. `hasLoaded` matters — acting on the pre-load
+  // defaults would flash the modal at someone who accepted months ago.
+  const settingsLoaded = useSettingsStore((s) => s.hasLoaded);
+  const acceptedVersion = useSettingsStore(
+    (s) => s.settings.acceptedTermsVersion
+  );
+  const consentRequired = settingsLoaded && needsConsent(acceptedVersion);
   const user = useAuthStore((s) => s.user);
+  // Server-authoritative plan tier — drives the data-tier token routing
+  // (panel/header/floaters) and the recognition pill next to the wordmark.
+  const tier = tierOf(user);
   // Every request goes through the managed relay, which needs a session.
   const authRequired = !user;
   const initAuth = useAuthStore((s) => s.init);
@@ -123,8 +138,15 @@ export default function App() {
 
   return (
     <div className="ig-overlay">
-      <div className="ig-panel">
+      <div className="ig-panel" data-tier={tier}>
         <ResizeHandles />
+        {consentRequired && (
+          <LegalConsentModal
+            onAccept={(version) =>
+              updateSettings({ acceptedTermsVersion: version })
+            }
+          />
+        )}
         {!isTauri() && (
           <div
             role="alert"
@@ -162,6 +184,20 @@ export default function App() {
             <span className="ig-brand__name">
               InsertGo<span className="ig-brand__ai">.AI</span>
             </span>
+            {/* Paid-tier recognition mark (90/8/2): a compact micro-pill,
+                never a banner — Free stays visually clean. Pure decoration;
+                the label is announced once via aria-label. */}
+            {tier !== "free" && (
+              <span
+                className={`ig-tier-pill ig-tier-pill--${tier}`}
+                role="img"
+                aria-label={tier === "pro" ? "Pro plan" : "Plus plan"}
+              >
+                <span className="ig-tier-pill__label" aria-hidden="true">
+                  {tier === "pro" ? "PRO" : "PLUS"}
+                </span>
+              </span>
+            )}
           </div>
 
           {!authRequired && (

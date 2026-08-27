@@ -7,11 +7,11 @@ export const faqs: [string, string][] = [
   ],
   [
     "Which applications does it work with?",
-    "Virtually all of them. Because InsertGo operates at the operating-system level, it works with any Windows application that supports standard clipboard pasting (Ctrl+V) — browsers, code editors, Word, Notion, Slack, Teams, Outlook, terminals, and more.",
+    "Virtually all of them. Because InsertGo works at the operating-system level rather than as a per-app plugin, it inserts into any Windows application that accepts a standard paste (Ctrl+V) — browsers, code editors, Word, Notion, Slack, Teams, Outlook and terminals included. There is no integration to install per app.",
   ],
   [
     "Does it work on Mac or Linux?",
-    "Not yet. InsertGo is built exclusively for Windows 10 and 11, where it can integrate deeply with native input pathways. We're exploring other platforms based on demand.",
+    "Not yet. InsertGo is built exclusively for Windows 10 and 11, because inserting text into whichever app you were last using depends on native Win32 window and input APIs that have no cross-platform equivalent. A Mac or Linux build would be a separate app rather than a port. We are exploring both based on demand.",
   ],
   [
     "How does the text actually get inserted?",

@@ -839,6 +839,142 @@ textarea::placeholder {
   }
 }
 
+/* ---- Tier recognition (Plus / Pro) ----
+   The 2% recognition layer of the 90/8/2 premium ratio: a micro-badge pill in
+   the nav and a VIP member card on /account. Server-authoritative tier
+   (customSession stamps session.user.tier); Free renders neither. Site is
+   dark-only, so the same sapphire/platinum ladder as the desktop dark theme
+   applies — every text step keeps AA on the card grounds. */
+@layer components {
+  /* Micro-badge pill — nav + VIP card header. */
+  .tier-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    border: 1px solid;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
+  /* Soft glowing status dot; currentColor keeps it on-tier. */
+  .tier-badge::before {
+    content: "";
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .tier-badge--plus {
+    color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.16);
+    border-color: rgba(129, 140, 248, 0.4);
+  }
+
+  .tier-badge--plus::before {
+    box-shadow: 0 0 6px rgba(129, 140, 248, 0.55);
+  }
+
+  .tier-badge--pro {
+    color: #93c5fd;
+    background: rgba(47, 107, 255, 0.14);
+    border-color: rgba(147, 197, 253, 0.45);
+    box-shadow:
+      0 0 12px rgba(47, 107, 255, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .tier-badge--pro::before {
+    box-shadow: 0 0 7px rgba(147, 197, 253, 0.6);
+  }
+
+  /* VIP member card — elevated glass with a tier-branded gradient border
+     (padding-box fill + border-box gradient: the border IS a gradient without
+     image hacks) and a restrained ambient tier glow. */
+  .vip-card {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: 1px solid transparent;
+    border-radius: 20px;
+  }
+
+  .vip-card--plus {
+    background:
+      linear-gradient(177deg, rgba(28, 28, 36, 0.92) 0%, rgba(14, 15, 20, 0.95) 100%) padding-box,
+      linear-gradient(135deg,
+        rgba(129, 140, 248, 0.55) 0%,
+        rgba(129, 140, 248, 0.12) 42%,
+        rgba(129, 140, 248, 0.38) 100%) border-box;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 12px 36px rgba(0, 0, 0, 0.4),
+      0 0 28px rgba(99, 102, 241, 0.12);
+  }
+
+  .vip-card--pro {
+    background:
+      linear-gradient(177deg, rgba(24, 28, 42, 0.92) 0%, rgba(11, 13, 20, 0.95) 100%) padding-box,
+      linear-gradient(135deg,
+        rgba(147, 197, 253, 0.65) 0%,
+        rgba(47, 107, 255, 0.14) 45%,
+        rgba(47, 107, 255, 0.5) 100%) border-box;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 12px 36px rgba(0, 0, 0, 0.42),
+      0 0 36px rgba(47, 107, 255, 0.16);
+  }
+
+  /* Platinum sheen sweep across the Pro card — background-position only,
+     7s period, sits under the content (z-index below the isolated text).
+     The global reduced-motion rule collapses it to a static sheen. */
+  .vip-card--pro::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(115deg,
+        transparent 32%,
+        rgba(147, 197, 253, 0.06) 45%,
+        rgba(255, 255, 255, 0.09) 50%,
+        rgba(147, 197, 253, 0.06) 55%,
+        transparent 68%);
+    background-size: 260% 100%;
+    animation: vipSheen 7s ease-in-out infinite;
+  }
+
+  @keyframes vipSheen {
+    0%,
+    100% {
+      background-position: 130% 0;
+    }
+
+    50% {
+      background-position: -30% 0;
+    }
+  }
+
+  /* Perk rows inside the VIP card. */
+  .vip-perk {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--color-text-primary);
+  }
+
+  .vip-perk svg {
+    flex: none;
+  }
+}
+
 .demo-wash {
   animation: demoWash 800ms var(--ease-standard) both;
 }

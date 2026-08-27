@@ -19,11 +19,12 @@ import { useAppShortcuts } from "@/hooks/useAppShortcuts";
 import { isTauri } from "@/services/tauriBridge";
 import { API_URL } from "@/services/apiConfig";
 import {
-  detectCurrency,
   formatMoney,
+  gstNote,
   planFor,
   type Money,
 } from "@/services/billing";
+import { CurrencyToggle } from "./CurrencyToggle";
 import { useAuthStore } from "@/store/authStore";
 import {
   useMonetizationStore,
@@ -93,14 +94,24 @@ export function PlanUpgradeModal() {
     if (open) void loadPricing();
   }, [open, loadPricing]);
 
-  const currency = detectCurrency();
+  // Shared with the plan panel via the store, so a toggle in either place
+  // moves both — two surfaces quoting different prices for the same plan is a
+  // worse bug than either of them guessing wrong.
+  const currency = useMonetizationStore((s) => s.currency);
+  const amount = (tier: "plus" | "pro", fallback: Money) =>
+    planFor(pricing, tier)?.price[currency] ?? fallback[currency];
   const price = (tier: "plus" | "pro", fallback: Money) =>
-    formatMoney(planFor(pricing, tier)?.price[currency] ?? fallback[currency], currency);
+    formatMoney(amount(tier, fallback), currency);
 
   const prices: Prices = {
     plus: price("plus", FALLBACK_PLUS),
     pro: price("pro", FALLBACK_PRO),
   };
+  // Catalogue prices are tax-exclusive. An INR shopper shown only "₹499" is
+  // shown a price they cannot pay — drip pricing under the CCPA's 2023
+  // dark-pattern guidelines — so the total rides next to the figure here too,
+  // not only on the website.
+  const plusGst = gstNote(amount("plus", FALLBACK_PLUS), currency);
 
   const goPricing = async (anchor: string) => {
     const url = `${API_URL}/pricing${anchor}`;
@@ -148,6 +159,12 @@ export function PlanUpgradeModal() {
               {copy.title}
             </div>
             <p className="ig-muted">{copy.body(prices)}</p>
+            {plusGst && (
+              <p className="ig-muted" style={{ margin: 0 }}>
+                Plus: {plusGst}
+              </p>
+            )}
+            <CurrencyToggle />
 
             {reason === "credits" && dailyMax !== undefined && (
               <p className="ig-muted" style={{ margin: 0 }}>

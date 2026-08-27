@@ -26,10 +26,12 @@ import { audit } from "@/lib/auditLog";
 import { currentConsent } from "@/lib/consent";
 import { BodyTooLargeError, readBodyCapped } from "@/lib/httpBody";
 import {
+  clearsSubscriptionId,
   eventTimestampSeconds,
   extractUserRef,
   packCreditsForEvent,
   packCreditsReversedForEvent,
+  subscriptionIdForEvent,
   tierForSubscriptionEvent,
   verifyWebhookSignature,
   type DodoWebhookPayload,
@@ -44,11 +46,39 @@ export const dynamic = "force-dynamic";
 const MAX_WEBHOOK_BYTES = 65_536; // 64 KiB
 
 /** Tier write, guarded by the event-time watermark. `match` is a literal from
- *  this module (never request data); the values ride as $1..$4 placeholders. */
+ *  this module (never request data); the values ride as $1..$6 placeholders.
+ *
+ *  $5 (the event's own subscription id, non-null only on activations) is what
+ *  makes self-service cancellation possible: without a stored id there is
+ *  nothing for /api/billing/cancel to call, and "cancel online" degrades into
+ *  "email support", which is the ARL failure. It is `coalesce`d so a renewal
+ *  that omits the field cannot erase a good id.
+ *
+ *  $6 (`clearsSubscriptionId`) decides when to forget the id, and it is NOT
+ *  "the tier went free": `subscription.on_hold` demotes while the subscription
+ *  is still alive and still retrying the card, so dropping the id there would
+ *  suspend the customer AND take away the button that stops the retries.
+ *
+ *  `cancelAtPeriodEnd` resets on every tier write EXCEPT a replay: an
+ *  activation means the user resubscribed (no longer cancelling) and a
+ *  termination means the cancellation already happened (nothing pending), but
+ *  a redelivered activation means neither. The watermark deliberately admits
+ *  equal timestamps so a redelivery re-converges the tier — which would also
+ *  drag this flag back to false and tell someone who HAS cancelled that their
+ *  plan renews automatically. Strictly-newer is the right test for the flag,
+ *  and when it is ambiguous the customer's cancellation is what survives. */
 const setTierSql = (match: string) => `
   update "user"
      set "tier" = $1, "subscriptionStatus" = $2, "updatedAt" = now(),
-         "billingEventAt" = coalesce(to_timestamp($4::double precision), "billingEventAt")
+         "billingEventAt" = coalesce(to_timestamp($4::double precision), "billingEventAt"),
+         "dodoSubscriptionId" = case when $6::boolean then null
+                                     else coalesce($5::text, "dodoSubscriptionId") end,
+         "cancelAtPeriodEnd" = case
+             when $4::double precision is not null
+              and "billingEventAt" is not null
+              and "billingEventAt" >= to_timestamp($4::double precision)
+             then "cancelAtPeriodEnd"
+             else false end
    where ${match}
      and ($4::double precision is null
           or "billingEventAt" is null
@@ -135,7 +165,14 @@ export async function POST(req: Request): Promise<Response> {
       const eventAt = eventTimestampSeconds(payload);
       const result = await pool.query(
         setTierSql(userId ? '"id" = $3' : '"email" = $3'),
-        [nextTier, legacyStatus, userId ?? email, eventAt],
+        [
+          nextTier,
+          legacyStatus,
+          userId ?? email,
+          eventAt,
+          subscriptionIdForEvent(eventType, payload),
+          clearsSubscriptionId(eventType),
+        ],
       );
       if (result.rowCount === 0) {
         // Log ref presence only — keep emails out of server logs.

@@ -23,6 +23,10 @@ export function SiteNav() {
   // keeps a fixed width and only fades in once the session resolves, so the
   // swap never shifts the layout around it.
   const { data: session, isPending } = useSession();
+  // customSession stamps the plan tier onto the session user (same
+  // server-authoritative value the desktop reads); the auth client's type
+  // doesn't carry it, hence the narrow cast.
+  const tier = (session?.user as { tier?: string } | undefined)?.tier;
   const [open, setOpen] = useState(false);
   const [condensed, setCondensed] = useState(false);
   const linksRef = useRef<HTMLDivElement>(null);
@@ -145,6 +149,16 @@ export function SiteNav() {
                     .toUpperCase()}
                 </span>
                 Account
+                {/* Paid-tier recognition mark — a micro-pill beside the
+                    account link, never a banner; Free renders nothing. */}
+                {(tier === "plus" || tier === "pro") && (
+                  <span
+                    className={`tier-badge tier-badge--${tier}`}
+                    aria-label={tier === "pro" ? "Pro plan" : "Plus plan"}
+                  >
+                    {tier.toUpperCase()}
+                  </span>
+                )}
               </Link>
             ) : (
               <Link

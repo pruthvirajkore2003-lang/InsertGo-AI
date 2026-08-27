@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CREDITS,
   DEFAULT_SUBSCRIPTION_STATUS,
+  GROUNDED_DAILY_MAX,
   TIER_DAILY_CREDITS,
   dailyRemaining,
   isGroundingEntitled,
@@ -14,6 +15,7 @@ import {
   requireSession,
   requireWithinQuota,
   tierAllowsHistory,
+  utcToday,
   type Denied,
 } from "./entitlements";
 
@@ -29,65 +31,66 @@ describe("requireSession", () => {
   });
 });
 
+describe("GROUNDED_DAILY_MAX", () => {
+  // Cost regression guard. Google bills Search grounding per grounded prompt
+  // ($35/1k on Gemini 2.5, $14/1k on 3.x), so these ceilings ARE the monthly
+  // grounding bill: max/day * 30 * rate. Raising one raises COGS linearly, and
+  // free must stay 0 — a free account grounding its 5 daily credits costs
+  // ~$5.25/month against no revenue at all.
+  it("keeps free at zero", () => {
+    expect(GROUNDED_DAILY_MAX.free).toBe(0);
+  });
+
+  it("keeps paid ceilings inside their price at the 3.x grounding rate", () => {
+    const RATE_PER_CALL = 0.014; // $14 per 1,000 grounded prompts
+    const monthly = (perDay: number) => perDay * 30 * RATE_PER_CALL;
+    // Grounding alone must stay a small slice of revenue — the plan still has
+    // to cover ordinary generations, payment fees, and infra.
+    expect(monthly(GROUNDED_DAILY_MAX.plus)).toBeLessThan(7.99 * 0.15);
+    expect(monthly(GROUNDED_DAILY_MAX.pro)).toBeLessThan(14.99 * 0.25);
+  });
+});
+
 describe("isGroundingEntitled", () => {
-  it("denies without a session", () => {
-    expect(isGroundingEntitled(null)).toBe(false);
-    expect(isGroundingEntitled({ user: { id: null } })).toBe(false);
+  it("denies free — the tier that used to qualify via credits > 0", () => {
+    expect(isGroundingEntitled("free")).toBe(false);
   });
 
-  it("allows a subscribed user regardless of credits", () => {
-    expect(
-      isGroundingEntitled({
-        user: { id: "u1", subscriptionStatus: "subscribed", credits: 0 },
-      }),
-    ).toBe(true);
+  it("allows paid tiers", () => {
+    expect(isGroundingEntitled("plus")).toBe(true);
+    expect(isGroundingEntitled("pro")).toBe(true);
   });
 
-  it("allows a trial user with credits remaining", () => {
-    expect(
-      isGroundingEntitled({
-        user: { id: "u1", subscriptionStatus: "trial", credits: 3 },
-      }),
-    ).toBe(true);
-  });
-
-  it("denies when credits are gone and not subscribed", () => {
-    expect(
-      isGroundingEntitled({
-        user: { id: "u1", subscriptionStatus: "trial", credits: 0 },
-      }),
-    ).toBe(false);
-    expect(
-      isGroundingEntitled({
-        user: { id: "u1", subscriptionStatus: "expired", credits: 0 },
-      }),
-    ).toBe(false);
-  });
-
-  it("falls back to entitled when the session carries no billing fields (rollout mismatch)", () => {
-    expect(isGroundingEntitled({ user: { id: "u1" } })).toBe(true);
+  it("derives from GROUNDED_DAILY_MAX so the gate and counter cannot drift", () => {
+    for (const tier of ["free", "plus", "pro"] as const) {
+      expect(isGroundingEntitled(tier)).toBe(GROUNDED_DAILY_MAX[tier] > 0);
+    }
   });
 });
 
 describe("requireGroundingEntitlement", () => {
-  const paying = {
-    user: { id: "u1", subscriptionStatus: "subscribed" as const, credits: 0 },
-  };
-  const broke = {
-    user: { id: "u1", subscriptionStatus: "expired" as const, credits: 0 },
-  };
-
-  it("403s with paywall wording when the user is not entitled", () => {
-    const denied = requireGroundingEntitlement(broke, {
+  it("403s with paywall wording for an unentitled tier", () => {
+    const denied = requireGroundingEntitlement("free", {
       groundingConfigured: true,
     });
     expect(denied?.status).toBe(403);
     expect(denied?.message.toLowerCase()).toMatch(/upgrade|plan/);
   });
 
-  it("allows an entitled user when grounding is configured", () => {
+  it("403s with paywall wording when the server has no grounding model", () => {
+    const denied = requireGroundingEntitlement("pro", {
+      groundingConfigured: false,
+    });
+    expect(denied?.status).toBe(403);
+    expect(denied?.message.toLowerCase()).toMatch(/upgrade|plan/);
+  });
+
+  it("allows an entitled tier when grounding is configured", () => {
     expect(
-      requireGroundingEntitlement(paying, { groundingConfigured: true }),
+      requireGroundingEntitlement("plus", { groundingConfigured: true }),
+    ).toBeNull();
+    expect(
+      requireGroundingEntitlement("pro", { groundingConfigured: true }),
     ).toBeNull();
   });
 });
@@ -172,6 +175,61 @@ describe("dailyRemaining", () => {
       ),
     ).toBe(0);
     expect(dailyRemaining({}, "plus", "2026-07-22")).toBe(50);
+  });
+
+  it("uses the UTC day, not the local one, at both edges of the boundary", () => {
+    // The reset is defined in UTC and the row's date column is written in UTC,
+    // so a machine east or west of Greenwich must still agree on "today".
+    expect(utcToday(new Date("2026-07-22T23:59:59.999Z"))).toBe("2026-07-22");
+    expect(utcToday(new Date("2026-07-23T00:00:00.000Z"))).toBe("2026-07-23");
+    const row = { dailyCreditsUsed: 5, dailyDate: "2026-07-22" };
+    expect(
+      dailyRemaining(row, "free", utcToday(new Date("2026-07-22T23:59:59Z"))),
+    ).toBe(0);
+    expect(
+      dailyRemaining(row, "free", utcToday(new Date("2026-07-23T00:00:00Z"))),
+    ).toBe(5);
+  });
+});
+
+/**
+ * Mid-day plan changes. The daily counter is a single "used today" integer, NOT
+ * a per-tier one, so a tier write from the billing webhook re-derives the
+ * allowance against usage the OLD tier accrued. Both directions have to be
+ * safe: an upgrade must credit the difference immediately (the user paid now,
+ * not at 00:00 UTC tomorrow), and a downgrade must never produce a negative
+ * remainder that reads back as free generations.
+ */
+describe("plan transitions mid-day", () => {
+  const today = "2026-07-22";
+
+  it("upgrade Free -> Plus grants the difference immediately", () => {
+    const row = { dailyCreditsUsed: 5, dailyDate: today };
+    expect(dailyRemaining(row, "free", today)).toBe(0); // exhausted on free
+    // Same row, new tier: 50 - 5. The webhook writes only "tier", so this is
+    // the whole upgrade path — no counter reset, no cron, no double-grant.
+    expect(dailyRemaining(row, "plus", today)).toBe(45);
+  });
+
+  it("upgrade Plus -> Pro keeps prior usage spent, not refunded", () => {
+    const row = { dailyCreditsUsed: 50, dailyDate: today };
+    expect(dailyRemaining(row, "plus", today)).toBe(0);
+    expect(dailyRemaining(row, "pro", today)).toBe(100); // 150 - 50, not 150
+  });
+
+  it("downgrade Pro -> Plus past the new cap clamps to 0, never negative", () => {
+    // 60 used on pro, then the plan_changed webhook writes tier=plus. 50 - 60
+    // is -10; a negative remainder added to add-on credits would UNDERSTATE the
+    // balance header, and a `> 0` check elsewhere would read it as "has daily".
+    const row = { dailyCreditsUsed: 60, dailyDate: today };
+    expect(dailyRemaining(row, "plus", today)).toBe(0);
+    // The next debit therefore comes out of the non-expiring add-on pool, which
+    // is exactly what debit_credit does once the daily branch stops matching.
+  });
+
+  it("a downgrade does not leak into the next UTC day", () => {
+    const row = { dailyCreditsUsed: 60, dailyDate: today };
+    expect(dailyRemaining(row, "plus", "2026-07-23")).toBe(50);
   });
 });
 

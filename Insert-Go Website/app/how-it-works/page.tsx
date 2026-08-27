@@ -10,15 +10,33 @@ import { LinearCopy } from "@/components/icons/LinearCopy";
 import { Reveal } from "@/components/Reveal";
 import { AnimatedDemo } from "@/components/AnimatedDemo";
 import { PageHero, GlowBackdrop } from "@/components/PageHero";
+import { Breadcrumbs, DirectAnswer, JsonLd } from "@/components/SeoContent";
 import { DownloadButton, GhostButton } from "@/components/Buttons";
 import { HOTKEYS } from "@/lib/constants/hotkeys";
+import { pageGraph } from "@/lib/seo";
+
+const DESCRIPTION =
+  "How to use AI in any Windows app without copy-paste: press a global hotkey, pick a prompt, and the response inserts where you were typing — clipboard restored.";
 
 export const metadata: Metadata = {
-  title: "How It Works — AI in Any Windows App, No Copy-Paste",
-  description:
-    "How to use AI in any Windows app without copy-paste: press a global hotkey, pick a prompt, and the response inserts where you were typing — clipboard restored.",
+  // Kept under ~60 characters once the " — InsertGo.AI" template is appended;
+  // the previous title rendered at 65 and was truncated in results.
+  title: "How InsertGo Works — AI in Any Windows App",
+  description: DESCRIPTION,
   alternates: { canonical: "/how-it-works" },
+  openGraph: {
+    title: "How InsertGo Works — AI in Any Windows App",
+    description:
+      "The whole loop: global hotkey, prompt, review, insert at the cursor with the clipboard restored.",
+    url: "/how-it-works",
+    type: "article",
+  },
 };
+
+const breadcrumbs = [
+  { name: "Home", href: "/" },
+  { name: "How it works", href: "/how-it-works" },
+];
 
 const steps = [
   {
@@ -91,18 +109,64 @@ const tech = [
 export default function HowItWorksPage() {
   return (
     <main className="relative overflow-hidden">
+      {/* The SoftwareApplication node names this page as the product's
+          `softwareHelp` resource, but the page itself published no structured
+          data at all — an entity the graph points at and that says nothing
+          back. `pageGraph` supplies the WebPage, the BreadcrumbList and a
+          HowTo built from the very steps rendered below, so the markup and
+          the visible walkthrough cannot drift. */}
+      <JsonLd
+        data={pageGraph({
+          path: "/how-it-works",
+          name: "How InsertGo inserts AI text into any Windows app",
+          description: DESCRIPTION,
+          breadcrumbs,
+          howTo: {
+            name: "How to insert AI-generated text into any Windows app",
+            description:
+              "Press a global hotkey, run a prompt, review the response, and insert it at the cursor in the app you were already using.",
+            steps: steps.map((s) => ({ name: s.title, text: s.desc })),
+          },
+        })}
+      />
       <GlowBackdrop />
+      <Breadcrumbs items={breadcrumbs} />
 
       <PageHero
         kicker="How it works"
-        title="Four seconds, start to inserted"
+        // Was "Four seconds, start to inserted" — a quantified speed claim on
+        // the page's primary heading with nothing behind it. docs/seo-aeo-strategy.md
+        // is explicit that answer engines trust falsifiable text over absolute
+        // marketing claims, so the h1 now describes the walkthrough instead.
+        title="From hotkey to inserted text, step by step"
         sub="InsertGo lives quietly in your system tray until you call it. Here's the whole loop, step by step."
       />
 
-      <section className="mx-auto flex max-w-[880px] flex-col px-6 py-[60px]">
-        {steps.map((s) => (
-          <Reveal key={s.num}>
-            <div className="grid grid-cols-[64px_1fr] gap-x-6">
+      <section className="mx-auto max-w-[900px] px-6 pt-2 pb-6">
+        <Reveal>
+          {/* Deliberately NOT "how do you insert AI text into a Windows app" —
+              /features/auto-text-insert owns that query. This one asks about
+              the mechanism, which is what this page is the authority on. */}
+          <DirectAnswer title="What happens between pressing the hotkey and the text appearing?">
+            InsertGo captures which window had focus, opens a floating palette
+            above it, sends your prompt to the managed relay, and streams the
+            response back for review. On accept it restores that window,
+            verifies it is foreground, pastes at the cursor, then puts your
+            previous clipboard value back.
+          </DirectAnswer>
+        </Reveal>
+      </section>
+
+      {/* An ordered list, not a stack of divs: the HowTo schema above numbers
+          these steps and anchors each one at #step-N, which only means
+          something if the document agrees. */}
+      <ol className="mx-auto flex max-w-[880px] list-none flex-col px-6 py-[60px]">
+        {steps.map((s, i) => (
+          // `Reveal` renders a div, so it goes INSIDE the li — an <ol> whose
+          // children are divs is not an ordered list to a parser, which is the
+          // only reason this markup changed at all.
+          <li key={s.num} id={`step-${i + 1}`} className="scroll-mt-28">
+            <Reveal className="grid grid-cols-[64px_1fr] gap-x-6">
               <div className="flex flex-col items-center">
                 <span
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-ink"
@@ -130,10 +194,10 @@ export default function HowItWorksPage() {
                   <AnimatedDemo stepNum={s.num} />
                 </div>
               </div>
-            </div>
-          </Reveal>
+            </Reveal>
+          </li>
         ))}
-      </section>
+      </ol>
 
       <section className="section-tint px-6 pt-[60px] pb-[90px]">
         <div className="mx-auto max-w-[1000px]">

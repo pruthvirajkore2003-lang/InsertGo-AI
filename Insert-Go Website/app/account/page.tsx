@@ -8,9 +8,15 @@ import { currentConsent, needsConsentGate } from "@/lib/consent";
 import { inrPriceForItemKey } from "@/lib/pricing";
 import { PurchaseConversion } from "@/components/analytics/PurchaseConversion";
 import { SignOutButton } from "./SignOutButton";
+import { CancelSubscription } from "./CancelSubscription";
 
 export const metadata: Metadata = {
   title: "Account",
+  // robots.txt already disallows /account, but Disallow only stops the crawl —
+  // it does not stop indexing. A URL Google cannot fetch but has seen linked
+  // still gets listed, titleless, forever. `noindex` is the directive that
+  // actually keeps a signed-in surface out of the index.
+  robots: { index: false, follow: false },
 };
 
 export const dynamic = "force-dynamic";
@@ -61,10 +67,28 @@ export default async function AccountPage({
     dailyCreditsMax?: number;
     addOnCredits?: number;
   };
-  const tier = TIER_LABELS[user.tier ?? "free"] ?? "Free";
+  const tierKey = user.tier === "plus" || user.tier === "pro" ? user.tier : "free";
+  const tier = TIER_LABELS[tierKey];
   const daily = user.dailyCreditsRemaining ?? 0;
   const dailyMax = user.dailyCreditsMax ?? 5;
   const addOn = user.addOnCredits ?? 0;
+
+  // Active-perk breakdown for the VIP member card — mirrors the marketed
+  // feature lists in lib/pricing.ts (source of truth for what each plan
+  // actually buys).
+  const TIER_PERKS: Record<"plus" | "pro", string[]> = {
+    plus: [
+      "50 credits every day",
+      "Interaction history",
+      "Inline prompt optimization",
+    ],
+    pro: [
+      "150 credits every day",
+      "High-volume capacity",
+      "Priority support",
+      "Interaction history",
+    ],
+  };
 
   // The conversion report for a checkout that just completed. The price is
   // resolved from the catalogue HERE, on the server — the URL only names the
@@ -73,6 +97,42 @@ export default async function AccountPage({
   // webhook's job and happened before the browser got back.
   const { tx, item } = await searchParams;
   const conversionValue = item ? inrPriceForItemKey(item) : null;
+
+  // Cancellation state. Two facts, both written by the billing side: whether
+  // a live Dodo subscription exists to cancel, and whether the user already
+  // cancelled and is running out the period they paid for. Fetched here rather
+  // than read off the session because `customSession` does not carry them and
+  // a stale session must not hide the Cancel button — an ARL cancellation path
+  // that intermittently disappears is worse than none.
+  let subscription = {
+    hasSubscription: false,
+    cancelAtPeriodEnd: false,
+    /** The lookup failed, so "no subscription" is a guess, not a fact. */
+    unknown: false,
+  };
+  try {
+    const { rows } = await pool.query<{
+      dodoSubscriptionId: string | null;
+      cancelAtPeriodEnd: boolean;
+    }>(
+      'select "dodoSubscriptionId", "cancelAtPeriodEnd" from "user" where "id" = $1',
+      [user.id],
+    );
+    subscription = {
+      hasSubscription: Boolean(rows[0]?.dodoSubscriptionId),
+      cancelAtPeriodEnd: Boolean(rows[0]?.cancelAtPeriodEnd),
+      unknown: false,
+    };
+  } catch {
+    // Pre-migration database (columns absent) or a blip. Do NOT let that read
+    // as "no subscription": this user is on a paid tier, so something is
+    // billing them, and hiding the Cancel button over a transient query is the
+    // disappearing cancellation path the comment above rules out. Render it
+    // and let POST /api/billing/cancel — which re-reads the row — be the
+    // authority; it already answers 409 in plain words when there is genuinely
+    // nothing to cancel.
+    subscription = { ...subscription, unknown: true };
+  }
 
   // Pack purchases live in "creditLedger" as negative amounts (webhook
   // grants); per-generation debits (+1 rows) are noise here, so filter.
@@ -123,69 +183,224 @@ export default async function AccountPage({
                 {user.email}
               </dd>
             </div>
-            <div className="glass-chip rounded-2xl px-4 py-3">
-              <div className="flex items-center justify-between gap-4">
-                <dt className="text-sm font-medium text-muted">Plan</dt>
-                <dd className="text-[15px] font-medium text-ink">{tier}</dd>
+            {tierKey === "free" ? (
+              <div className="glass-chip rounded-2xl px-4 py-3">
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-sm font-medium text-muted">Plan</dt>
+                  <dd className="text-[15px] font-medium text-ink">{tier}</dd>
+                </div>
+                {/* Cancelling has to be reachable from the surface that shows the
+                    plan, not only from the footer — the same "as easy as" test
+                    the privacy link below is here for. */}
+                <p className="mt-1.5 mb-0 text-xs text-muted">
+                  Paid plans renew monthly and can be cancelled any time, right
+                  here.{" "}
+                  <Link
+                    href="/cancel"
+                    className="font-medium text-brand no-underline hover:underline"
+                  >
+                    Cancellation &amp; refund policy
+                  </Link>
+                </p>
+                {/* A free-tier row that still carries a live subscription id
+                    means a payment failed and Dodo is retrying it
+                    (subscription.on_hold): the features are suspended but the
+                    card is not. That is the moment a customer most wants to
+                    stop the retries, so the control renders here too.
+                    `unknown` is deliberately NOT included — an ordinary free
+                    user has nothing to cancel, and a query blip must not offer
+                    everyone a button that can only 409. */}
+                {(subscription.hasSubscription ||
+                  subscription.cancelAtPeriodEnd) && (
+                  <div className="mt-3">
+                    <CancelSubscription
+                      tier={tier}
+                      cancelAtPeriodEnd={subscription.cancelAtPeriodEnd}
+                      suspended
+                    />
+                  </div>
+                )}
               </div>
-              {/* Cancelling has to be reachable from the surface that shows the
-                  plan, not only from the footer — the same "as easy as" test
-                  the privacy link below is here for. */}
-              <p className="mt-1.5 mb-0 text-xs text-muted">
-                {tier === "Free"
-                  ? "Paid plans renew monthly and can be cancelled any time. "
-                  : `Renews monthly. Cancel any time and keep ${tier} until the period you have paid for ends. `}
-                <Link
-                  href="/cancel"
-                  className="font-medium text-brand no-underline hover:underline"
-                >
-                  Cancellation &amp; refund policy
-                </Link>
-              </p>
-            </div>
-            <div className="glass-chip rounded-2xl px-4 py-3">
-              <div className="flex items-center justify-between gap-4">
-                <dt className="text-sm font-medium text-muted">
-                  Daily credits
-                </dt>
-                <dd className="text-[15px] text-ink">
-                  {daily} / {dailyMax}
-                </dd>
-              </div>
-              {/* A bare div is invisible to assistive tech — the meter has to
-                  announce its own value, not rely on the "3 / 5" beside it. */}
+            ) : (
+              /* Paid tiers: the plan row becomes the VIP member card — tier-
+                 branded gradient border, credit visualizers and the active
+                 perk breakdown in one elevated surface. */
               <div
-                role="progressbar"
-                aria-valuenow={daily}
-                aria-valuemin={0}
-                aria-valuemax={dailyMax}
-                aria-label="Daily credits remaining"
-                className="mt-2 h-1.5 overflow-hidden rounded-full bg-line"
+                className={`vip-card vip-card--${tierKey} px-5 py-5`}
+                data-tier={tierKey}
               >
-                <div
-                  className={`meter-fill h-full rounded-full ${
-                    daily === 0 ? "bg-danger" : "bg-brand"
-                  }`}
-                  style={{
-                    width: `${dailyMax > 0 ? (daily / dailyMax) * 100 : 0}%`,
-                  }}
-                />
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-sm font-medium text-muted">Plan</dt>
+                  <span
+                    className={`tier-badge tier-badge--${tierKey}`}
+                    aria-label={`${tier} plan`}
+                  >
+                    {tier.toUpperCase()}
+                  </span>
+                </div>
+                <dd className="m-0 mt-1 font-serif text-[24px] font-semibold tracking-[-0.01em] text-ink">
+                  {tier} member
+                </dd>
+
+                {/* Credit visualizers — the same meter language as the Free
+                    rows below, elevated into the card. */}
+                <div className="mt-4 flex flex-col gap-3">
+                  <div>
+                    <div className="flex items-center justify-between gap-4 text-sm">
+                      <span className="font-medium text-muted">
+                        Daily credits
+                      </span>
+                      <span className="text-ink">
+                        {daily} / {dailyMax}
+                      </span>
+                    </div>
+                    <div
+                      role="progressbar"
+                      aria-valuenow={daily}
+                      aria-valuemin={0}
+                      aria-valuemax={dailyMax}
+                      aria-label="Daily credits remaining"
+                      className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.08]"
+                    >
+                      <div
+                        className={`meter-fill h-full rounded-full ${
+                          daily === 0 ? "bg-danger" : "bg-brand"
+                        }`}
+                        style={{
+                          width: `${dailyMax > 0 ? (daily / dailyMax) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="mt-1.5 mb-0 text-xs text-muted">
+                      {daily === 0
+                        ? "You're out for today — buy a credit pack or wait for the reset at 00:00 UTC."
+                        : "Resets at 00:00 UTC."}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 text-sm">
+                    <span className="font-medium text-muted">
+                      Add-on credits
+                    </span>
+                    <span className="text-ink">
+                      {addOn}
+                      <span className="ml-1.5 text-xs text-muted">
+                        never expire
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Active tier perks — mirrors lib/pricing.ts feature lists. */}
+                <ul className="m-0 mt-4 flex list-none flex-col gap-2 border-t border-white/[0.06] p-0 pt-4">
+                  {TIER_PERKS[tierKey].map((perk) => (
+                    <li key={perk} className="vip-perk">
+                      <svg
+                        aria-hidden
+                        width="14"
+                        height="14"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                      >
+                        <circle
+                          cx="8"
+                          cy="8"
+                          r="7"
+                          fill={
+                            tierKey === "pro"
+                              ? "rgba(47, 107, 255, 0.2)"
+                              : "rgba(99, 102, 241, 0.2)"
+                          }
+                        />
+                        <path
+                          d="M5 8.2 7.1 10.3 11 6"
+                          stroke={
+                            tierKey === "pro" ? "#93c5fd" : "#a5b4fc"
+                          }
+                          strokeWidth="1.6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      {perk}
+                    </li>
+                  ))}
+                </ul>
+
+                <p className="mt-4 mb-0 text-xs text-muted">
+                  {subscription.cancelAtPeriodEnd
+                    ? `Cancelled — no further charges. ${tier} stays active until the period you have paid for ends. `
+                    : `Renews automatically each month until you cancel. Cancel below and keep ${tier} until the period you have paid for ends. `}
+                  <Link
+                    href="/cancel"
+                    className="font-medium text-brand no-underline hover:underline"
+                  >
+                    Cancellation &amp; refund policy
+                  </Link>
+                </p>
+                {/* On the plan card itself, not buried under a "Manage billing"
+                    detour: the ARL/ROSCA test is steps-to-cancel measured from
+                    where the user actually is. */}
+                {(subscription.hasSubscription ||
+                  subscription.cancelAtPeriodEnd ||
+                  subscription.unknown) && (
+                  <div className="mt-3">
+                    <CancelSubscription
+                      tier={tier}
+                      cancelAtPeriodEnd={subscription.cancelAtPeriodEnd}
+                    />
+                  </div>
+                )}
               </div>
-              <p className="mt-1.5 mb-0 text-xs text-muted">
-                {daily === 0
-                  ? "You're out for today — buy a credit pack or wait for the reset at 00:00 UTC."
-                  : "Resets at 00:00 UTC."}
-              </p>
-            </div>
-            <div className="glass-chip flex items-center justify-between gap-4 rounded-2xl px-4 py-3">
-              <dt className="text-sm font-medium text-muted">
-                Add-on credits
-              </dt>
-              <dd className="text-[15px] text-ink">
-                {addOn}
-                <span className="ml-1.5 text-xs text-muted">never expire</span>
-              </dd>
-            </div>
+            )}
+            {tierKey === "free" && (
+              <>
+                <div className="glass-chip rounded-2xl px-4 py-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-sm font-medium text-muted">
+                      Daily credits
+                    </dt>
+                    <dd className="text-[15px] text-ink">
+                      {daily} / {dailyMax}
+                    </dd>
+                  </div>
+                  {/* A bare div is invisible to assistive tech — the meter has to
+                      announce its own value, not rely on the "3 / 5" beside it. */}
+                  <div
+                    role="progressbar"
+                    aria-valuenow={daily}
+                    aria-valuemin={0}
+                    aria-valuemax={dailyMax}
+                    aria-label="Daily credits remaining"
+                    className="mt-2 h-1.5 overflow-hidden rounded-full bg-line"
+                  >
+                    <div
+                      className={`meter-fill h-full rounded-full ${
+                        daily === 0 ? "bg-danger" : "bg-brand"
+                      }`}
+                      style={{
+                        width: `${dailyMax > 0 ? (daily / dailyMax) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="mt-1.5 mb-0 text-xs text-muted">
+                    {daily === 0
+                      ? "You're out for today — buy a credit pack or wait for the reset at 00:00 UTC."
+                      : "Resets at 00:00 UTC."}
+                  </p>
+                </div>
+                <div className="glass-chip flex items-center justify-between gap-4 rounded-2xl px-4 py-3">
+                  <dt className="text-sm font-medium text-muted">
+                    Add-on credits
+                  </dt>
+                  <dd className="text-[15px] text-ink">
+                    {addOn}
+                    <span className="ml-1.5 text-xs text-muted">
+                      never expire
+                    </span>
+                  </dd>
+                </div>
+              </>
+            )}
           </dl>
 
           {purchases.length > 0 && (

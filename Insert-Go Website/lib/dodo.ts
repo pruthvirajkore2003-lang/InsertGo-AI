@@ -82,11 +82,31 @@ export function dodoCheckoutConfigured(): boolean {
   return Boolean(process.env.DODO_API_KEY);
 }
 
+/**
+ * ISO-3166 alpha-2, or null. Guards the one field on this payload that a
+ * caller could turn into an arbitrage lever: Dodo serves localized pricing per
+ * billing country, so a country picked by the shopper would be a price picked
+ * by the shopper. The route only ever passes the CDN's geolocation header, and
+ * this narrows whatever arrives to two letters before it reaches the gateway.
+ */
+function normalizeCountry(value: unknown): string | null {
+  const c = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return /^[A-Z]{2}$/.test(c) ? c : null;
+}
+
 export async function createCheckoutSession(input: {
   userId: string;
   email: string;
   name: string;
   item: CheckoutItem;
+  /**
+   * Geolocated billing country (`"IN"`), from the edge header only — NEVER
+   * from a request body or the display-currency cookie. Sending it makes Dodo
+   * open its localized checkout (₹ for India) deterministically instead of
+   * re-guessing from the IP the browser happens to arrive on. Omitted when the
+   * header didn't resolve, in which case Dodo localizes on its own.
+   */
+  country?: string | null;
 }): Promise<{ url: string }> {
   const siteUrl =
     process.env.BETTER_AUTH_URL ??
@@ -119,22 +139,38 @@ export async function createCheckoutSession(input: {
     `&tx=${encodeURIComponent(metadata.transactionId)}` +
     `&item=${encodeURIComponent(itemKey)}`;
 
-  const res = await fetch(`${dodoApiBase()}/checkouts`, {
-    method: "POST",
-    // A hung gateway socket otherwise pins the whole serverless invocation
-    // until the platform kills it; fail fast so the route can answer 502.
-    signal: AbortSignal.timeout(10_000),
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.DODO_API_KEY}`,
-    },
-    body: JSON.stringify({
-      product_cart: [{ product_id: productId, quantity: 1 }],
-      customer: { email: input.email, name: input.name },
-      return_url: returnUrl,
-      metadata,
-    }),
-  });
+  const country = normalizeCountry(input.country);
+
+  const post = (withCountry: boolean) =>
+    fetch(`${dodoApiBase()}/checkouts`, {
+      method: "POST",
+      // A hung gateway socket otherwise pins the whole serverless invocation
+      // until the platform kills it; fail fast so the route can answer 502.
+      signal: AbortSignal.timeout(10_000),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.DODO_API_KEY}`,
+      },
+      body: JSON.stringify({
+        product_cart: [{ product_id: productId, quantity: 1 }],
+        customer: { email: input.email, name: input.name },
+        ...(withCountry ? { billing_address: { country } } : {}),
+        return_url: returnUrl,
+        metadata,
+      }),
+    });
+
+  let res = await post(Boolean(country));
+  // The country hint is an optimisation, not a requirement: if the gateway
+  // rejects the address shape, retry the plain payload rather than turning a
+  // localisation nicety into a failed purchase. Dodo still localises from the
+  // shopper's own IP on its hosted page.
+  if (!res.ok && country) {
+    console.warn(
+      `[billing] Dodo rejected billing_address (${res.status}); retrying without it`,
+    );
+    res = await post(false);
+  }
 
   const data = (await res.json().catch(() => null)) as {
     checkout_url?: string;
@@ -145,6 +181,44 @@ export async function createCheckoutSession(input: {
     throw new Error("checkout-create-failed");
   }
   return { url: data.checkout_url };
+}
+
+/**
+ * Stop a subscription renewing, keeping the period the customer already paid
+ * for. This is the API half of "click to cancel" (Cal. Bus. & Prof. Code
+ * §17602(c), FTC ROSCA): the cancellation must complete online, immediately,
+ * in the same medium the sign-up happened, with no retention gauntlet.
+ *
+ * `cancel_at_next_billing_date` — NOT `status: "cancelled"` — is load-bearing.
+ * An immediate termination would take away paid-for time, which is both worse
+ * for the customer and a contradiction of Terms §6/§7; and the webhook maps
+ * `subscription.cancelled` straight to the free tier, so an immediate cancel
+ * would strip entitlement the moment the button is pressed. With this field,
+ * Dodo emits that event when the period actually ends, and the existing
+ * downgrade path is correct without a special case.
+ *
+ * Throws on any non-2xx. Callers must NOT record a local cancellation unless
+ * this resolves: a UI that says "cancelled" over a gateway that kept billing
+ * is the precise failure ROSCA penalises.
+ */
+export async function cancelSubscription(subscriptionId: string): Promise<void> {
+  const res = await fetch(
+    `${dodoApiBase()}/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    {
+      method: "PATCH",
+      signal: AbortSignal.timeout(10_000),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.DODO_API_KEY}`,
+      },
+      body: JSON.stringify({ cancel_at_next_billing_date: true }),
+    },
+  );
+  if (!res.ok) {
+    // Status only — the gateway body can echo customer details.
+    console.error(`[billing] Dodo cancel failed (${res.status})`);
+    throw new Error("cancel-failed");
+  }
 }
 
 // ── Webhook verification (Standard Webhooks) ───────────────────────────────
@@ -229,6 +303,9 @@ export type DodoWebhookPayload = {
     /** Subscription events carry the CURRENT product; payment events carry the
      *  cart. Either one is the live plan, unlike `metadata.planTier`. */
     product_id?: string | null;
+    /** Dodo's id for the subscription. Stored on activation so the account
+     *  page's Cancel button has something to cancel. */
+    subscription_id?: string | null;
     product_cart?: Array<{ product_id?: string | null } | null> | null;
   } | null;
 };
@@ -290,6 +367,54 @@ export function tierForSubscriptionEvent(
     default:
       return null;
   }
+}
+
+/**
+ * The subscription id an activation event names, or null.
+ *
+ * Only read for events that mean "this subscription is live now"; a
+ * cancellation must not (re)write the id, or a cancelled subscription stays
+ * pointed at by the Cancel button forever. Non-string and empty values are
+ * rejected so an absent field can never be stored as `""` — which would look
+ * like a subscription to `cancelSubscription` and 404 at the gateway.
+ */
+export function subscriptionIdForEvent(
+  eventType: string,
+  payload: DodoWebhookPayload,
+): string | null {
+  if (
+    eventType !== "subscription.active" &&
+    eventType !== "subscription.renewed" &&
+    eventType !== "subscription.plan_changed"
+  ) {
+    return null;
+  }
+  const id = payload.data?.subscription_id;
+  return typeof id === "string" && id ? id : null;
+}
+
+/**
+ * Whether an event means the SUBSCRIPTION ITSELF is gone, so the stored id
+ * should be dropped.
+ *
+ * Deliberately not "the tier went to free". `subscription.on_hold` also
+ * demotes — Terms §6 lets us suspend paid features while a failed payment is
+ * retried — but the subscription is still alive at the gateway and still
+ * retrying the customer's card. Dropping the id there would leave that
+ * customer demoted AND unable to stop the retries: the account page has no
+ * button to render and `/api/billing/cancel` 409s with nothing to call. A
+ * cancellation path that disappears exactly when the customer most wants it is
+ * the obstructed cancellation the ARL and ROSCA prohibit.
+ *
+ * `subscription.failed` is a subscription that never activated, so there is
+ * nothing live to keep a handle on.
+ */
+export function clearsSubscriptionId(eventType: string): boolean {
+  return (
+    eventType === "subscription.cancelled" ||
+    eventType === "subscription.expired" ||
+    eventType === "subscription.failed"
+  );
 }
 
 /**

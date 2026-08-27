@@ -3,6 +3,7 @@
 
 pub mod context;
 pub mod device;
+pub mod legal;
 pub mod logs;
 // `ollama` (local-model auto-discovery) was deleted 2026-08-08: BYOK and local
 // models are a decided non-feature (R-15). Nothing in the UI ever routed to it.

@@ -40,6 +40,37 @@
  * index's plan limit — add a scheduled `delete({ filter: "exp < <now>" })`
  * sweep if storage, not correctness, starts to bite.
  *
+ * ── Economics: this cache is not free, and may not pay for itself ──────────
+ *
+ * EVERY lookup spends an embedding call, hit or miss. `embedNormalized` embeds
+ * the WHOLE prompt, and for a skill run that prompt is one skill template
+ * (~4.9 KB average across `src/skills/*.md`) plus the user's selection — call it
+ * ~1,700 tokens at $0.15/1M, so ~$0.00026 a request. A flash-lite generation
+ * costs ~$0.00047. The cache therefore breaks even only above a ~55% hit rate;
+ * below that it is a net cost ADDED to every generation.
+ *
+ * A 55% hit rate is a strong assumption here. Namespaces are per (model, system,
+ * user), the bar is cosine >= 0.95, and the workload is people drafting prose —
+ * near-identical repeats within a 24h TTL are plausible for a few stock actions
+ * and unlikely in general.
+ *
+ * Nobody has measured it, so nobody should guess: `"generationLog"."cacheHit"`
+ * (lib/generationLog.ts) now records hit and miss per generation, which makes
+ * the real rate a query rather than an argument. Until that query says
+ * otherwise, running with `SEMCACHE_ENABLED=0` is the cheaper default.
+ *
+ * The obvious optimisation — embed only the user's selection and move the
+ * template into the namespace, cutting embed cost ~88% and the break-even rate
+ * to ~6% — is NOT safely doable server-side today. `composeSkillPrompt`
+ * (Windows `src/services/skills.ts`) has two shapes: it substitutes the
+ * selection into a `{{content}}`-style marker ANYWHERE in the template, or
+ * appends a `<content>` block when the template has no marker. A server-side
+ * split on `<content>` is therefore wrong for marker-style and custom
+ * (user-authored) templates, and getting it wrong silently mis-namespaces —
+ * which serves one skill's cached answer for another skill's request. Doing it
+ * properly needs the desktop to send a `skillId` it does not send today; that
+ * is a client release, not a server tweak.
+ *
  * Privacy (SPEC §10): prompts are never stored — only their embeddings, the
  * response text keyed by them, and an expiry stamp. Errors log one static line,
  * no bodies, no keys.

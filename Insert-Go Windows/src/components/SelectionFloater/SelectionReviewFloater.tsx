@@ -55,7 +55,7 @@ import { startWindowDrag } from "@/services/windowChrome";
 import { usePromptStore } from "@/store/promptStore";
 import { useHistoryStore } from "@/store/historyStore";
 import { useSettingsStore } from "@/store/settingsStore";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore, tierOf } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
 
 /** Window-height clamp for the floater — tighter than the palette's: the
@@ -78,6 +78,9 @@ export function SelectionReviewFloater() {
 
   const loadSettings = useSettingsStore((s) => s.load);
   const initAuth = useAuthStore((s) => s.init);
+  // Plan tier — mounted on the bare panel so floater cards pick up the
+  // subscriber's specular rim via the data-tier token routing.
+  const tier = tierOf(useAuthStore((s) => s.user));
   const enabledSkillIds = useSettingsStore((s) => s.settings.enabledSkillIds);
   const customSkills = useSettingsStore((s) => s.settings.customSkills);
   const targetLanguage = useSettingsStore(
@@ -304,7 +307,7 @@ export function SelectionReviewFloater() {
 
   return (
     <div className="ig-overlay">
-      <div className="ig-panel ig-panel--bare">
+      <div className="ig-panel ig-panel--bare" data-tier={tier}>
         {activeSkill ? (
           <SkillComponentsFloater
             onRun={runProvider}

@@ -15,7 +15,7 @@ import { pageGraph } from "@/lib/seo";
 export const metadata: Metadata = {
   title: "AI Text Auto-Insert for Windows Desktop Apps",
   description:
-    "Insert AI-generated text into Windows apps from one floating workflow. InsertGo restores focus, verifies the target, pastes at the cursor, and restores your clipboard.",
+    "Insert AI-generated text into Windows apps from one floating workflow. InsertGo restores focus, verifies the target, and pastes at your cursor.",
   alternates: { canonical: "/features/auto-text-insert" },
   openGraph: {
     title: "AI Text Auto-Insert for Windows Desktop Apps",

@@ -52,6 +52,12 @@ pub async fn insert_text(app: AppHandle, text: String) -> AppResult<()> {
 /// Returns `true` on a landed paste, `false` on the clipboard fallback.
 #[cfg(target_os = "windows")]
 pub(crate) fn insert_from(app: &AppHandle, label: &str, text: String) -> AppResult<bool> {
+    // Consent gate (CIPA §§631/632). Placed in the shared core rather than in
+    // each command: every clipboard write into another application routes
+    // through here, so one check covers the palette and the selection review
+    // floater and cannot be bypassed by adding a fourth caller.
+    crate::domain::settings::require_consent(app)?;
+
     use crate::platform::text_provider::{
         fallback::paste_text, PasteFailure, TargetApp, WinFallbackOps,
     };
@@ -117,6 +123,12 @@ fn acquire_verified_focus(app: &AppHandle, hwnd: isize) -> Result<(), String> {
 /// `insert_text`'s v1 behavior. Never pastes, so always `false`.
 #[cfg(not(target_os = "windows"))]
 pub(crate) fn insert_from(app: &AppHandle, _label: &str, text: String) -> AppResult<bool> {
+    // Consent gate (CIPA §§631/632). Placed in the shared core rather than in
+    // each command: every clipboard write into another application routes
+    // through here, so one check covers the palette and the selection review
+    // floater and cannot be bypassed by adding a fourth caller.
+    crate::domain::settings::require_consent(app)?;
+
     app.clipboard()
         .write_text(text)
         .map_err(|e| AppError::Os(format!("clipboard write: {e}")))?;

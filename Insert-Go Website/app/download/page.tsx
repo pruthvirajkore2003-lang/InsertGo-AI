@@ -9,16 +9,32 @@ import { LinearKey } from "@/components/icons/LinearKey";
 import { LinearKeyboard } from "@/components/icons/LinearKeyboard";
 import { Reveal, FadeUp } from "@/components/Reveal";
 import { GlowBackdrop } from "@/components/PageHero";
+import { Breadcrumbs, JsonLd } from "@/components/SeoContent";
 import { TrackClick } from "@/components/analytics/TrackClick";
 import { AnalyticsEvent } from "@/lib/analytics";
 import { HOTKEYS } from "@/lib/constants/hotkeys";
+import { pageGraph } from "@/lib/seo";
+
+const DESCRIPTION =
+  "Download InsertGo for Windows 10 & 11. One small per-user installer, no admin rights. Free forever with 5 AI credits a day — no API key, no credit card.";
 
 export const metadata: Metadata = {
   title: "Download InsertGo for Windows",
-  description:
-    "Download InsertGo for Windows 10 & 11. One small installer, under a minute to set up. Free forever with 5 AI credits a day — no API key, no credit card.",
+  description: DESCRIPTION,
   alternates: { canonical: "/download" },
+  openGraph: {
+    title: "Download InsertGo for Windows",
+    description:
+      "Windows 10 and 11. Per-user install, no admin rights, 5 free AI credits a day.",
+    url: "/download",
+    type: "article",
+  },
 };
+
+const breadcrumbs = [
+  { name: "Home", href: "/" },
+  { name: "Download", href: "/download" },
+];
 
 const install = [
   {
@@ -142,7 +158,18 @@ async function DownloadCta() {
 export default function DownloadPage() {
   return (
     <main className="relative overflow-hidden">
+      {/* `downloadUrl` on the SoftwareApplication entity names this page; until
+          now it named a page with no structured data of its own. */}
+      <JsonLd
+        data={pageGraph({
+          path: "/download",
+          name: "Download InsertGo.AI for Windows",
+          description: DESCRIPTION,
+          breadcrumbs,
+        })}
+      />
       <GlowBackdrop />
+      <Breadcrumbs items={breadcrumbs} />
 
       <section className="relative px-6 pt-40 pb-[60px] text-center">
         <FadeUp>

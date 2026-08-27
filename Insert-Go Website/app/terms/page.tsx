@@ -30,17 +30,33 @@ export const metadata: Metadata = {
  *  were separate constants the three drifted, and a consent row named a version
  *  no page could still render. */
 const VERSION = NOTICE_VERSION;
-const EFFECTIVE = "8 August 2026";
+const EFFECTIVE = "19 August 2026";
 
-/** Appointed under the Consumer Protection (E-Commerce) Rules, 2020 and the
- *  IT (Intermediary Guidelines) Rules, 2021. The mailbox is live; the name is
- *  a placeholder — fill it in HERE and in the app's legal/index.ts mirror. */
+/** Appointed under the Consumer Protection (E-Commerce) Rules, 2020 rule 4(5)
+ *  and the IT (Intermediary Guidelines) Rules, 2021 rule 3(2)(a), and the same
+ *  person is the DPDP Act 2023 §13(3) contact for data-principal grievances.
+ *  Rule 3(2)(a) expects a NAMED individual, not an office — a placeholder here
+ *  is a compliance gap, not a formatting one, so this stays filled in.
+ *
+ *  Mirrored verbatim in app/privacy/page.tsx and the app's legal/index.ts.
+ *  The postal address is disclosed on request from the mailbox until a
+ *  registered office address exists to publish. */
 const GRIEVANCE_OFFICER = {
-  name: "[Name to be appointed]",
+  name: "Pruthviraj Kore",
+  designation: "Grievance Officer & Data Protection Officer",
   email: "grievance@insertgo.ai",
 };
 
-const sections: Array<{ heading: string; body: string }> = [
+/** `emphasis` boxes a section out of the uniform run of prose. Used for the
+ *  arbitration clause only: "clear and conspicuous" is an enforceability
+ *  condition for that section (Berman v. Freedom Financial Network, 30 F.4th
+ *  849), not styling — a waiver that reads as ordinary boilerplate is the one
+ *  courts decline to enforce. */
+const sections: Array<{
+  heading: string;
+  body: string;
+  emphasis?: boolean;
+}> = [
   {
     heading: "1. Who we are and what these terms cover",
     body:
@@ -55,7 +71,11 @@ const sections: Array<{ heading: string; body: string }> = [
       `effect on ${EFFECTIVE} and replaces every ` +
       "earlier version. Our Privacy Policy is part of this agreement and is " +
       "incorporated by reference; the current text of both is always " +
-      "published at insertgo.ai/terms and insertgo.ai/privacy.",
+      "published at insertgo.ai/terms and insertgo.ai/privacy. PLEASE READ " +
+      "SECTION 23 CAREFULLY: IF YOU LIVE IN THE UNITED STATES IT REQUIRES " +
+      "YOU AND US TO RESOLVE DISPUTES BY BINDING INDIVIDUAL ARBITRATION, AND " +
+      "IT WAIVES YOUR RIGHT TO A JURY TRIAL AND TO PARTICIPATE IN A CLASS " +
+      "ACTION. You may opt out of that section within 30 days, as it explains.",
   },
   {
     heading: "2. What InsertGo does",
@@ -124,8 +144,17 @@ const sections: Array<{ heading: string; body: string }> = [
       "application exclude tax: the tax that applies where you are — Indian " +
       "GST, EU or UK VAT, US sales tax and the like — is calculated and added " +
       "at that checkout before you confirm, and the total shown there is what " +
-      "you pay. Subscriptions renew automatically each month at the " +
-      "then-current price until you cancel. Cancellation takes effect at the " +
+      "you pay. AUTOMATIC RENEWAL: when you subscribe you authorise a " +
+      "recurring charge, and subscriptions renew automatically each month at " +
+      "the then-current price, charged to the payment method you gave at " +
+      "checkout, UNTIL YOU CANCEL. The amount, the monthly billing period " +
+      "and this renewal term are shown next to the button before you buy, " +
+      "you confirm them at Dodo's checkout, and we email you a receipt " +
+      "recording them that you can keep. You may cancel at any time, online " +
+      "and by yourself, from Account → Cancel subscription at " +
+      "insertgo.ai/account — one click and one confirmation, which is fewer " +
+      "steps than signing up took; no email, phone call or support ticket is " +
+      "required, and none will be asked of you. Cancellation takes effect at the " +
       "end of the period you have already paid for: you keep paid features " +
       "until then, after which the account returns to the free plan. Credit " +
       "packs are one-off charges. If a payment fails, is reversed or is " +
@@ -137,9 +166,11 @@ const sections: Array<{ heading: string; body: string }> = [
       "InsertGo sells digital goods that are delivered instantly: a " +
       "subscription is active, and pack credits are on your account, the " +
       "moment payment succeeds. There is nothing to ship, return or exchange. " +
-      "Cancellation: you may cancel a subscription at any time, from your " +
-      "account or by writing to support@insertgo.ai, at no cancellation fee; " +
-      "it stops the next renewal and takes effect at the end of the period " +
+      "Cancellation: you may cancel a subscription at any time and without " +
+      "giving a reason, yourself and online, from Account → Cancel " +
+      "subscription at insertgo.ai/account, at no cancellation fee; writing " +
+      "to support@insertgo.ai also works but is never required. It stops the " +
+      "next renewal and takes effect at the end of the period " +
       "you have already paid for. Refunds: if you have not consumed any " +
       "credits under a charge, write to us within seven days of that charge " +
       "and we will refund it in full. Once credits have been used, the " +
@@ -157,7 +188,7 @@ const sections: Array<{ heading: string; body: string }> = [
       "may end once digital content has been supplied with your express " +
       "consent. Send refund and cancellation requests to " +
       "support@insertgo.ai; if you are not satisfied with the outcome, the " +
-      "grievance procedure in section 23 is open to you.",
+      "grievance procedure in section 24 is open to you.",
   },
   {
     heading: "8. Free plan and fair use",
@@ -191,21 +222,49 @@ const sections: Array<{ heading: string; body: string }> = [
       "Everything InsertGo writes back is generated by a language model. It " +
       "can be wrong, biased, out of date, offensive or unsuitable for your " +
       "purpose, and it may resemble output produced for other people. We do " +
-      "not verify it. You must read what has been inserted before you send, " +
-      "publish, submit or rely on it, and you must not treat it as a " +
-      "substitute for professional advice, legal, medical, financial or " +
-      "otherwise. Because InsertGo replaces the entire contents of the field " +
-      "it read, check the result before moving on; the undo hotkey restores " +
-      "the previous text.",
+      "not verify it, and no human reviews it before it reaches you. You are " +
+      "the only reviewer: you must read what has been inserted before you " +
+      "send, publish, submit or rely on it, and you alone are responsible " +
+      "for verifying it. InsertGo is a general-purpose writing aid. It is " +
+      "NOT designed, tested, licensed or authorised for medical, clinical or " +
+      "diagnostic use, for legal advice or the drafting of legal " +
+      "instruments, for financial, investment, tax or accounting advice, for " +
+      "insurance, lending or employment decisions, for regulatory or " +
+      "safety-critical filings, or for any life-critical, emergency or " +
+      "life-sustaining application; do not use it for those purposes, and do " +
+      "not treat its output as professional advice of any kind. Output that " +
+      "names or describes a real person may be inaccurate or defamatory, and " +
+      "publishing it is your act, not ours. Because InsertGo REPLACES THE " +
+      "ENTIRE CONTENTS of the field or selection it read — the active input " +
+      "buffer of another application, which we do not control — check the " +
+      "result before moving on; the undo hotkey restores the previous text " +
+      "in the same session, and section 18 sets out that we are not liable " +
+      "for text, drafts or work product lost or overwritten in third-party " +
+      "applications.",
   },
   {
-    heading: "11. Reading and writing text on your device",
+    heading: "11. Reading and writing text on your device, and your consent to it",
     body:
       "To do its job, InsertGo uses Windows accessibility interfaces to read " +
       "the focused field or current selection at the moment you invoke it, " +
       "and writes the result back the same way, falling back to the clipboard " +
       "— saving and restoring your existing clipboard contents — when direct " +
-      "insertion is not possible. It refuses password and credential fields, " +
+      "insertion is not possible. To know when you have made a selection it " +
+      "also registers a global hotkey and low-level Windows keyboard and " +
+      "mouse hooks; those hooks match only Shift, the eight navigation keys " +
+      "and Escape, and mouse press and release positions. They never inspect " +
+      "character keys, so nothing you type is captured, stored, transmitted " +
+      "or logged, and InsertGo takes no screenshots and records no audio. " +
+      "YOUR EXPRESS CONSENT COMES FIRST: the desktop application asks you to " +
+      "read these terms and the Privacy Policy and to tick a separate " +
+      "authorisation box before it installs any of those hooks, registers " +
+      "the hotkey, or reads or writes a single character, and until you do, " +
+      "none of them run. You can withdraw that authorisation at any time — " +
+      "turn the selection skill bar off in Settings, or uninstall the " +
+      "application, which removes its local data from that device — and your " +
+      "optional privacy choices are separate again, granular, and revocable " +
+      "at insertgo.ai/account/privacy. Withdrawing costs nothing and is not " +
+      "a breach of these terms. It refuses password and credential fields, " +
       "and it reads only from applications within the scope you allow in " +
       "Settings. What you point it at is your responsibility: do not invoke " +
       "it on text you are not permitted to disclose to an AI provider, " +
@@ -286,11 +345,16 @@ const sections: Array<{ heading: string; body: string }> = [
       "implied, including implied warranties of merchantability, fitness for " +
       "a particular purpose, accuracy, title and non-infringement. We do not " +
       "warrant that the Service will meet your requirements, that AI output " +
-      "will be accurate or fit for your purpose, that defects will be " +
-      "corrected, or that reading and insertion will succeed in every " +
-      "application. Some jurisdictions do not allow certain warranties to be " +
-      "excluded, so parts of this section may not apply to you, and nothing " +
-      "here affects rights that consumers cannot waive.",
+      "will be accurate, current, non-infringing, non-defamatory or fit for " +
+      "your purpose, that defects will be corrected, or that reading and " +
+      "insertion will succeed in every application or leave every " +
+      "third-party application's contents intact. We specifically disclaim " +
+      "any warranty that the Service is fit for medical, legal, financial, " +
+      "accounting, insurance, employment, regulatory, safety-critical or " +
+      "life-critical use; it is not offered for those purposes. Some " +
+      "jurisdictions do not allow certain warranties to be excluded, so " +
+      "parts of this section may not apply to you, and nothing here affects " +
+      "rights that consumers cannot waive.",
   },
   {
     heading: "18. Limitation of liability",
@@ -301,7 +365,12 @@ const sections: Array<{ heading: string; body: string }> = [
       "lost, corrupted or overwritten data or work product, arising out of or " +
       "relating to the Service, whether the claim is framed in contract, tort " +
       "including negligence, or otherwise, and even if we were told such loss " +
-      "was possible. Our total aggregate liability for all claims arising in " +
+      "was possible. Without limiting that, we are not liable for text, " +
+      "drafts, messages or work product altered, overwritten or lost inside " +
+      "any third-party application into which InsertGo inserted text, nor " +
+      "for any decision, publication, filing, transaction or reliance based " +
+      "on AI output — including any use of the Service for a purpose section " +
+      "10 says it is not designed for. Our total aggregate liability for all claims arising in " +
       "any twelve-month period is limited to the greater of what you actually " +
       "paid us for the Service in the twelve months before the event giving " +
       "rise to the claim, or fifty United States dollars. Nothing in these " +
@@ -349,41 +418,119 @@ const sections: Array<{ heading: string; body: string }> = [
       "part of it.",
   },
   {
-    heading: "22. Governing law and disputes",
+    heading: "22. Governing law and disputes (outside the United States)",
     body:
-      "These terms, and any dispute arising out of them or out of the " +
-      "Service, are governed by the laws of India without regard to " +
-      "conflict-of-law rules, and the competent courts in India have " +
-      "exclusive jurisdiction. If you are a consumer resident elsewhere, you " +
-      "keep the benefit of any mandatory protections of your local law, and " +
-      "any right that law gives you to bring proceedings in the courts of " +
-      "your country of residence. Before filing anything, please write to " +
-      "support@insertgo.ai: nearly everything is resolved in a single email.",
+      "Informal resolution first, wherever you live: write to " +
+      "support@insertgo.ai and give us 30 days. Nearly everything is " +
+      "resolved in a single email, and it costs you nothing. If you are " +
+      "resident in India or anywhere other than the United States, these " +
+      "terms and any dispute arising out of them or out of the Service are " +
+      "governed by the laws of India without regard to conflict-of-law " +
+      "rules, and the competent courts at Pune, Maharashtra, India have " +
+      "exclusive jurisdiction. If you are a consumer, you keep the benefit " +
+      "of every mandatory protection of your local law, including your " +
+      "statutory remedies under the Consumer Protection Act, 2019 and the " +
+      "Digital Personal Data Protection Act, 2023, your right to approach a " +
+      "District, State or National Consumer Disputes Redressal Commission, " +
+      "the National Consumer Helpline or the Data Protection Board of India, " +
+      "and any right your local law gives you to bring proceedings in the " +
+      "courts of your country of residence. Nothing in this section or in " +
+      "section 23 requires you to give up a statutory remedy that cannot " +
+      "lawfully be waived. If you are resident in the United States, section " +
+      "23 governs your dispute instead of this one.",
   },
   {
-    heading: "23. Grievance redressal (India)",
+    emphasis: true,
+    heading:
+      "23. United States residents: binding individual arbitration, class " +
+      "action waiver and jury trial waiver",
+    body:
+      "PLEASE READ THIS SECTION CAREFULLY — IT AFFECTS YOUR LEGAL RIGHTS, " +
+      "INCLUDING YOUR RIGHT TO A JURY TRIAL AND TO PARTICIPATE IN A CLASS " +
+      "ACTION. It applies only if you are resident in the United States or " +
+      "bring a claim in a United States court. (a) Agreement to arbitrate. " +
+      "You and InsertGo.AI agree that any dispute, claim or controversy " +
+      "arising out of or relating to these terms, the Service, our " +
+      "advertising, your subscription or any charge — whether based in " +
+      "contract, tort, statute, fraud, misrepresentation or any other legal " +
+      "theory, and whether arising before, during or after the end of this " +
+      "agreement — will be resolved by BINDING INDIVIDUAL ARBITRATION rather " +
+      "than in court, except as stated in (e) and (f). This agreement to " +
+      "arbitrate is governed by the Federal Arbitration Act, 9 U.S.C. § 1 et " +
+      "seq., which applies to and preempts any inconsistent state law. (b) " +
+      "How arbitration works. The arbitration is administered by the " +
+      "American Arbitration Association (AAA) under its Consumer Arbitration " +
+      "Rules, in effect when the claim is filed, as modified by this " +
+      "section; the rules and forms are at adr.org or 1-800-778-7879. One " +
+      "neutral arbitrator decides the case, may award any individual relief " +
+      "a court could award to you individually, and must issue a written " +
+      "decision explaining the award. The arbitration is held in the county " +
+      "of your residence, or by telephone, videoconference or on documents " +
+      "alone, at your choice. AAA's Consumer Arbitration Rules govern who " +
+      "pays the fees; where those rules would leave you paying more than you " +
+      "would to file the same claim in your local court, we pay the " +
+      "difference, and we will not seek our attorneys' fees from you unless " +
+      "the arbitrator finds your claim frivolous. (c) CLASS ACTION WAIVER. " +
+      "YOU AND WE AGREE THAT EACH MAY BRING CLAIMS AGAINST THE OTHER ONLY IN " +
+      "AN INDIVIDUAL CAPACITY, AND NOT AS A PLAINTIFF OR CLASS MEMBER IN ANY " +
+      "PURPORTED CLASS, COLLECTIVE, CONSOLIDATED, PRIVATE ATTORNEY GENERAL " +
+      "OR REPRESENTATIVE PROCEEDING. The arbitrator may not consolidate more " +
+      "than one person's claims or preside over any form of representative " +
+      "or class proceeding. If a court decides this waiver is unenforceable " +
+      "as to a particular claim or request for relief, that claim or request " +
+      "— and only that one — is severed from the arbitration and may proceed " +
+      "in court, with the rest staying in arbitration. (d) JURY TRIAL " +
+      "WAIVER. TO THE EXTENT ANY CLAIM PROCEEDS IN COURT RATHER THAN " +
+      "ARBITRATION, YOU AND WE EACH KNOWINGLY AND VOLUNTARILY WAIVE ANY " +
+      "RIGHT TO A TRIAL BY JURY. (e) 30-DAY RIGHT TO OPT OUT. You may reject " +
+      "this entire section by sending written notice within 30 days of the " +
+      "date you first accept these terms — or, if you already had an " +
+      "account, within 30 days of the date this version takes effect — to " +
+      `legal@insertgo.ai with the subject line "Arbitration Opt-Out", ` +
+      "stating your name and the email address on your account. Opting out " +
+      "costs you nothing, is not a breach, and changes nothing else about " +
+      "your account or these terms; if you opt out, section 22 governs your " +
+      "disputes instead. If you do not opt out within those 30 days, you " +
+      "agree to this section. (f) What is not covered. Either of us may " +
+      "bring an individual claim in a small-claims court with jurisdiction, " +
+      "and either of us may seek injunctive relief in court to stop " +
+      "infringement or misuse of intellectual property. Nothing here " +
+      "prevents you from reporting a matter to, or seeking relief from, a " +
+      "government agency, and nothing here waives a right that federal or " +
+      "state law says cannot be waived. (g) Survival and severability. This " +
+      "section survives the end of this agreement. If any part of it other " +
+      "than (c) is found unenforceable, that part is severed and the rest " +
+      "continues; if (c) is found unenforceable in its entirety, this whole " +
+      "section is void and section 22 applies. (h) Changes. If we materially " +
+      "change this section, the change applies only to claims arising after " +
+      "the change takes effect, and you get a fresh 30-day opt-out.",
+  },
+  {
+    heading: "24. Grievance redressal (India)",
     body:
       "As required by the Consumer Protection (E-Commerce) Rules, 2020 and " +
       "the Information Technology (Intermediary Guidelines and Digital Media " +
       "Ethics Code) Rules, 2021, we have appointed a Grievance Officer to " +
       `receive complaints about the Service, about a charge, refund or ` +
       `cancellation, about content, or about anything in these terms or the ` +
-      `Privacy Policy: ${GRIEVANCE_OFFICER.name}, Grievance Officer, ` +
-      `InsertGo.AI, reachable at ${GRIEVANCE_OFFICER.email}; our postal ` +
-      "address is available on request from that mailbox. Tell us your name, " +
+      `Privacy Policy: ${GRIEVANCE_OFFICER.name}, ` +
+      `${GRIEVANCE_OFFICER.designation}, InsertGo.AI, Pune, Maharashtra, ` +
+      `India, reachable at ${GRIEVANCE_OFFICER.email}; our full postal ` +
+      "address is provided on request from that mailbox. Tell us your name, " +
       "the email your account uses, what happened and what you would like " +
       "done. We acknowledge every complaint within forty-eight hours of " +
       "receiving it and aim to resolve it within one month, and in any event " +
       "within the period the applicable rules require. The same officer is " +
-      "the point of contact for questions and grievances about personal data " +
-      "under India's Digital Personal Data Protection Act, 2023. If you are " +
+      "the Data Protection Officer and the point of contact for questions " +
+      "and grievances about personal data under India's Digital Personal " +
+      "Data Protection Act, 2023, §13. If you are " +
       "not satisfied with the outcome, you may escalate to the Data " +
       "Protection Board of India, and nothing in this section limits your " +
       "right to approach a consumer forum, the National Consumer Helpline, " +
       "or any other authority directly.",
   },
   {
-    heading: "24. General",
+    heading: "25. General",
     body:
       "These terms, with the Privacy Policy and any plan or purchase terms " +
       "shown at checkout, are the entire agreement between us about the " +
@@ -432,11 +579,22 @@ export default function TermsPage() {
       <section className="mx-auto max-w-[760px] px-6 pt-6 pb-[110px]">
         <article className="glass-panel flex flex-col gap-7 p-[clamp(26px,4vw,44px)]">
           {sections.map((s) => (
-            <div key={s.heading}>
+            <div
+              key={s.heading}
+              className={
+                s.emphasis
+                  ? "rounded-2xl border-2 border-brand/40 bg-brand/5 p-5"
+                  : undefined
+              }
+            >
               <h2 className="mt-0 mb-2.5 font-serif text-[19px] font-semibold tracking-[-0.01em] text-ink">
                 {s.heading}
               </h2>
-              <p className="m-0 text-[15px] leading-[1.75] text-muted">
+              <p
+                className={`m-0 text-[15px] leading-[1.75] ${
+                  s.emphasis ? "text-ink-soft" : "text-muted"
+                }`}
+              >
                 {s.body}
               </p>
             </div>

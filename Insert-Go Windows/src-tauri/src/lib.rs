@@ -137,35 +137,33 @@ pub fn run() {
                     log::error!("deep link scheme registration failed: {e}");
                 }
             }
-            // Register the configured hotkey; fall back to defaults on first run.
             let settings =
                 domain::settings::load_settings(app.handle().clone()).unwrap_or_default();
-            if let Err(e) = platform::hotkey::register(app.handle(), &settings.hotkey) {
-                // Don't crash startup on a bad/occupied hotkey — log and continue.
-                log::error!("hotkey registration failed: {e}");
-                // ...but don't leave the palette with no chord at all either: a
-                // settings.json holding a half-typed or reserved chord would
-                // otherwise make the app tray-only until the user edits it.
-                let fallback = domain::settings::Settings::default().hotkey;
-                if fallback != settings.hotkey {
-                    match platform::hotkey::register(app.handle(), &fallback) {
-                        Ok(()) => log::warn!("falling back to default hotkey '{fallback}'"),
-                        Err(e) => log::error!("fallback hotkey registration failed: {e}"),
-                    }
-                }
+            // THE consent gate. Until the user has accepted THIS build's Terms
+            // & Privacy version in `LegalConsentModal`, no global hotkey is
+            // registered and no low-level keyboard/mouse hook is installed —
+            // the app launches to the modal and can intercept nothing. The
+            // modal calls `legal_consent_granted`, which arms both without a
+            // restart. Do not "simplify" this into an unconditional install
+            // with a runtime flag: an installed hook that decides later is
+            // still an interception, which is the thing CIPA §631 prices at
+            // $5,000 a violation.
+            if settings.consent_current() {
+                domain::legal::arm_interception(app.handle(), &settings.hotkey);
+            } else {
+                log::info!("legal consent pending — hotkey and selection hooks not armed");
             }
             // Tray icon: the only on-screen sign the app is running (the palette
             // is hidden + skipTaskbar). Log-and-continue like the hotkey.
             if let Err(e) = platform::tray::create_tray(app.handle()) {
                 log::error!("tray icon creation failed: {e}");
             }
-            // Selection skill bar: hidden non-activating window + gesture
-            // watcher. Both are log-and-continue like the hotkey above — a
+            // Selection skill bar: hidden non-activating window. Safe to create
+            // before consent — it is an empty hidden window until the watcher
+            // (armed above) has something to show it for. Log-and-continue: a
             // failure degrades to "no skill bar", never a crashed palette.
             if let Err(e) = platform::skillbar_window::create_skillbar(app.handle()) {
                 log::error!("skill bar window creation failed: {e}");
-            } else if let Err(e) = platform::selection_watch::install(app.handle()) {
-                log::error!("selection watch install failed: {e}");
             }
             // Selection review floater: the dedicated window a bar skill click
             // streams into (the main palette never opens for bar clicks).
@@ -183,6 +181,9 @@ pub fn run() {
             domain::prompts::delete_prompt,
             domain::settings::load_settings,
             domain::settings::save_settings,
+            domain::legal::legal_consent_granted,
+            domain::legal::legal_consent_state,
+            domain::legal::quit_app,
             domain::session_store::session_token_set,
             domain::session_store::session_token_get,
             domain::session_store::session_token_delete,

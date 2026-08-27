@@ -17,12 +17,12 @@ import { HOTKEY_WORKFLOW_STEPS, pageGraph } from "@/lib/seo";
 const PATH = "/use-cases/developers";
 
 export const metadata: Metadata = {
-  title: "AI Prompt Assistant for VS Code and Windows Terminal",
+  title: "AI Prompts for VS Code and Windows Terminal",
   description:
-    "Run saved AI prompts in VS Code, Windows Terminal, JetBrains IDEs, and the browser from one Windows hotkey. Form fields collect the diff or error; the result pastes at your caret.",
+    "Run saved AI prompts in VS Code, Windows Terminal, JetBrains IDEs, and the browser from one Windows hotkey. Form fields collect the diff or error.",
   alternates: { canonical: PATH },
   openGraph: {
-    title: "AI Prompt Assistant for VS Code and Windows Terminal",
+    title: "AI Prompts for VS Code and Windows Terminal",
     description:
       "One system-wide hotkey instead of one AI extension per tool.",
     url: PATH,

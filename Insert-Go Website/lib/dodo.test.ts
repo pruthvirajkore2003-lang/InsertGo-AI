@@ -2,14 +2,19 @@ import { createHmac } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CREDIT_PACKS,
+  cancelSubscription,
+  clearsSubscriptionId,
+  createCheckoutSession,
   dodoProductId,
   eventTimestampSeconds,
   extractUserRef,
   packCreditsForEvent,
   packCreditsReversedForEvent,
+  subscriptionIdForEvent,
   tierForProductId,
   tierForSubscriptionEvent,
   verifyWebhookSignature,
+  type DodoWebhookPayload,
 } from "./dodo";
 
 /** Build a valid Standard-Webhooks signature the way Dodo signs. */
@@ -115,7 +120,26 @@ describe("tierForSubscriptionEvent", () => {
   it("maps termination-family events to free", () => {
     expect(tierForSubscriptionEvent("subscription.cancelled", {})).toBe("free");
     expect(tierForSubscriptionEvent("subscription.expired", {})).toBe("free");
+    expect(tierForSubscriptionEvent("subscription.failed", {})).toBe("free");
     expect(tierForSubscriptionEvent("subscription.on_hold", {})).toBe("free");
+  });
+
+  it("demotes on termination even when the payload still carries a paid product", () => {
+    vi.stubEnv("DODO_PRODUCT_ID_PRO", "prod_pro");
+    // A cancellation event still names the plan being cancelled. Reading the
+    // product id here (as the activation family does) would keep the tier the
+    // user just gave up — the termination branch must ignore it entirely.
+    expect(
+      tierForSubscriptionEvent("subscription.cancelled", {
+        data: { product_id: "prod_pro", metadata: { planTier: "pro" } },
+      }),
+    ).toBe("free");
+    expect(
+      tierForSubscriptionEvent("subscription.failed", {
+        data: { product_id: "prod_pro" },
+      }),
+    ).toBe("free");
+    vi.unstubAllEnvs();
   });
 
   it("ignores unrelated events", () => {
@@ -192,6 +216,15 @@ describe("packCreditsReversedForEvent", () => {
     expect(packCreditsReversedForEvent("payment.succeeded", refund("150"))).toBeNull();
     expect(packCreditsReversedForEvent("dispute.won", refund("150"))).toBeNull();
     expect(packCreditsReversedForEvent("", refund("150"))).toBeNull();
+  });
+
+  it("does not claw back on dispute.opened — no money has moved yet", () => {
+    // A dispute is a claim, not an outcome. Reversing here would strip credits
+    // from a user who then WINS the dispute, and `dispute.won` carries no
+    // re-grant path — the loss would be silent and permanent.
+    expect(packCreditsReversedForEvent("dispute.opened", refund("350"))).toBeNull();
+    expect(tierForSubscriptionEvent("dispute.opened", refund("350"))).toBeNull();
+    expect(packCreditsForEvent("dispute.opened", refund("350"))).toBeNull();
   });
 
   it("reverses nothing for an amount outside the catalog", () => {
@@ -272,5 +305,216 @@ describe("extractUserRef", () => {
 
   it("returns nulls for an empty payload", () => {
     expect(extractUserRef({})).toEqual({ userId: null, email: null });
+  });
+});
+
+describe("subscriptionIdForEvent", () => {
+  // `as DodoWebhookPayload`: the malformed-id cases below are exactly the
+  // shapes the type forbids and the gateway can still send, so the cast is the
+  // point of the test, not a workaround for it.
+  const withId = (type: string, subscription_id: unknown) =>
+    ({ type, data: { subscription_id } }) as DodoWebhookPayload;
+
+  it("reads the id from every activation event", () => {
+    for (const t of [
+      "subscription.active",
+      "subscription.renewed",
+      "subscription.plan_changed",
+    ]) {
+      expect(subscriptionIdForEvent(t, withId(t, "sub_1"))).toBe("sub_1");
+    }
+  });
+
+  it("ignores terminations, so a cancelled id is never re-stored", () => {
+    // The account page decides whether to offer Cancel from the stored id.
+    // Re-storing it here would leave a Cancel button over a dead subscription.
+    for (const t of [
+      "subscription.cancelled",
+      "subscription.expired",
+      "subscription.failed",
+      "subscription.on_hold",
+      "payment.succeeded",
+    ]) {
+      expect(subscriptionIdForEvent(t, withId(t, "sub_1"))).toBeNull();
+    }
+  });
+
+  it("rejects empty and non-string ids rather than storing them", () => {
+    // `""` would look like a subscription to the cancel route and 404 at the
+    // gateway — worse than null, which the route reports honestly.
+    for (const bad of ["", null, undefined, 7, {}]) {
+      expect(
+        subscriptionIdForEvent("subscription.active", withId("subscription.active", bad)),
+      ).toBeNull();
+    }
+  });
+});
+
+describe("createCheckoutSession billing country", () => {
+  const fetchMock = vi.fn();
+
+  const setup = () => {
+    vi.stubEnv("DODO_API_KEY", "key");
+    vi.stubEnv("DODO_PRODUCT_ID_PLUS", "prod_plus");
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockReset();
+  };
+
+  const body = () => JSON.parse(fetchMock.mock.calls.at(-1)![1].body as string);
+
+  const ok = () =>
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ checkout_url: "https://pay.example/c1" }), {
+        status: 200,
+      }),
+    );
+
+  const start = (country?: string | null) =>
+    createCheckoutSession({
+      userId: "u1",
+      email: "a@b.co",
+      name: "A",
+      item: { kind: "plan", tier: "plus" },
+      country,
+    });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("pins the geolocated country so Dodo opens its localized checkout", async () => {
+    setup();
+    ok();
+    await start("IN");
+    expect(body().billing_address).toEqual({ country: "IN" });
+    // The catalog selector is still the only thing that picks the product —
+    // no amount, no currency, ever leaves this process.
+    expect(body().product_cart).toEqual([
+      { product_id: "prod_plus", quantity: 1 },
+    ]);
+    expect(JSON.stringify(body())).not.toMatch(/amount|price|currency/i);
+  });
+
+  it("sends no address at all when geolocation didn't resolve", async () => {
+    setup();
+    ok();
+    await start(null);
+    expect(body()).not.toHaveProperty("billing_address");
+  });
+
+  it("refuses anything that isn't an ISO-3166 alpha-2 code", async () => {
+    // The route only ever passes an edge header, but this is the last gate
+    // before a country — and therefore a localized price — reaches the
+    // gateway. Junk must degrade to "no hint", never to a hint we invented.
+    for (const bad of ["INDIA", "i", "", "IN;DROP", "  "]) {
+      setup();
+      ok();
+      await start(bad);
+      expect(body()).not.toHaveProperty("billing_address");
+    }
+  });
+
+  it("retries without the address rather than failing the purchase", async () => {
+    setup();
+    fetchMock
+      .mockResolvedValueOnce(new Response("{}", { status: 422 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ checkout_url: "https://pay.example/c2" }), {
+          status: 200,
+        }),
+      );
+    await expect(start("IN")).resolves.toEqual({
+      url: "https://pay.example/c2",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(body()).not.toHaveProperty("billing_address");
+  });
+});
+
+describe("cancelSubscription", () => {
+  const fetchMock = vi.fn();
+
+  const setup = () => {
+    vi.stubEnv("DODO_API_KEY", "key");
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockReset();
+  };
+
+  const call = () => fetchMock.mock.calls.at(-1)!;
+  const init = () => call()[1] as RequestInit;
+  const body = () => JSON.parse(init().body as string);
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("asks Dodo to stop the NEXT renewal, never to terminate now", async () => {
+    // The single load-bearing field of the whole cancellation flow. An
+    // immediate `status: "cancelled"` would strip paid-for time the moment the
+    // button is pressed — the webhook maps `subscription.cancelled` straight to
+    // the free tier — which contradicts Terms §6/§7 and is worse for the
+    // customer than the statute requires. Asserted here because every route
+    // test mocks this function, so nothing else would catch the swap.
+    setup();
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    await cancelSubscription("sub_abc");
+
+    expect(call()[0]).toBe("https://test.dodopayments.com/subscriptions/sub_abc");
+    expect(init().method).toBe("PATCH");
+    expect(body()).toEqual({ cancel_at_next_billing_date: true });
+    expect(JSON.stringify(body())).not.toMatch(/status/i);
+  });
+
+  it("escapes the subscription id instead of pasting it into the path", async () => {
+    setup();
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    await cancelSubscription("sub/../subscriptions/sub_other");
+    expect(call()[0]).toBe(
+      "https://test.dodopayments.com/subscriptions/sub%2F..%2Fsubscriptions%2Fsub_other",
+    );
+  });
+
+  it("throws on any non-2xx, so no caller records a cancellation that didn't happen", async () => {
+    // Gateway-first ordering (app/api/billing/cancel) depends entirely on this
+    // rejecting: a resolved promise over a failed cancel is a UI that says
+    // "cancelled" while the card keeps being charged.
+    for (const status of [400, 404, 429, 500]) {
+      setup();
+      fetchMock.mockResolvedValue(new Response("{}", { status }));
+      await expect(cancelSubscription("sub_abc")).rejects.toThrow("cancel-failed");
+    }
+  });
+});
+
+describe("clearsSubscriptionId", () => {
+  it("forgets the id only when the subscription is actually gone", () => {
+    expect(clearsSubscriptionId("subscription.cancelled")).toBe(true);
+    expect(clearsSubscriptionId("subscription.expired")).toBe(true);
+    // Never activated — there is no live subscription to keep a handle on.
+    expect(clearsSubscriptionId("subscription.failed")).toBe(true);
+  });
+
+  it("keeps the id through on_hold, which demotes but does not end anything", () => {
+    // The trap: on_hold maps to the free tier like the terminations above, so
+    // deriving this from "the tier went free" silently drops the id of a
+    // subscription Dodo is still retrying — suspending the customer and
+    // removing the only button that stops the charges.
+    expect(tierForSubscriptionEvent("subscription.on_hold", {})).toBe("free");
+    expect(clearsSubscriptionId("subscription.on_hold")).toBe(false);
+  });
+
+  it("leaves the id alone for activations and unrelated events", () => {
+    for (const t of [
+      "subscription.active",
+      "subscription.renewed",
+      "subscription.plan_changed",
+      "payment.succeeded",
+      "refund.succeeded",
+      "",
+    ]) {
+      expect(clearsSubscriptionId(t)).toBe(false);
+    }
   });
 });

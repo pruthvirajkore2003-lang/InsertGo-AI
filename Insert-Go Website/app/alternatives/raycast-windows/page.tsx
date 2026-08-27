@@ -18,7 +18,7 @@ import { CONTENT_UPDATED, HOTKEY_WORKFLOW_STEPS, pageGraph } from "@/lib/seo";
 export const metadata: Metadata = {
   title: "Raycast Alternative for Windows AI Prompts",
   description:
-    "Compare InsertGo and Raycast for Windows AI prompt workflows: global hotkeys, reusable prompts, dynamic fields, selected-text actions, direct insertion, privacy, and product scope.",
+    "Compare InsertGo and Raycast for Windows AI prompt workflows: global hotkeys, reusable prompts, dynamic fields, selected-text actions, and direct insertion.",
   alternates: { canonical: "/alternatives/raycast-windows" },
   openGraph: {
     title: "InsertGo vs Raycast for Windows AI Prompts",

@@ -504,3 +504,271 @@ input[type="radio"] {
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* ── Tier differentiation (Plus / Pro) ─────────────────────────────────────
+   The server-authoritative tier (tierOf(user) in authStore.ts) is mounted as
+   data-tier on .ig-panel (App.tsx), the floater panel (SelectionReviewFloater)
+   and the selection-window .ig-skillbar, so every premium cue is pure CSS
+   token switching — zero runtime JS cost, fully theme-reactive. 90/8/2 ratio:
+   the UI stays neutral craft; paid tiers add only a 2% recognition layer
+   (micro-pill, specular rims, ambient tint). Everything below stays inside
+   the WebView2 safe glass toolkit (components.css header): flat translucent
+   fills, inset speculars, and 0-alpha rgba gradient hairlines — never the
+   `transparent` keyword, never a gradient layered over the panel fill, never
+   full-screen canvas animation. */
+:root {
+  /* Plus — subtle sapphire/indigo hint. Text step keeps AA on obsidian. */
+  --ig-tier-plus: #a5b4fc;
+  --ig-tier-plus-tint: rgba(99, 102, 241, 0.18);
+  --ig-tier-plus-edge: rgba(129, 140, 248, 0.38);
+  --ig-tier-plus-glow: rgba(129, 140, 248, 0.28);
+  --ig-tier-plus-rim: linear-gradient(
+    90deg,
+    rgba(129, 140, 248, 0) 0%,
+    rgba(129, 140, 248, 0.5) 50%,
+    rgba(129, 140, 248, 0) 100%
+  );
+
+  /* Pro — cobalt-platinum aurora. The rim gradient is the exact spec recipe:
+     cobalt fade-out, platinum centre, cobalt fade-out. */
+  --ig-tier-pro: #93c5fd;
+  --ig-tier-pro-tint: rgba(47, 107, 255, 0.16);
+  --ig-tier-pro-edge: rgba(147, 197, 253, 0.4);
+  --ig-tier-pro-glow: rgba(47, 107, 255, 0.34);
+  --ig-tier-pro-rim: linear-gradient(
+    90deg,
+    rgba(47, 107, 255, 0) 0%,
+    rgba(147, 197, 253, 0.25) 50%,
+    rgba(47, 107, 255, 0) 100%
+  );
+}
+
+:root[data-theme="light"] {
+  /* Same hues, deepened for AA on white; alphas drop so tints stay a whisper
+     on paper. */
+  --ig-tier-plus: #4338ca;
+  --ig-tier-plus-tint: rgba(99, 102, 241, 0.12);
+  --ig-tier-plus-edge: rgba(79, 70, 229, 0.45);
+  --ig-tier-plus-glow: rgba(99, 102, 241, 0.2);
+  --ig-tier-plus-rim: linear-gradient(
+    90deg,
+    rgba(79, 70, 229, 0) 0%,
+    rgba(79, 70, 229, 0.4) 50%,
+    rgba(79, 70, 229, 0) 100%
+  );
+  --ig-tier-pro: #1d4ed8;
+  --ig-tier-pro-tint: rgba(47, 107, 255, 0.1);
+  --ig-tier-pro-edge: rgba(47, 107, 255, 0.45);
+  --ig-tier-pro-glow: rgba(47, 107, 255, 0.18);
+  --ig-tier-pro-rim: linear-gradient(
+    90deg,
+    rgba(47, 107, 255, 0) 0%,
+    rgba(31, 84, 232, 0.35) 50%,
+    rgba(47, 107, 255, 0) 100%
+  );
+}
+
+:root[data-theme="high-contrast"] {
+  /* HC strips translucency entirely: solid edges, zero tint, zero glow. Plus
+     reads as solid white, Pro as the HC accent yellow — distinct without
+     relying on colour subtlety. */
+  --ig-tier-plus: #ffffff;
+  --ig-tier-plus-tint: rgba(255, 255, 255, 0);
+  --ig-tier-plus-edge: #ffffff;
+  --ig-tier-plus-glow: rgba(255, 255, 255, 0);
+  --ig-tier-plus-rim: linear-gradient(90deg, #ffffff, #ffffff);
+  --ig-tier-pro: #ffff00;
+  --ig-tier-pro-tint: rgba(255, 255, 0, 0);
+  --ig-tier-pro-edge: #ffff00;
+  --ig-tier-pro-glow: rgba(255, 255, 0, 0);
+  --ig-tier-pro-rim: linear-gradient(90deg, #ffff00, #ffff00);
+}
+
+/* Header — elevated specular rim for paid tiers. The hairline is a
+   positioned 0-alpha-fade gradient laid over the top border (masked-rim
+   technique), brightest at centre and gone before the corners; the border
+   itself takes a tier-tinted edge and a restrained ambient glow (colored,
+   low-alpha — the same class of glow .ig-btn--primary already carries, never
+   the broad gray drop-shadow the transparent window can't composite). */
+.ig-panel[data-tier="plus"] .ig-header,
+.ig-panel[data-tier="pro"] .ig-header {
+  position: relative;
+}
+
+.ig-panel[data-tier="plus"] .ig-header::before,
+.ig-panel[data-tier="pro"] .ig-header::before {
+  content: "";
+  position: absolute;
+  inset: -1px 14px auto;
+  height: 1px;
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.ig-panel[data-tier="plus"] .ig-header {
+  border-color: var(--ig-tier-plus-edge);
+  box-shadow:
+    inset 0 1px 0 var(--ig-tier-plus-tint),
+    0 0 16px var(--ig-tier-plus-glow);
+}
+
+.ig-panel[data-tier="plus"] .ig-header::before {
+  background: var(--ig-tier-plus-rim);
+}
+
+.ig-panel[data-tier="pro"] .ig-header {
+  border-color: var(--ig-tier-pro-edge);
+  box-shadow:
+    inset 0 1px 0 var(--ig-tier-pro-tint),
+    0 0 22px var(--ig-tier-pro-glow);
+}
+
+.ig-panel[data-tier="pro"] .ig-header::before {
+  background: var(--ig-tier-pro-rim);
+}
+
+/* Floater + glass cards on a paid-tier panel: the masked rim gradients pick
+   up a tier-tinted edge light (custom-property theming — the override on the
+   card re-keys --ig-glass-rim where it resolves), plus a tier hairline. */
+.ig-panel[data-tier="plus"] .ig-glass-card,
+.ig-panel[data-tier="plus"] .ig-modal__card.ig-skillfloater {
+  --ig-glass-edge: rgba(129, 140, 248, 0.3);
+  border-color: var(--ig-tier-plus-edge);
+}
+
+.ig-panel[data-tier="pro"] .ig-glass-card,
+.ig-panel[data-tier="pro"] .ig-modal__card.ig-skillfloater {
+  --ig-glass-edge: rgba(147, 197, 253, 0.32);
+  border-color: var(--ig-tier-pro-edge);
+}
+
+/* Selection-window pill (opaque fill over the desktop — an outer glow is
+   compositing-safe here). Specificity matches the .ig-selbar-shell scoping in
+   components.css so the two never fight. */
+.ig-selbar-shell > .ig-skillbar[data-tier="plus"] {
+  border-color: var(--ig-tier-plus-edge);
+  box-shadow:
+    inset 0 1px 0 var(--ig-highlight),
+    0 0 16px var(--ig-tier-plus-glow);
+}
+
+.ig-selbar-shell > .ig-skillbar[data-tier="pro"] {
+  border-color: var(--ig-tier-pro-edge);
+  box-shadow:
+    inset 0 1px 0 var(--ig-highlight),
+    0 0 20px var(--ig-tier-pro-glow);
+}
+
+/* Tier micro-pill — the 2% recognition mark next to the wordmark. Compact
+   pill, crisp tracked caps, glowing status dot; Pro adds a platinum sheen
+   sweep across the label (background-position only — paint-cheap, tiny area,
+   parked by the global reduced-motion rule). */
+.ig-tier-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 18px;
+  padding: 0 7px;
+  border: 1px solid;
+  border-radius: var(--ig-radius-pill);
+  font-size: var(--ig-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  line-height: 1;
+  user-select: none;
+}
+
+/* Soft glowing status dot — currentColor keeps it on-tier in every theme. */
+.ig-tier-pill::before {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ig-tier-pill--plus {
+  color: var(--ig-tier-plus);
+  background: var(--ig-tier-plus-tint);
+  border-color: var(--ig-tier-plus-edge);
+}
+
+.ig-tier-pill--plus::before {
+  box-shadow: 0 0 6px var(--ig-tier-plus-glow);
+}
+
+.ig-tier-pill--pro {
+  color: var(--ig-tier-pro);
+  background: var(--ig-tier-pro-tint);
+  border-color: var(--ig-tier-pro-edge);
+  box-shadow:
+    0 0 10px var(--ig-tier-pro-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.ig-tier-pill--pro::before {
+  box-shadow: 0 0 7px var(--ig-tier-pro-glow);
+}
+
+/* Cobalt-platinum shimmer: the gradient is clipped to the glyphs and swept
+   slowly. All stops stay ≥7:1 on the dark tint, so AA never depends on the
+   animation frame. */
+.ig-tier-pill--pro .ig-tier-pill__label {
+  background: linear-gradient(
+    90deg,
+    #93c5fd 0%,
+    #ffffff 42%,
+    #93c5fd 58%,
+    #2f6bff 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ig-tier-sheen 3.4s linear infinite;
+}
+
+@keyframes ig-tier-sheen {
+  from {
+    background-position: 0% 0;
+  }
+
+  to {
+    background-position: -220% 0;
+  }
+}
+
+/* Light theme: no white sheen stop (it would drop below AA on paper) — the
+   shimmer runs between the two darkest cobalt steps instead. */
+:root[data-theme="light"] .ig-tier-pill--pro .ig-tier-pill__label {
+  background: linear-gradient(90deg, #1d4ed8 0%, #1f54e8 50%, #1d4ed8 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* High contrast: gradient-clipped text is stripped (transparency is
+   unreliable under forced colors) — flat solid tier colour instead. */
+:root[data-theme="high-contrast"] .ig-tier-pill--pro .ig-tier-pill__label {
+  background: none;
+  color: var(--ig-tier-pro);
+}
+
+/* Credit badge on paid tiers: keep the green/amber/red status language
+   untouched — the luxury signal rides on top (tier-coloured icon + a
+   restrained tier glow). */
+.ig-creditbadge[data-tier="plus"] {
+  box-shadow: 0 0 10px var(--ig-tier-plus-glow);
+}
+
+.ig-creditbadge[data-tier="plus"] .fa-solid {
+  color: var(--ig-tier-plus);
+}
+
+.ig-creditbadge[data-tier="pro"] {
+  box-shadow: 0 0 12px var(--ig-tier-pro-glow);
+}
+
+.ig-creditbadge[data-tier="pro"] .fa-solid {
+  color: var(--ig-tier-pro);
+}

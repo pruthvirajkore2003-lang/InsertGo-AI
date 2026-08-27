@@ -37,25 +37,89 @@ const SYMBOL: Record<Currency, string> = { USD: "$", INR: "₹" };
  *  older ICU builds still resolve to. */
 const INDIA_ZONES = new Set(["Asia/Kolkata", "Asia/Calcutta"]);
 
+/** Where the user's manual choice is kept. Mirrors the website's `ig_currency`
+ *  cookie by name so the two surfaces read as one setting. */
+export const CURRENCY_KEY = "ig_currency";
+
+/** Narrow untrusted text (localStorage, a hand-edited store) to a currency. */
+export function parseCurrency(value: string | null | undefined): Currency | null {
+  const v = value?.trim().toUpperCase();
+  return v === "INR" || v === "USD" ? v : null;
+}
+
 /**
- * Display currency for this machine, from the system timezone.
+ * Whether a BCP-47 tag says "India": an explicit `-IN` region subtag
+ * (`en-IN`, `ta-Latn-IN`) or bare Hindi, which has no other national market.
  *
- * The website reads the CDN's IP-country header, but the desktop has no such
- * header and /api/desktop/pricing is force-static (it can't vary per caller),
- * so the timezone is the zero-dependency signal available offline and without
- * a geolocation call. A VPN or a travelling laptop can disagree with the real
- * billing country — harmless, because this is display only: Dodo charges the
+ * The region has to FOLLOW a language, hence `-IN` and not `^IN` — a bare `in`
+ * is the deprecated ISO-639 code for Indonesian. And not every Indian language
+ * without a region: `bn` alone is as likely Bangladesh. Mirrors
+ * `isIndianLocale` in the website's lib/currency.ts; keep the two in step.
+ */
+export function isIndianLocale(tag: string | null | undefined): boolean {
+  const t = tag?.trim();
+  if (!t) return false;
+  return /-IN$/i.test(t) || /^hi(?:-|$)/i.test(t);
+}
+
+/** The stored manual choice, or null when the user has never picked one. */
+export function storedCurrency(): Currency | null {
+  try {
+    return parseCurrency(localStorage.getItem(CURRENCY_KEY));
+  } catch {
+    // Webview with storage disabled — detection still works, it just can't be
+    // remembered across launches.
+    return null;
+  }
+}
+
+/** Persist (or, with null, forget) the user's manual choice. */
+export function storeCurrency(currency: Currency | null): void {
+  try {
+    if (currency) localStorage.setItem(CURRENCY_KEY, currency);
+    else localStorage.removeItem(CURRENCY_KEY);
+  } catch {
+    // Non-fatal: the choice still holds for this session, in the store.
+  }
+}
+
+/**
+ * Display currency for this machine.
+ *
+ * Order: the user's own choice, then the system timezone, then the UI
+ * language. The website reads the CDN's IP-country header, but the desktop has
+ * no such header and /api/desktop/pricing is force-static (it can't vary per
+ * caller), so timezone and locale are the zero-dependency signals available
+ * offline and without a geolocation call. The language pass is what catches a
+ * machine set to `en-IN` on a VPN or a corporate UTC clock — the case where
+ * the timezone alone silently pins an Indian buyer to dollars.
+ *
+ * A travelling laptop can still disagree with the real billing country, which
+ * is why the toggle exists and why this is display only: Dodo charges the
  * pinned product at its own regionalized price either way.
  */
 export function detectCurrency(): Currency {
+  const chosen = storedCurrency();
+  if (chosen) return chosen;
+
   try {
-    return INDIA_ZONES.has(Intl.DateTimeFormat().resolvedOptions().timeZone)
-      ? "INR"
-      : "USD";
+    if (INDIA_ZONES.has(Intl.DateTimeFormat().resolvedOptions().timeZone)) {
+      return "INR";
+    }
   } catch {
-    // Locked-down webview with no ICU data: USD is the catalog's base column.
-    return "USD";
+    // Locked-down webview with no ICU data — fall through to the language.
   }
+
+  try {
+    const tags = navigator.languages?.length
+      ? navigator.languages
+      : [navigator.language];
+    if (tags.some(isIndianLocale)) return "INR";
+  } catch {
+    // No navigator (non-browser test harness): USD is the catalog's base.
+  }
+
+  return "USD";
 }
 
 /** "$0", "$7.99", "₹499" — decimals only when the price has them (mirrors
@@ -64,6 +128,27 @@ export function formatMoney(amount: number, currency: Currency): string {
   return `${SYMBOL[currency]}${
     Number.isInteger(amount) ? amount : amount.toFixed(2)
   }`;
+}
+
+/** India's standard GST rate on software services. */
+const GST_RATE = 0.18;
+
+/**
+ * "₹499 + 18% GST = ₹588.82 total", or "" for anything that is not a non-zero
+ * INR amount.
+ *
+ * Catalogue prices are tax-EXCLUSIVE — Dodo's products are, and its hosted
+ * checkout adds the regional tax — so an Indian buyer shown only "₹499" is
+ * being shown a price they cannot pay. That is drip pricing under the CCPA's
+ * Guidelines for Prevention and Regulation of Dark Patterns, 2023. Mirrors
+ * `gstNote` on the website's pricing page; keep the two in step.
+ */
+export function gstNote(amount: number, currency: Currency): string {
+  if (currency !== "INR" || amount <= 0) return "";
+  return `₹${amount} + ${Math.round(GST_RATE * 100)}% GST = ₹${(
+    amount *
+    (1 + GST_RATE)
+  ).toFixed(2)} total`;
 }
 
 /** The catalog entry for a paid tier, or null when pricing hasn't loaded. */

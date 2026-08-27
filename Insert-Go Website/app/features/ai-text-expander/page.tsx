@@ -17,12 +17,12 @@ import { HOTKEY_WORKFLOW_STEPS, pageGraph } from "@/lib/seo";
 const PATH = "/features/ai-text-expander";
 
 export const metadata: Metadata = {
-  title: "AI Text Expander for Windows — Prompts, Not Snippets",
+  title: "AI Text Expander for Windows, Not Snippets",
   description:
-    "An AI text expander for Windows: form-driven prompt templates open on a global hotkey, generate text through the managed relay, and paste at your cursor with clipboard restore.",
+    "An AI text expander for Windows: form-driven prompt templates open on a global hotkey, generate text through the managed relay, and paste at your cursor.",
   alternates: { canonical: PATH },
   openGraph: {
-    title: "AI Text Expander for Windows — Prompts, Not Snippets",
+    title: "AI Text Expander for Windows, Not Snippets",
     description:
       "Form commands, generated output, and verified insertion into any Windows app.",
     url: PATH,
@@ -34,34 +34,6 @@ const breadcrumbs = [
   { name: "Home", href: "/" },
   { name: "Features", href: "/features" },
   { name: "AI text expander", href: PATH },
-];
-
-const commands = [
-  {
-    syntax: "{formtext: name=Customer}",
-    field: "Single-line input",
-    use: "Names, order numbers, subject lines — anything short that changes per run.",
-  },
-  {
-    syntax: "{formparagraph: name=Context}",
-    field: "Multi-line input",
-    use: "Pasted context: the message you are replying to, an error log, a spec extract.",
-  },
-  {
-    syntax: "{formmenu: default=Warm; Neutral; Firm}",
-    field: "Dropdown, or multi-select with multiple=yes",
-    use: "Fixed choices such as tone, language, audience, or output length.",
-  },
-  {
-    syntax: "{formtoggle: name=Add refund line; default=no}…{endformtoggle}",
-    field: "Conditional span",
-    use: "Optional clauses. When the toggle is off the whole span is dropped from the prompt, including any commands nested inside it.",
-  },
-  {
-    syntax: "{clipboard}",
-    field: "No field — reads the clipboard",
-    use: "Pull in whatever you just copied without pasting it into a box first.",
-  },
 ];
 
 const faqs = [
@@ -181,8 +153,13 @@ export default function AiTextExpanderPage() {
         </Reveal>
       </section>
 
+      {/* docs/seo-aeo-strategy.md: "Prompt-library page owns all form-command
+          documentation and AEO answers. Feature hub summarizes and links."
+          This page used to carry a THREE-column reference richer than the one
+          on the page that owns the topic, so the two competed for the same
+          query with this one better positioned to win it. Summary and link. */}
       <section className="mx-auto max-w-[1080px] px-6 py-[70px]">
-        <Reveal className="mb-10 max-w-[720px]">
+        <Reveal className="max-w-[720px]">
           <p className="mb-3 text-xs font-medium tracking-[0.16em] text-brand uppercase">
             Form commands
           </p>
@@ -190,59 +167,28 @@ export default function AiTextExpanderPage() {
             Five commands cover everything that changes
           </h2>
           <p className="mt-4 text-base leading-relaxed text-muted">
-            Write them anywhere inside a template. InsertGo parses the braces,
-            builds a fill-in dialog in the order the commands appear, and
-            substitutes your answers before the prompt is sent.
+            <code className="text-ink-soft">{"{formtext}"}</code>,{" "}
+            <code className="text-ink-soft">{"{formparagraph}"}</code>,{" "}
+            <code className="text-ink-soft">{"{formmenu}"}</code>,{" "}
+            <code className="text-ink-soft">{"{formtoggle}"}</code> and{" "}
+            <code className="text-ink-soft">{"{clipboard}"}</code>. Write them
+            anywhere inside a template; InsertGo parses the braces, builds a
+            fill-in dialog in the order the commands appear, and substitutes
+            your answers before the prompt is sent. Legacy{" "}
+            <code className="text-ink-soft">{"{{selected_text}}"}</code> and{" "}
+            <code className="text-ink-soft">{"{{clipboard}}"}</code> tokens
+            still expand from clipboard content, so older templates keep
+            working unchanged.
           </p>
-        </Reveal>
-        <Reveal>
-          <div className="glass-panel overflow-x-auto">
-            <table className="w-full min-w-[760px] border-collapse text-left">
-              <caption className="sr-only">
-                InsertGo prompt template form command reference
-              </caption>
-              <thead>
-                <tr className="border-b border-line">
-                  <th scope="col" className="p-5 text-sm font-semibold text-ink">
-                    Command
-                  </th>
-                  <th scope="col" className="p-5 text-sm font-semibold text-ink">
-                    Field
-                  </th>
-                  <th scope="col" className="p-5 text-sm font-semibold text-ink">
-                    Use it for
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {commands.map((row) => (
-                  <tr
-                    key={row.syntax}
-                    className="border-b border-line last:border-0"
-                  >
-                    <th scope="row" className="w-[34%] p-5 align-top">
-                      <code className="text-[13px] leading-relaxed font-semibold text-ink-soft">
-                        {row.syntax}
-                      </code>
-                    </th>
-                    <td className="w-[22%] p-5 align-top text-sm leading-relaxed text-muted">
-                      {row.field}
-                    </td>
-                    <td className="p-5 align-top text-sm leading-relaxed text-muted">
-                      {row.use}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Reveal>
-        <Reveal className="mt-6">
-          <p className="max-w-[760px] text-[15px] leading-relaxed text-muted">
-            Legacy <code className="text-ink-soft">{"{{selected_text}}"}</code>{" "}
-            and <code className="text-ink-soft">{"{{clipboard}}"}</code> tokens
-            still expand from clipboard content, so older templates keep working
-            unchanged.
+          <p className="mt-4 text-base leading-relaxed text-muted">
+            <Link
+              href="/features/prompt-library"
+              className="font-medium text-brand no-underline hover:underline"
+            >
+              Full form command reference, with the syntax and what each field
+              is for
+            </Link>
+            .
           </p>
         </Reveal>
       </section>

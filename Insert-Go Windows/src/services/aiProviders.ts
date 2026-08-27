@@ -234,7 +234,8 @@ export class GeminiProvider implements AiProvider {
       GEMINI_BACKOFF_BASE_MS * 2 ** (attempt - 1) * (0.75 + Math.random() * 0.5);
 
     // Up to GEMINI_MAX_ATTEMPTS tries. Two transient failure classes are
-    // retried: server-side 503/500, AND network-layer rejections (DNS,
+    // retried: GEMINI_RETRYABLE_STATUSES (503 only — 500 is the relay's
+    // PERMANENT fault and no retry clears it), AND network-layer rejections (DNS,
     // connection reset, TLS, brief offline) — the latter used to be fatal on
     // the very first blip, the most common real-world failure. A caller abort
     // is never retried. Skipped responses' bodies are never read (a Response

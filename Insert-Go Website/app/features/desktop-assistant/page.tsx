@@ -16,7 +16,7 @@ import { HOTKEY_WORKFLOW_STEPS, pageGraph } from "@/lib/seo";
 export const metadata: Metadata = {
   title: "Windows Desktop AI Assistant and Overlay App",
   description:
-    "Use a keyboard-first AI assistant across Windows apps. InsertGo floats above your work, runs reusable prompts, improves selected text, and inserts results back at the cursor.",
+    "A keyboard-first AI assistant for every Windows app. InsertGo floats above your work, runs reusable prompts, and inserts results back at the cursor.",
   alternates: { canonical: "/features/desktop-assistant" },
   openGraph: {
     title: "Windows Desktop AI Assistant and Overlay App",

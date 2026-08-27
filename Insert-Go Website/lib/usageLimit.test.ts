@@ -212,6 +212,73 @@ describe("debitCredit", () => {
     });
   });
 
+  // The billing webhook writes ONE column on a plan change — `"tier"` — and
+  // never touches `"dailyCreditsUsed"`. So the whole mid-day transition happens
+  // right here, in the cap the debit reads off the live row. Both directions
+  // have to land safely, and neither is visible from `dailyRemaining`'s pure
+  // math: what matters is which POOL the next credit comes out of.
+  describe("mid-day plan change", () => {
+    it("upgrade Free -> Plus opens the difference on the very next debit", async () => {
+      const u = { tier: "free", dailyUsed: 5, dailyDate: today, addOn: 0 };
+      users.set("up1", u);
+      // Exhausted on free, and no add-on pack to fall back to.
+      expect(await debitCredit("up1", "k-before")).toMatchObject({
+        outcome: "insufficient",
+        tier: "free",
+      });
+      u.tier = "plus"; // subscription.active lands
+      expect(await debitCredit("up1", "k-after")).toEqual({
+        outcome: "charged",
+        tier: "plus",
+        dailyMax: 50,
+        dailyRemaining: 44, // 50 - (5 already used + this one)
+        addOnCredits: 0,
+      });
+      // The upgrade granted the difference, not a fresh 50: prior usage stays
+      // spent, so a same-day upgrade can't be farmed for a counter reset.
+      expect(u.dailyUsed).toBe(6);
+    });
+
+    it("downgrade Pro -> Plus past the new cap falls through to add-on credits", async () => {
+      const u = { tier: "pro", dailyUsed: 60, dailyDate: today, addOn: 3 };
+      users.set("dn1", u);
+      u.tier = "plus"; // subscription.plan_changed lands: 60 used against a 50 cap
+      const first = await debitCredit("dn1", "k-d1");
+      expect(first).toEqual({
+        outcome: "charged",
+        tier: "plus",
+        dailyMax: 50,
+        dailyRemaining: 0, // clamped, never negative
+        addOnCredits: 2, // the debit came out of the non-expiring pool
+      });
+      // Daily usage is frozen while over the cap — the overage is not re-charged
+      // to the daily counter, and add-on drains one per generation.
+      expect(u.dailyUsed).toBe(60);
+      expect(await debitCredit("dn1", "k-d2")).toMatchObject({ addOnCredits: 1 });
+      expect(await debitCredit("dn1", "k-d3")).toMatchObject({ addOnCredits: 0 });
+      expect(await debitCredit("dn1", "k-d4")).toMatchObject({
+        outcome: "insufficient",
+      });
+    });
+
+    it("a downgrade's overage does not carry past the 00:00 UTC boundary", async () => {
+      const u = { tier: "pro", dailyUsed: 60, dailyDate: today, addOn: 0 };
+      users.set("dn2", u);
+      u.tier = "plus";
+      expect(await debitCredit("dn2", "k-x")).toMatchObject({
+        outcome: "insufficient",
+      });
+      today = "2026-07-23";
+      expect(await debitCredit("dn2", "k-y")).toEqual({
+        outcome: "charged",
+        tier: "plus",
+        dailyMax: 50,
+        dailyRemaining: 49,
+        addOnCredits: 0,
+      });
+    });
+  });
+
   it("passes the tier caps from entitlements so SQL never hardcodes them", async () => {
     users.set("t5", { tier: "plus", dailyUsed: 0, dailyDate: today, addOn: 0 });
     await debitCredit("t5", "k-caps");

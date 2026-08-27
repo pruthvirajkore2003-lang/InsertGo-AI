@@ -45,14 +45,17 @@
  * counts, once per run.
  */
 import {
+  GROUNDED_DAILY_MAX,
   requireGroundingEntitlement,
   requirePayloadWithinLimit,
   requireSession,
   requireWithinQuota,
   type Denied,
+  type Tier,
 } from "@/lib/entitlements";
 import { getEdgeSession, type EdgeSession } from "@/lib/edgeSession";
 import { consumeQuota, debitCredit } from "@/lib/usageLimit";
+import { logGeneration } from "@/lib/generationLog";
 import { isPermanentDbFailure } from "@/lib/db";
 import { audit } from "@/lib/auditLog";
 import { BodyTooLargeError, readBodyCapped } from "@/lib/httpBody";
@@ -99,6 +102,40 @@ function errorResponse(status: number, message: string): Response {
 
 function denied(d: Denied): Response {
   return errorResponse(d.status, d.message);
+}
+
+/**
+ * Await a bookkeeping side effect that must never disturb the request path.
+ *
+ * Swallows everything. Used for cost telemetry, which runs after the user has
+ * already been charged a credit and after the last content byte is enqueued — a
+ * reporting gap is acceptable there, a failed or truncated generation is not.
+ * A bare `try/catch` at each call site would do, except there are two of them
+ * and the guarantee is the same at both.
+ *
+ * Both axes need covering. A SYNCHRONOUS throw (a broken import, an argument
+ * expression that throws) would otherwise propagate out of the stream's
+ * `finally` and kill the response; an async rejection would surface as an
+ * unhandled rejection. `lib/generationLog.ts` catches its own errors today, but
+ * the request path must not depend on a callee keeping that promise.
+ *
+ * AWAITED, not fire-and-forget, and that is deliberate. This route is Edge: an
+ * un-awaited fetch is not guaranteed to survive the invocation being torn down
+ * once the response is done, so `void logGeneration(...)` would drop rows
+ * non-deterministically — and telemetry that is silently, systematically lossy
+ * is worse than none, because the margin numbers built on it would look real.
+ * The honest alternative is a `waitUntil` dependency, which is not worth adding
+ * for one call. The cost of awaiting is near zero: every content chunk has
+ * already been enqueued, so this delays only the stream's close event, and the
+ * RPC is bounded by SUPABASE_RPC_TIMEOUT_MS.
+ */
+async function recordUsage(fn: () => Promise<unknown>): Promise<void> {
+  try {
+    await fn();
+  } catch {
+    // Deliberately empty: nothing this function does is worth a user-visible
+    // failure, and logging here could itself throw on a broken runtime.
+  }
 }
 
 /**
@@ -252,6 +289,11 @@ export async function POST(req: Request): Promise<Response> {
   const idempotencyKey = `${userId}:${clientKey}`;
   let dailyLeft: number;
   let addOnLeft: number;
+  // Hoisted for step 5: the grounded gate and its per-tier daily ceiling read
+  // the tier off the row the debit just locked, not off the session. Better
+  // Auth's customSession plugin stamps tier at login, so a session can outlive
+  // an upgrade or a downgrade; this value is read inside the debit transaction.
+  let tier: Tier;
   try {
     const debit = await debitCredit(userId, idempotencyKey);
     if (debit.outcome === "insufficient") {
@@ -296,6 +338,7 @@ export async function POST(req: Request): Promise<Response> {
     }
     dailyLeft = debit.dailyRemaining;
     addOnLeft = debit.addOnCredits;
+    tier = debit.tier;
   } catch (e) {
     // Fail closed, same as the quota gate above. Nothing was charged.
     return meteringFailure("credit debit", e, req, userId);
@@ -338,6 +381,22 @@ export async function POST(req: Request): Promise<Response> {
         console.debug(
           `[ai/generate] semantic-cache hit sim=${cached.hit.similarity.toFixed(4)}`
         );
+        // Log the hit too, with zero generation tokens. Whether this cache pays
+        // for itself is an open question — every lookup spends an embedding
+        // call whether it hits or misses, so it only breaks even above a
+        // hit rate this row is the only way to measure. A hit that goes
+        // unrecorded makes the cache look free.
+        await recordUsage(() =>
+          logGeneration({
+            userId,
+            tier,
+            model,
+            promptTokens: 0,
+            outputTokens: 0,
+            grounded: false,
+            cacheHit: true,
+          })
+        );
         return new Response(sseLineFromCachedText(cached.hit.text), {
           headers: responseHeaders,
         });
@@ -354,10 +413,48 @@ export async function POST(req: Request): Promise<Response> {
   let grounding: GroundingResult | undefined;
   if (grounded) {
     const groundingModel = resolveGroundingModel(model);
-    const deny = requireGroundingEntitlement(session, {
+    const deny = requireGroundingEntitlement(tier, {
       groundingConfigured: groundingModel !== null,
     });
     if (deny) return denied(deny);
+
+    // Cost gate. Google bills grounding PER GROUNDED PROMPT ($35/1k on 2.5,
+    // $14/1k on 3.x) — ~70x a plain flash-lite generation — while the ledger
+    // charges it the same flat credit. The daily credit allowance therefore
+    // bounds spend only for the cheap kind of call, so grounded runs get their
+    // own much smaller UTC-day counter (GROUNDED_DAILY_MAX in lib/entitlements).
+    //
+    // Deliberately AFTER the debit: the credit is the user-facing unit of work
+    // and a grounded run is still one generation, so it is charged like any
+    // other. This bounds how many of those may take the expensive path. Running
+    // it before the debit would let a user probe their remaining grounded
+    // allowance for free.
+    try {
+      const groundedQuota = await consumeQuota(
+        userId,
+        "generate:grounded:day",
+        GROUNDED_DAILY_MAX[tier],
+        86_400
+      );
+      const denyGrounded = requireWithinQuota(groundedQuota);
+      if (denyGrounded) {
+        audit("ai.quota_denied", {
+          outcome: "denied",
+          req,
+          userId,
+          detail: {
+            window: "grounded_day",
+            limit: GROUNDED_DAILY_MAX[tier],
+            count: groundedQuota.count,
+          },
+        });
+        return denied(denyGrounded);
+      }
+    } catch (e) {
+      // Fail closed, exactly like the other two quota windows: a DB blip must
+      // not reopen the most expensive call this service can make.
+      return meteringFailure("grounded quota gate", e, req, userId);
+    }
 
     try {
       const topic = composeResearchTopic(prompt);
@@ -381,8 +478,10 @@ export async function POST(req: Request): Promise<Response> {
       genSystem = system + RESEARCH_CLAUSE;
     } catch (e) {
       // Log the CAUSE, never the topic/prompt (SPEC §10): pass 1 can fail for
-      // an unavailable model, a key without Search grounding, a quota hit, or
-      // a network blip, and a bare 502 makes all four indistinguishable.
+      // an unavailable model, a key without Search grounding, a quota hit, a
+      // network blip, or a run where the discretionary search tool never fired
+      // (generateGrounded throws rather than cache un-sourced recall), and a
+      // bare 502 makes them indistinguishable.
       console.error(
         `[ai/generate] grounding pass 1 failed (model=${groundingModel}): ` +
           (e instanceof Error ? `${e.name}: ${e.message}` : String(e)).slice(
@@ -463,6 +562,24 @@ export async function POST(req: Request): Promise<Response> {
               (grounded ? " grounded=1" : "")
           );
         }
+        // Durable copy of the counts above. The console line ages out of
+        // platform logs in days, and cost-per-user is the number the pricing
+        // model is built on — see lib/generationLog.ts.
+        //
+        // After the last chunk is enqueued, before the stream closes. Awaited
+        // because an un-awaited fetch may not survive Edge teardown (see
+        // `recordUsage`); it delays only the close event, never content.
+        await recordUsage(() =>
+          logGeneration({
+            userId,
+            tier,
+            model,
+            promptTokens: usage?.promptTokenCount ?? 0,
+            outputTokens: usage?.candidatesTokenCount ?? 0,
+            grounded,
+            cacheHit: false,
+          })
+        );
         controller.close();
       }
     },

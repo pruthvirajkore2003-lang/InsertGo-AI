@@ -19,12 +19,12 @@ import { CONTENT_UPDATED, HOTKEY_WORKFLOW_STEPS, pageGraph } from "@/lib/seo";
 const PATH = "/alternatives/text-blaze-windows";
 
 export const metadata: Metadata = {
-  title: "Text Blaze Windows Alternative with AI Text Generation",
+  title: "Text Blaze Alternative for Windows with AI",
   description:
-    "Text Blaze expands stored snippets on Windows; its AI product runs only in Chrome. Compare InsertGo: native Windows AI generation, form-driven prompts, cursor insertion, clipboard restore.",
+    "Text Blaze expands stored snippets on Windows; its AI runs only in Chrome. InsertGo generates natively, with form-driven prompts and insertion at your cursor.",
   alternates: { canonical: PATH },
   openGraph: {
-    title: "Text Blaze Windows Alternative with AI Text Generation",
+    title: "Text Blaze Alternative for Windows with AI",
     description:
       "Snippet expansion versus AI generation on Windows — a source-backed comparison.",
     url: PATH,

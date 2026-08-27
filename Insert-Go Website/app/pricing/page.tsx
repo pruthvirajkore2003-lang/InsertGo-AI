@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { CURRENCY_COOKIE, detectCurrency } from "@/lib/currency";
 import { Reveal, FadeUp } from "@/components/Reveal";
 import { GlowBackdrop } from "@/components/PageHero";
 import { LinearFlash } from "@/components/icons/LinearFlash";
 import { LinearShieldTick } from "@/components/icons/LinearShieldTick";
 import { LinearTickCircle } from "@/components/icons/LinearTickCircle";
 import { LinearHeadphone } from "@/components/icons/LinearHeadphone";
-import { PricingPlans, type Currency } from "./PricingPlans";
+import { PricingPlans } from "./PricingPlans";
 
 const notes = [
   {
@@ -24,8 +25,10 @@ const notes = [
   {
     icon: LinearTickCircle,
     tile: "var(--color-tile-sand)",
-    title: "Cancel anytime",
-    body: "Downgrade to Free whenever you like — your templates stay on your machine.",
+    title: "Cancel in one click",
+    body:
+      "Cancel yourself, online, from Account settings — no email, no phone " +
+      "call. You keep the plan until the period you paid for ends.",
   },
   {
     icon: LinearHeadphone,
@@ -35,22 +38,22 @@ const notes = [
   },
 ];
 
-/**
- * Display currency from the CDN's IP geolocation header — Vercel and
- * Cloudflare both set one, and both work for signed-out visitors (an OAuth
- * profile carries no verified country, only an `en-US`-ish locale hint).
- * Anything missing, unknown ("XX"), or non-India falls back to USD. Display
- * only: Dodo is Merchant of Record and localizes the real charge from the
- * server-pinned product id, so this never touches /api/billing/checkout.
- */
-async function detectCurrency(): Promise<Currency> {
-  const h = await headers();
-  const country = h.get("x-vercel-ip-country") ?? h.get("cf-ipcountry") ?? "";
-  return country.trim().toUpperCase() === "IN" ? "INR" : "USD";
-}
-
 export default async function PricingPage() {
-  const currency = await detectCurrency();
+  // Stored choice first, then the CDN's IP geolocation header (Vercel,
+  // Cloudflare, or a proxy) — both work for signed-out visitors, which an
+  // OAuth profile does not: it carries no verified country, only a locale
+  // hint. `source: "default"` means neither resolved (localhost, VPN, a CDN
+  // that strips geo), and the client retries with timezone/locale after
+  // hydration rather than pinning a developer in India to dollars.
+  //
+  // Display only. Dodo is Merchant of Record and localizes the real charge
+  // from the server-pinned product id; /api/billing/checkout re-reads the geo
+  // header itself and never trusts the cookie. See lib/currency.ts.
+  const [h, jar] = await Promise.all([headers(), cookies()]);
+  const detected = detectCurrency({
+    headers: h,
+    cookie: jar.get(CURRENCY_COOKIE)?.value,
+  });
 
   return (
     <main className="relative overflow-hidden">
@@ -75,7 +78,10 @@ export default async function PricingPage() {
         </FadeUp>
       </section>
 
-      <PricingPlans currency={currency} />
+      <PricingPlans
+        currency={detected.currency}
+        geoResolved={detected.source !== "default"}
+      />
 
       <section className="mx-auto max-w-[960px] px-6 pt-[50px] pb-[110px]">
         <Reveal className="mb-8 text-center">

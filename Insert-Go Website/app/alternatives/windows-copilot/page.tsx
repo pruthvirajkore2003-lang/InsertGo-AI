@@ -19,12 +19,12 @@ import { CONTENT_UPDATED, HOTKEY_WORKFLOW_STEPS, pageGraph } from "@/lib/seo";
 const PATH = "/alternatives/windows-copilot";
 
 export const metadata: Metadata = {
-  title: "Windows Copilot Alternative for Reusable AI Prompts",
+  title: "Windows Copilot Alternative for AI Prompts",
   description:
-    "Copilot answers in a sidebar you copy from. InsertGo runs saved prompt templates with fill-in fields over the active Windows app and pastes the result at your cursor.",
+    "Copilot answers in a sidebar you copy from. InsertGo runs saved prompt templates with fill-in fields over the active app and pastes the result at your cursor.",
   alternates: { canonical: PATH },
   openGraph: {
-    title: "Windows Copilot Alternative for Reusable AI Prompts",
+    title: "Windows Copilot Alternative for AI Prompts",
     description:
       "Sidebar chat versus reusable templates and direct cursor write-back on Windows.",
     url: PATH,

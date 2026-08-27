@@ -40,8 +40,13 @@ export const PROXY_CONFIG: ProviderConfig = {
 };
 
 /** Hard cap on a single prompt's length, enforced in every provider `send()`
- *  — prevents an accidental megabyte paste from exhausting quota/credits. */
-export const MAX_PROMPT_CHARS = 100_000;
+ *  — prevents an accidental megabyte paste from exhausting quota/credits.
+ *
+ *  Advisory mirror of the server's authoritative cap (Website
+ *  `lib/entitlements.ts`); it exists so an oversize paste fails instantly and
+ *  locally instead of after a round trip. MUST NOT exceed the server's value,
+ *  or users hit a 413 this never warned them about. */
+export const MAX_PROMPT_CHARS = 24_000;
 
 export type ThemePreference = "light" | "dark" | "system" | "high-contrast";
 

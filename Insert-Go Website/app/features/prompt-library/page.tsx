@@ -12,9 +12,9 @@ import { FadeUp, Reveal } from "@/components/Reveal";
 import { pageGraph } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "AI Prompt Library Software with Dynamic Templates",
+  title: "AI Prompt Library Software for Windows",
   description:
-    "Save, organize, and run reusable AI prompts on Windows. InsertGo templates support form fields, paragraphs, menus, toggles, clipboard values, and direct insertion.",
+    "Save, organize, and run reusable AI prompts on Windows. InsertGo templates support form fields, menus, toggles, clipboard values, and direct insertion.",
   alternates: { canonical: "/features/prompt-library" },
   openGraph: {
     title: "Dynamic AI Prompt Library for Windows",

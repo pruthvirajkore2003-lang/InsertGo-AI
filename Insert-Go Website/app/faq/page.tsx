@@ -3,12 +3,21 @@ import { FadeUp } from "@/components/Reveal";
 import { GlowBackdrop } from "@/components/PageHero";
 import { DownloadButton, GhostButton } from "@/components/Buttons";
 import { AdUnit } from "@/components/ads/AdUnit";
+import { Breadcrumbs } from "@/components/SeoContent";
 import { FaqAccordion } from "./FaqAccordion";
 
 export default function FAQPage() {
   return (
     <main className="relative overflow-hidden">
       <GlowBackdrop />
+      {/* The BreadcrumbList in layout.tsx now describes a trail the page
+          actually renders, as every other landing page does. */}
+      <Breadcrumbs
+        items={[
+          { name: "Home", href: "/" },
+          { name: "FAQ", href: "/faq" },
+        ]}
+      />
 
       <section className="relative px-6 pt-40 pb-10 text-center">
         <FadeUp>

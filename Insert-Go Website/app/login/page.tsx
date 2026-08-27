@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   title: "Sign in",
   description:
     "Sign in to InsertGo.AI with Google, your organization's SSO, or a one-time email code.",
+  // Same reason as /account: robots.txt Disallow prevents the fetch, not the
+  // listing. A sign-in form has no search intent worth owning.
+  robots: { index: false, follow: false },
 };
 
 const trustPoints = [

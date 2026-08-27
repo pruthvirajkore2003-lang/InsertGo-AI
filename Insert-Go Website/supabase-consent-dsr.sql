@@ -284,6 +284,12 @@ $$;
 -- This must also be STATED IN ADVANCE (R-13): a subject told "we erase
 -- everything" who then finds a retained ledger has been misled; one whose
 -- notice itemises the statutory-retention class has been informed.
+-- The return type gained "generationLogDeleted" when per-generation cost
+-- telemetry became a Class A table, and Postgres refuses to `create or replace`
+-- a function whose return type changed — so drop first to keep this file
+-- re-runnable. The grants at the bottom are re-applied after every run.
+drop function if exists public.erase_user(text, bigint);
+
 create or replace function public.erase_user(
   p_user_id text,
   p_dsr_id  bigint default null
@@ -293,6 +299,7 @@ returns table (
   "sessionsDeleted"   bigint,
   "accountsDeleted"   bigint,
   "apiUsageDeleted"   bigint,
+  "generationLogDeleted" bigint,
   "verificationsDeleted" bigint,
   "ledgerRetained"    bigint,
   "auditRetained"     bigint,
@@ -305,6 +312,7 @@ as $$
 declare
   v_email text;
   v_sessions bigint; v_accounts bigint; v_usage bigint; v_verif bigint;
+  v_genlog bigint;
   v_ledger bigint; v_audit bigint; v_consent bigint;
 begin
   -- Identity verification precedes execution, and is recorded. Acting on an
@@ -340,6 +348,12 @@ begin
   get diagnostics v_accounts = row_count;
   delete from "apiUsage" where "userId" = p_user_id;
   get diagnostics v_usage = row_count;
+  -- Class A. Per-generation token counts are behavioural data about an
+  -- identified person with no statutory-retention basis — unlike
+  -- "creditLedger", which is a book of account and is retained below. Keeping
+  -- them would be retention without a lawful basis, so they go.
+  delete from "generationLog" where "userId" = p_user_id;
+  get diagnostics v_genlog = row_count;
   -- "verification" is keyed by IDENTIFIER (the email), not by userId — it holds
   -- OTP hashes and desktop PKCE authorization codes. A userId-only sweep would
   -- leave live sign-in material behind for an address that no longer has an
@@ -361,7 +375,8 @@ begin
    where "id" = p_user_id;
 
   return query select
-    true, v_sessions, v_accounts, v_usage, v_verif, v_ledger, v_audit, v_consent;
+    true, v_sessions, v_accounts, v_usage, v_genlog, v_verif,
+    v_ledger, v_audit, v_consent;
 end;
 $$;
 

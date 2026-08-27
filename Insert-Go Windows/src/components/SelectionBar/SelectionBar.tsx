@@ -37,7 +37,7 @@ import {
   type SelectionPlacement,
 } from "@/services/selectionBar";
 import { useSettingsStore } from "@/store/settingsStore";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore, tierOf } from "@/store/authStore";
 
 type Notice = { kind: "fallback" | "error"; message: string };
 
@@ -65,6 +65,9 @@ export function SelectionBar() {
   // reactive on its own — subscribing to the token makes a login/logout
   // re-render the skills/login branch below.
   const authToken = useAuthStore((s) => s.token);
+  // Plan tier — mounted on the pill so the in-situ bar picks up the
+  // subscriber's specular rim/glow via the data-tier token routing.
+  const tier = tierOf(useAuthStore((s) => s.user));
 
   // Fresh JS context: providers/settings must be loaded here too (App.tsx
   // does the same for the palette window). Auth likewise — this window skips
@@ -236,7 +239,12 @@ export function SelectionBar() {
       className={`ig-selbar-shell ig-selbar-shell--${placement}${idle ? " ig-selbar-shell--hidden" : ""}`}
       aria-hidden={idle || undefined}
     >
-      <div className="ig-skillbar" role="toolbar" aria-label="Selection skills">
+      <div
+        className="ig-skillbar"
+        data-tier={tier}
+        role="toolbar"
+        aria-label="Selection skills"
+      >
         {notice ? (
           <span
             className={`ig-selbar__note${notice.kind === "error" ? " ig-selbar__note--error" : ""}`}

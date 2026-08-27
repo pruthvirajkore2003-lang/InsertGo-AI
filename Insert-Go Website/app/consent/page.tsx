@@ -2,7 +2,14 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { currentConsent, needsConsentGate, NOTICE_VERSION } from "@/lib/consent";
+import {
+  currentConsent,
+  needsConsentGate,
+  NOTICE_VERSION,
+  type ConsentState,
+  type PurposeId,
+} from "@/lib/consent";
+import { noteDbFailure } from "@/lib/dbFailure";
 import { ConsentForm } from "./ConsentForm";
 
 export const metadata: Metadata = {
@@ -28,7 +35,7 @@ export const dynamic = "force-dynamic";
 export default async function ConsentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ incomplete?: string }>;
+  searchParams: Promise<{ incomplete?: string; error?: string }>;
 }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
@@ -36,10 +43,25 @@ export default async function ConsentPage({
   // Already current: never make someone re-answer a question we can prove they
   // answered. Re-prompting on every visit is the friction §6(4) prohibits on
   // the withdrawal side, and it is no more defensible on the grant side.
-  const state = await currentConsent(session.user.id);
-  if (!needsConsentGate(state)) redirect("/account");
+  //
+  // On a read failure the gate is SHOWN rather than skipped: this is the one
+  // surface where failing open would mean letting someone into the product
+  // without a consent record, and re-asking is recoverable where that is not.
+  // Deliberately not redirecting to /account instead — /account's own gate
+  // check swallows the same outage, so a flapping store would bounce the user
+  // between the two pages.
+  let state: Map<PurposeId, ConsentState>;
+  let isDegraded = false;
+  try {
+    state = await currentConsent(session.user.id);
+  } catch (e) {
+    noteDbFailure("consent", "consent_current", e, session.user.id);
+    state = new Map<PurposeId, ConsentState>();
+    isDegraded = true;
+  }
+  if (!isDegraded && !needsConsentGate(state)) redirect("/account");
 
-  const { incomplete } = await searchParams;
+  const { incomplete, error } = await searchParams;
 
   return (
     <main className="flex min-h-screen items-center justify-center px-5 pt-28 pb-16">
@@ -53,6 +75,25 @@ export default async function ConsentPage({
               ? `We've updated our privacy notice to version ${NOTICE_VERSION}. Please confirm your choices for the current text.`
               : "Choose what InsertGo may do with your data. Each item is a separate choice — you are not agreeing to one bundle."}
           </p>
+          {isDegraded && (
+            <p
+              role="status"
+              className="mt-0 mb-6 rounded-2xl bg-danger/10 px-4 py-3 text-sm leading-relaxed text-ink"
+            >
+              We could not load your saved choices right now, so nothing below
+              is ticked. Any choices you have already made are unchanged — this
+              form records a fresh decision when you submit it.
+            </p>
+          )}
+          {error === "save_failed" && (
+            <p
+              role="alert"
+              className="mt-0 mb-6 rounded-2xl bg-danger/10 px-4 py-3 text-sm leading-relaxed text-danger"
+            >
+              We could not record those choices, so nothing was saved. Please
+              try again in a moment.
+            </p>
+          )}
           <ConsentForm incomplete={incomplete === "1"} />
         </div>
       </div>

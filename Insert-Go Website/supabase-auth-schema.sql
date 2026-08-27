@@ -41,6 +41,20 @@ alter table "user" add column if not exists "dailyCreditsDate" date not null def
 -- the watermark. Null = never stamped, so the first event always applies.
 alter table "user" add column if not exists "billingEventAt" timestamptz;
 
+-- Self-service cancellation (California ARL / FTC ROSCA "click to cancel").
+-- Cancelling has to be doable online, by the user, in no more steps than
+-- signing up took — which needs two facts this schema did not hold:
+--   * "dodoSubscriptionId" — WHICH subscription to stop. Written by the
+--     webhook from the event's own subscription_id on every activation, so it
+--     stays correct across a plan change; null for users who never subscribed.
+--   * "cancelAtPeriodEnd" — the user has cancelled but has paid through the
+--     end of the current period and keeps the paid tier until then. It is NOT
+--     the same as tier='free', and conflating them would take away a benefit
+--     the customer already paid for. Cleared on every activation/renewal so a
+--     resubscribe is not permanently flagged as cancelling.
+alter table "user" add column if not exists "dodoSubscriptionId" text;
+alter table "user" add column if not exists "cancelAtPeriodEnd" boolean not null default false;
+
 -- One-time ledger migration (safe to re-run — both statements are self-guarding):
 --  * legacy subscribed users land on the top tier of the new model;
 --  * any legacy monthly "credits" balance folds into non-expiring add-on
@@ -141,6 +155,39 @@ create table if not exists "creditLedger" (
 -- past GEN_MAX_REPLAYS.
 alter table "creditLedger" add column if not exists "replays" integer not null default 0;
 
+-- Per-generation cost telemetry for /api/ai/generate.
+--
+-- The margin on this product is a token-cost question, and nothing else in the
+-- schema can answer it: "apiUsage" counts REQUESTS (it is a rate-limit window
+-- counter) and "creditLedger" counts CREDITS, but a credit buys a variable
+-- number of tokens — a one-line rewrite and a full-page expansion are both one
+-- credit and differ by ~10x in what they cost to serve. Before this table the
+-- only record of the difference was a `console.debug` line in the route that
+-- ages out of platform logs in days, so cost-per-user, cost-per-skill, and the
+-- semantic cache's real hit rate were all unmeasurable — and margin drift was
+-- invisible until Google's monthly bill arrived.
+--
+-- Privacy (SPEC §10): counts, ids and booleans only. No prompt text, no
+-- response text, no <content> fragment — nothing here can reconstruct what a
+-- user wrote. That is what makes the table safe to retain at all.
+--
+-- Class A for erasure (supabase-consent-dsr.sql `erase_user`): behavioural data
+-- about an identified person with no statutory-retention basis, so a verified
+-- erasure PURGES it, exactly like "apiUsage". Deliberately NOT Class B — the
+-- credit ledger is retained because it is a book of account; token counts are
+-- not, and retaining them would be retention without a basis.
+create table if not exists "generationLog" (
+  "id" bigserial primary key,
+  "userId" text not null references "user" ("id") on delete cascade,
+  "createdAt" timestamptz not null default now(),
+  "tier" text not null,
+  "model" text not null,
+  "promptTokens" integer not null default 0,
+  "outputTokens" integer not null default 0,
+  "grounded" boolean not null default false,
+  "cacheHit" boolean not null default false
+);
+
 -- Hot-path indexes
 create index if not exists "session_userId_idx" on "session" ("userId");
 create index if not exists "account_userId_idx" on "account" ("userId");
@@ -148,6 +195,14 @@ create index if not exists "verification_identifier_idx" on "verification" ("ide
 create index if not exists "ssoProvider_domain_idx" on "ssoProvider" ("domain");
 create index if not exists "apiUsage_userId_idx" on "apiUsage" ("userId");
 create index if not exists "creditLedger_userId_idx" on "creditLedger" ("userId");
+-- Per-user cost rollups and the erasure sweep both filter on "userId"; the
+-- descending time column makes "this user's recent spend" an index range scan.
+create index if not exists "generationLog_userId_createdAt_idx"
+  on "generationLog" ("userId", "createdAt" desc);
+-- Fleet-wide cost reporting ("what did last month cost, by model") scans by
+-- time alone, with no user filter.
+create index if not exists "generationLog_createdAt_idx"
+  on "generationLog" ("createdAt" desc);
 
 -- Better Auth (and the app's own pool in lib/db.ts) talk to these tables
 -- directly via the DATABASE_URL role. Lock them away from Supabase's
@@ -163,7 +218,7 @@ create index if not exists "creditLedger_userId_idx" on "creditLedger" ("userId"
 -- `security definer` function running as its owner, and Better Auth plus the
 -- Node routes connect as the table OWNER over DATABASE_URL. Verified by grep:
 -- there is no /rest/v1/<table> access anywhere in the app.
-revoke all on "user", "session", "account", "verification", "ssoProvider", "apiUsage", "creditLedger"
+revoke all on "user", "session", "account", "verification", "ssoProvider", "apiUsage", "creditLedger", "generationLog"
   from anon, authenticated, service_role;
 
 -- Second layer, because the revoke above is an ENUMERATED denylist on a platform
@@ -185,6 +240,7 @@ alter table "verification" enable row level security;
 alter table "ssoProvider"  enable row level security;
 alter table "apiUsage"     enable row level security;
 alter table "creditLedger" enable row level security;
+alter table "generationLog" enable row level security;
 
 -- Make deny-by-default the standing rule for tables that do not exist yet.
 -- `service_role` included for the reason given above — without it, every table

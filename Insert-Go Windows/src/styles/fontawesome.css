@@ -70,6 +70,8 @@
 .fa-keyboard::before { content: "\f11c"; }
 .fa-highlighter::before { content: "\f591"; }
 .fa-coins::before { content: "\f51e"; }
+.fa-gem::before { content: "\f3a5"; }
+.fa-crown::before { content: "\f521"; }
 .fa-filter::before { content: "\f0b0"; }
 .fa-file::before { content: "\f15b"; }
 .fa-arrow-left::before { content: "\f060"; }

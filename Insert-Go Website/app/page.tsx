@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     absolute: "Floating AI Prompt Assistant for Windows | InsertGo.AI",
   },
   description:
-    "InsertGo is a floating AI prompt assistant for Windows with global hotkeys, dynamic templates, selected-text actions, managed AI with no API key setup, and direct text insertion.",
+    "InsertGo is a floating AI prompt assistant for Windows: global hotkeys, dynamic prompt templates, selected-text actions, and direct insertion at your cursor.",
   alternates: { canonical: "/" },
 };
 
@@ -149,9 +149,14 @@ const homeFaqs = [
       "InsertGo works with applications that accept standard paste input, including most browsers, editors, documents, chat apps, email clients, and terminals. If Windows blocks a target, InsertGo keeps the result copied and asks you to paste manually.",
   },
   {
+    // Shortened to one sentence and pointed at the page that owns the query.
+    // docs/seo-aeo-strategy.md assigns "Raycast alternative for Windows AI
+    // prompts" to /alternatives/raycast-windows; the long answer that used to
+    // sit here answered it well enough to compete with its own comparison
+    // page, and did so undated and unsourced where that page is both.
     question: "Is InsertGo a Raycast alternative for Windows AI prompts?",
     answer:
-      "Yes, when you want a focused AI prompt and text-insertion workflow. Raycast now has a Windows beta and offers a broader launcher with file search, extensions, snippets, and AI. InsertGo concentrates on dynamic prompts, selection actions, and safe write-back.",
+      "Yes, when what you want is a focused AI prompt and text-insertion workflow rather than a full launcher. InsertGo concentrates on dynamic prompt templates, selection actions and verified write-back into the app you were using. The dated side-by-side comparison lives on the Raycast alternative page.",
   },
   {
     question: "Can I build my own AI skills without API keys?",
@@ -589,8 +594,11 @@ export default function Home() {
               <span className="text-accent-hover">Start inserting.</span>
             </h2>
             <p className="mx-auto mt-5 max-w-[480px] text-[17px] leading-relaxed text-muted">
-              The floating AI assistant for Windows. Free to download,
-              installed in under a minute, ready the moment you press the
+              {/* "installed in under a minute" was a timing claim with nothing
+                  measuring it. The per-user, no-admin install is the same
+                  promise stated as a fact that can be checked. */}
+              The floating AI assistant for Windows. Free to download, installs
+              per-user with no admin rights, ready the moment you press the
               hotkey.
             </p>
             <div className="mt-[34px] flex flex-wrap justify-center gap-3.5">

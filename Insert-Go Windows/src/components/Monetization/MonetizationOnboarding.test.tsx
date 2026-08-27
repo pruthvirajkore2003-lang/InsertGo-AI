@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { DEFAULT_SETTINGS, type Settings } from "@/types";
 
 vi.mock("@/services/tauriBridge", () => ({
@@ -9,6 +9,7 @@ vi.mock("@/services/tauriBridge", () => ({
   getHardwareId: vi.fn(async () => "hw"),
 }));
 import { useSettingsStore } from "@/store/settingsStore";
+import { useMonetizationStore } from "@/store/monetizationStore";
 import { useAuthStore } from "@/store/authStore";
 import {
   FALLBACK_PLANS,
@@ -21,6 +22,8 @@ const PAID = FALLBACK_PLANS.filter((p) => p.tier);
 
 beforeEach(() => {
   useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS } });
+  localStorage.clear();
+  useMonetizationStore.setState({ currency: "USD" });
 });
 
 describe("MonetizationOnboarding", () => {
@@ -42,6 +45,21 @@ describe("MonetizationOnboarding", () => {
     });
     expect(active).toHaveLength(PAID.length);
     active.forEach((cta) => expect(cta).toBeDisabled());
+  });
+
+  it("states the auto-renewal terms next to every live paid CTA", () => {
+    // California ARL §17601(c) / FTC ROSCA: the disclosure has to be in visual
+    // proximity to the control that consents to the recurring charge. This
+    // button opens a real Dodo checkout, so the website's pricing page is not
+    // the only surface that owes the notice.
+    useAuthStore.setState({ user: null }); // signed out → paid CTAs are live
+    render(<MonetizationOnboarding />);
+    const notices = screen.getAllByText(/renews automatically each month/i);
+    expect(notices).toHaveLength(PAID.length);
+    for (const n of notices) {
+      expect(n).toHaveTextContent(/until you cancel/i);
+      expect(n).toHaveTextContent(/cancel any time in account settings/i);
+    }
   });
 
   it("offers sign-in rather than checkout to a signed-out user", () => {
@@ -73,6 +91,47 @@ describe("MonetizationOnboarding", () => {
       expect(
         screen.getByRole("button", { name: `Get ${plan.name}` })
       ).toBeEnabled();
+    }
+  });
+});
+
+describe("currency toggle", () => {
+  const plus = () => FALLBACK_PLANS.find((p) => p.tier === "plus")!;
+
+  it("switches every price and its tax note together", () => {
+    render(<MonetizationOnboarding />);
+    expect(screen.getByText("$7.99 / month")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /INR/ }));
+
+    // Price, and the GST line that has to travel with it — a rupee figure
+    // shown without the tax added at checkout is drip pricing under the
+    // CCPA's 2023 dark-pattern guidelines.
+    expect(screen.getByText("₹499 / month")).toBeInTheDocument();
+    expect(
+      screen.getByText(`₹${plus().price.INR} + 18% GST = ₹588.82 total`)
+    ).toBeInTheDocument();
+    expect(screen.queryByText("$7.99 / month")).toBeNull();
+  });
+
+  it("says the toggle changes the display, not the charge", () => {
+    // Dodo localises the real charge from the billing country on file, so a
+    // ₹ column in front of a $-billed buyer must not read as a promise.
+    render(<MonetizationOnboarding />);
+    expect(
+      screen.getByText(/Checkout charges in the currency of your billing country/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: "Display currency" })
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the renewal disclosure in the selected currency's tax words", () => {
+    useAuthStore.setState({ user: null }); // signed out → paid CTAs are live
+    render(<MonetizationOnboarding />);
+    fireEvent.click(screen.getByRole("button", { name: /INR/ }));
+    for (const n of screen.getAllByText(/renews automatically each month/i)) {
+      expect(n).toHaveTextContent(/plus GST/i);
     }
   });
 });

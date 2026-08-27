@@ -23,6 +23,9 @@ export const Commands = {
   resizeWithinWorkArea: "resize_within_work_area",
   checkPermissions: "check_permissions",
   setAutostart: "set_autostart",
+  legalConsentGranted: "legal_consent_granted",
+  legalConsentState: "legal_consent_state",
+  quitApp: "quit_app",
 } as const;
 
 /** Probe the OS capabilities the onboarding wizard primes (platform/
@@ -31,6 +34,29 @@ export const Commands = {
  *  check here" rather than a fake grant. */
 export function checkPermissions(): Promise<PermissionReport> {
   return invoke(Commands.checkPermissions);
+}
+
+/**
+ * Tell the backend the user has accepted this build's Terms & Privacy, so it
+ * can register the global hotkey and install the selection hooks without a
+ * restart. MUST be called only AFTER `acceptedTermsVersion` has been persisted:
+ * Rust re-reads settings.json and refuses (resolves `false`) if the write is
+ * not there, so the file — not this call — is what authorises the hooks.
+ */
+export function legalConsentGranted(): Promise<boolean> {
+  return invoke(Commands.legalConsentGranted);
+}
+
+/** What the BACKEND thinks about consent. The UI has its own copy from
+ *  settings; this is the value the command guards actually test. */
+export function legalConsentState(): Promise<boolean> {
+  return invoke(Commands.legalConsentState);
+}
+
+/** End the process. Only the consent modal's "Decline and quit" calls this —
+ *  declining has to be a real exit, not a dead end. */
+export function quitApp(): Promise<void> {
+  return invoke(Commands.quitApp);
 }
 
 /** Enable/disable the per-user autostart entry; resolves to the new state. */

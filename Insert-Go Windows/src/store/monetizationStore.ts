@@ -18,7 +18,13 @@ import {
   useAuthStore,
 } from "@/store/authStore";
 import { isLicensePro, useLicenseStore } from "@/store/licenseStore";
-import { fetchPricing, type PricingData } from "@/services/billing";
+import {
+  detectCurrency,
+  fetchPricing,
+  storeCurrency,
+  type Currency,
+  type PricingData,
+} from "@/services/billing";
 
 export type PlanTier = "managed_trial" | "managed_pro";
 
@@ -57,10 +63,20 @@ type MonetizationState = {
   /** The website's pricing catalog, or null until it loads (and while
    *  offline). Every reader must carry its own fallback copy. */
   pricing: PricingData | null;
+  /**
+   * Which price column every pricing surface renders. Lives here rather than
+   * being re-derived per component so the toggle in one modal moves the other
+   * one too — two surfaces disagreeing about the price of the same plan is a
+   * worse bug than either of them being wrong.
+   */
+  currency: Currency;
 
   /** Open the contextual upgrade modal (out of credits / gated feature). */
   openUpgrade: (reason: UpgradeReason) => void;
   closeUpgrade: () => void;
+  /** Switch the display column and remember it across launches. Display only:
+   *  Dodo charges the server-pinned product at its own regionalized price. */
+  setCurrency: (currency: Currency) => void;
   /** Load the catalog once per session; safe to call from every pricing
    *  surface on mount. Never rejects — a failure just leaves `pricing` null. */
   loadPricing: () => Promise<void>;
@@ -82,9 +98,15 @@ export const useMonetizationStore = create<MonetizationState>((set, get) => ({
   ...snapshot(),
   upgradeReason: null,
   pricing: null,
+  currency: detectCurrency(),
 
   openUpgrade: (reason) => set({ upgradeReason: reason }),
   closeUpgrade: () => set({ upgradeReason: null }),
+
+  setCurrency: (currency) => {
+    storeCurrency(currency);
+    set({ currency });
+  },
 
   loadPricing: () => {
     if (get().pricing) return Promise.resolve();

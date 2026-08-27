@@ -11,6 +11,7 @@ import {
   type PurposeId,
 } from "@/lib/consent";
 import { writeConsentCookie } from "@/lib/writeConsentCookie";
+import { noteDbFailure } from "@/lib/dbFailure";
 
 /**
  * Record the consent gate's decisions (R-09, R-14).
@@ -50,15 +51,32 @@ export async function submitConsent(formData: FormData): Promise<void> {
   const ip = clientIp(new Request("https://insertgo.ai", { headers: h }));
   const userAgent = h.get("user-agent");
 
-  for (const id of [...REQUIRED_PURPOSES, ...OPTIONAL_PURPOSES]) {
-    await recordConsent({
+  try {
+    for (const id of [...REQUIRED_PURPOSES, ...OPTIONAL_PURPOSES]) {
+      await recordConsent({
+        userId,
+        purpose: id,
+        granted: ticked(id),
+        method: "web_consent_gate",
+        ip,
+        userAgent,
+      });
+    }
+  } catch (e) {
+    // A consent-store outage here used to reach app/error.tsx, which is the
+    // worst possible page to land on at a gate: it says "something went wrong"
+    // and leaves the user unable to tell whether they are now consented. Say
+    // plainly that nothing was saved and let them retry. A partial write is
+    // harmless — the gate re-prompts until every required purpose is recorded
+    // against the current NOTICE_VERSION, and repeating a row is history, not
+    // corruption.
+    noteDbFailure("consent", "consent_write", e, userId);
+    audit("consent.grant", {
+      outcome: "failure",
       userId,
-      purpose: id,
-      granted: ticked(id),
-      method: "web_consent_gate",
-      ip,
-      userAgent,
+      detail: { method: "web_consent_gate" },
     });
+    redirect("/consent?error=save_failed");
   }
 
   // Mirror the optional purposes into the browser so the tags can read them

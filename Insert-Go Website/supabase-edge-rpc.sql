@@ -210,15 +210,60 @@ begin
 end;
 $$;
 
--- Lock both functions to the server-held service role. PUBLIC gets EXECUTE on
--- new functions by default — revoking it is what keeps the anon/authenticated
--- PostgREST keys from calling a `security definer` credit debit.
+-- ── Per-generation cost telemetry ──────────────────────────────────────────
+-- One row per served generation. Called fire-and-forget from the route's
+-- `finally` block: a telemetry write that can fail a paid generation is worse
+-- than no telemetry, so the app-side caller swallows every error
+-- (lib/generationLog.ts) and this function is deliberately trivial.
+--
+-- The one failure worth naming is the FK: a user erased mid-stream leaves
+-- "userId" unsatisfiable and the insert raises. Dropping that row is correct —
+-- the erasure already decided this data should not exist.
+--
+-- Privacy (SPEC §10): every parameter is a count, an enum or a boolean. There
+-- is no free-text parameter that could carry prompt or response content, which
+-- is what makes these rows safe to retain.
+create or replace function public.log_generation(
+  p_user_id       text,
+  p_tier          text,
+  p_model         text,
+  p_prompt_tokens integer,
+  p_output_tokens integer,
+  p_grounded      boolean,
+  p_cache_hit     boolean
+)
+returns void
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  insert into "generationLog" (
+    "userId", "tier", "model",
+    "promptTokens", "outputTokens", "grounded", "cacheHit"
+  )
+  values (
+    p_user_id, p_tier, p_model,
+    greatest(coalesce(p_prompt_tokens, 0), 0),
+    greatest(coalesce(p_output_tokens, 0), 0),
+    coalesce(p_grounded, false),
+    coalesce(p_cache_hit, false)
+  );
+$$;
+
+-- Lock all three functions to the server-held service role. PUBLIC gets EXECUTE
+-- on new functions by default — revoking it is what keeps the
+-- anon/authenticated PostgREST keys from calling a `security definer` credit
+-- debit, or writing forged telemetry rows against another user's id.
 revoke execute on function public.consume_quota(text, text, bigint)
   from public, anon, authenticated;
 revoke execute on function public.debit_credit(text, text, integer, integer, integer)
+  from public, anon, authenticated;
+revoke execute on function public.log_generation(text, text, text, integer, integer, boolean, boolean)
   from public, anon, authenticated;
 
 grant execute on function public.consume_quota(text, text, bigint)
   to service_role;
 grant execute on function public.debit_credit(text, text, integer, integer, integer)
+  to service_role;
+grant execute on function public.log_generation(text, text, text, integer, integer, boolean, boolean)
   to service_role;

@@ -1629,10 +1629,12 @@ re-test annually.
 from the web. What remains is the *inbound* half — routing the mailbox into the queue —
 plus the name.
 
-**Open (manual).** (a) Appoint the officer; `GRIEVANCE_OFFICER.name` is
-`[Name to be appointed]` in **three** places that must change together —
-`app/privacy/page.tsx:29`, `app/terms` §23, and the desktop mirror
-`Insert-Go Windows/src/legal/index.ts:25`. (b) Route `grievance@insertgo.ai` into
+**Closed 2026-08-19 (a).** The officer is appointed and named — Pruthviraj Kore,
+Grievance Officer & Data Protection Officer — in all three copies
+(`app/privacy/page.tsx`, `app/terms` §24, desktop `src/legal/index.ts`), with the
+48-hour acknowledgement and the DPDP §13 designation stated. Notice version 1.5.0.
+
+**Open (manual).** (b) Route `grievance@insertgo.ai` into
 `dsr_create(..., p_verified => false)` — **false is load-bearing**: an emailed request has
 not proved who sent it, and `erase_user()` refuses unverified erasure rows for exactly
 that reason. (c) Add the postal address IT Rules 2011 Rule 5(9) expects; the policy

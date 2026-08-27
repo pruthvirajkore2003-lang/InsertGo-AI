@@ -3678,3 +3678,91 @@ textarea.ig-input {
   margin: 0 0 var(--ig-space-2);
 }
 
+
+/* ── First-run legal clickwrap (components/Legal/LegalConsentModal) ────────
+   The full Terms and Privacy text has to be READABLE in the modal, not merely
+   present: a scroll region the user cannot reach with the keyboard, or text
+   sized for a footnote, is the "inconspicuous notice" that gets a clickwrap
+   held unenforceable. Hence a real height, a focus ring on the scroller, and
+   body copy at the same size as the rest of the app. */
+.ig-legal__scroll {
+  max-height: 42vh;
+  min-height: 180px;
+  overflow-y: auto;
+  padding: var(--ig-space-3);
+  border: 1px solid var(--ig-border);
+  border-radius: var(--ig-radius-card);
+  background: var(--ig-surface-sunken, rgba(0, 0, 0, 0.12));
+  /* The scroller is a tab stop; make that visible for keyboard users. */
+  scrollbar-gutter: stable;
+}
+
+.ig-legal__scroll:focus-visible {
+  outline: 2px solid var(--ig-accent);
+  outline-offset: 2px;
+}
+
+.ig-legal__section + .ig-legal__section {
+  margin-top: var(--ig-space-3);
+}
+
+/* Arbitration and the waivers. Boxed because "clear and conspicuous" is a
+   condition of enforcing them (Berman v. Freedom Financial Network, 30 F.4th
+   849), not a design flourish — a waiver that reads like every other
+   paragraph is the one a court declines to enforce. */
+.ig-legal__section--flag {
+  padding: var(--ig-space-3);
+  border: 2px solid var(--ig-accent);
+  border-radius: var(--ig-radius-card);
+  background: color-mix(in srgb, var(--ig-accent) 8%, transparent);
+}
+
+.ig-legal__heading {
+  margin: 0 0 var(--ig-space-1);
+  font-size: var(--ig-text-sm);
+  font-weight: 600;
+  color: var(--ig-fg);
+}
+
+.ig-legal__body {
+  margin: 0;
+  font-size: var(--ig-text-sm);
+  line-height: 1.65;
+  color: var(--ig-muted);
+}
+
+.ig-legal__consent {
+  display: flex;
+  gap: var(--ig-space-2);
+  align-items: flex-start;
+  font-size: var(--ig-text-sm);
+  color: var(--ig-fg);
+  cursor: pointer;
+}
+
+.ig-legal__consent input {
+  margin-top: 2px;
+  flex: 0 0 auto;
+  /* A 13px default checkbox is a fiddly target for the single most important
+     click in the product. */
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.ig-legal__aside {
+  margin: calc(-1 * var(--ig-space-2)) 0 0;
+  font-size: var(--ig-text-xs);
+}
+
+/* Auto-renewal disclosure under a plan CTA (Monetization/MonetizationOnboarding).
+   Small, but never smaller than the app's own fine print, and never hidden
+   behind a disclosure toggle: "clear and conspicuous" is a legal test the
+   styling has to pass, not a design preference. */
+.ig-plan-card__renewal {
+  margin: var(--ig-space-2) 0 0;
+  font-size: var(--ig-text-xs);
+  line-height: 1.5;
+  color: var(--ig-muted);
+  text-align: left;
+}

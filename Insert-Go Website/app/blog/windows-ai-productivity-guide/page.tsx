@@ -19,9 +19,9 @@ import {
 } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "System-Wide AI Writing Assistant for Windows: Guide",
+  title: "System-Wide AI Writing Assistant for Windows",
   description:
-    "Learn how a floating, system-wide AI writing assistant works on Windows: hotkeys, focus handoff, prompt templates, selected text, providers, clipboard safety, and app compatibility.",
+    "How a floating, system-wide AI writing assistant works on Windows: hotkeys, focus handoff, prompt templates, clipboard safety, and app compatibility.",
   alternates: { canonical: "/blog/windows-ai-productivity-guide" },
   authors: [{ name: "InsertGo.AI" }],
   openGraph: {

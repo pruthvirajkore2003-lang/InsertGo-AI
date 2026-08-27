@@ -169,6 +169,35 @@ export function SettingsPanel() {
 
       {activeTab === "selection" && (
         <TabPanel id="selection" idBase="settings">
+          {/* The withdrawal half of the first-run authorisation. Consent that
+              can only be given is not consent: DPDP §6(4) requires withdrawal
+              to be as easy as granting, and CIPA-style interception consent is
+              worth little if the only way to revoke it is uninstalling. Off
+              here means selection_watch::check_selection retracts and reads
+              nothing, whatever the scope below says. */}
+          <div className="ig-field">
+            <label className="ig-switch" htmlFor="selectionBar">
+              <input
+                id="selectionBar"
+                type="checkbox"
+                checked={settings.selectionBar}
+                onChange={(e) =>
+                  void update({ selectionBar: e.target.checked })
+                }
+              />
+              <span className="ig-switch__track" aria-hidden="true">
+                <span className="ig-switch__thumb" />
+              </span>
+              <span className="ig-switch__text">
+                Watch for text selections
+              </span>
+            </label>
+            <span className="ig-muted">
+              On, InsertGo watches for selection gestures and offers the skill
+              bar. Off, it reads nothing until you press the hotkey yourself —
+              and you can turn it back on whenever you like.
+            </span>
+          </div>
           <div className="ig-field">
             <label htmlFor="selectionBarScope">Read scope</label>
             <SearchableSelect

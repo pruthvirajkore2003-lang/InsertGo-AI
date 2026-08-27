@@ -60,7 +60,7 @@ export const metadata: Metadata = {
 const SUPPORT_EMAIL = "support@insertgo.ai";
 const GRIEVANCE_EMAIL = "grievance@insertgo.ai";
 /** Matches app/terms/page.tsx — bump both together. */
-const EFFECTIVE = "8 August 2026";
+const EFFECTIVE = "19 August 2026";
 
 const breadcrumbs = [
   { name: "Home", href: "/" },
@@ -114,11 +114,11 @@ const methods = [
     meta: "Fastest · self-service",
     steps: [
       "Sign in at insertgo.ai/account. The plan card shows your tier, today's credits and your add-on balance.",
-      "Open the Dodo Payments customer portal from the link in any InsertGo receipt email — Dodo is the Merchant of Record and holds the subscription and the payment method.",
-      "Choose Cancel subscription. There is no cancellation fee and no exit questionnaire.",
-      "Dodo emails a confirmation. Your account page reads Free from the day after the paid period ends.",
+      "Press Cancel subscription on the plan card itself — no billing sub-page to find, no payment-portal login, no receipt email to dig out.",
+      "Confirm once. That is the whole flow: one click and one confirmation, no cancellation fee, no exit questionnaire and no retention offer.",
+      "The card says Cancels at the end of your billing period straight away, and your account reads Free from the day after the paid period ends.",
     ],
-    note: "No receipt email to hand? Use method 2 — one message and we do it for you.",
+    note: "Two clicks — fewer than signing up took, which is what the law requires.",
   },
   {
     icon: LinearSms,
@@ -286,15 +286,15 @@ const cancelHowToSchema = {
     {
       "@type": "HowToStep",
       position: 2,
-      name: "Open the Dodo Payments customer portal",
-      text: "Follow the portal link in any InsertGo receipt email. Dodo Payments is the Merchant of Record and holds the subscription and payment method.",
-      url: `${SITE_URL}/cancel#how-to-cancel`,
+      name: "Press Cancel subscription on the plan card",
+      text: "The Cancel subscription button sits on the plan card on the account page itself — there is no billing sub-page and no payment-portal login to get through first.",
+      url: `${SITE_URL}/account`,
     },
     {
       "@type": "HowToStep",
       position: 3,
-      name: "Cancel the subscription",
-      text: "Choose Cancel subscription in the portal. There is no cancellation fee, and Plus or Pro features stay active until the end of the period already paid for.",
+      name: "Confirm the cancellation",
+      text: "Confirm once and the cancellation is recorded immediately. There is no cancellation fee, and Plus or Pro features stay active until the end of the period already paid for.",
       url: `${SITE_URL}/cancel#how-to-cancel`,
     },
     {
@@ -841,7 +841,7 @@ export default function CancelPage() {
             >
               Terms &amp; Conditions
             </Link>
-            , with the grievance procedure in section 23. Where this page and
+            , with the grievance procedure in section 24. Where this page and
             the Terms ever differ, the Terms govern.
           </p>
         </Reveal>

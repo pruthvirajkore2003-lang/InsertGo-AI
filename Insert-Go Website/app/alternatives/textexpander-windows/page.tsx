@@ -19,12 +19,12 @@ import { CONTENT_UPDATED, HOTKEY_WORKFLOW_STEPS, pageGraph } from "@/lib/seo";
 const PATH = "/alternatives/textexpander-windows";
 
 export const metadata: Metadata = {
-  title: "TextExpander Alternative for Windows with AI Fill-Ins",
+  title: "TextExpander Alternative for Windows",
   description:
-    "TextExpander expands saved snippets with fill-in fields. InsertGo feeds the same fields to an AI prompt and inserts generated text at your cursor in any Windows app.",
+    "TextExpander expands saved snippets with fill-in fields. InsertGo feeds the same fields to an AI prompt and inserts generated text at your cursor on Windows.",
   alternates: { canonical: PATH },
   openGraph: {
-    title: "TextExpander Alternative for Windows with AI Fill-Ins",
+    title: "TextExpander Alternative for Windows",
     description:
       "Static snippet expansion versus generative prompts on Windows — criteria-by-criteria.",
     url: PATH,

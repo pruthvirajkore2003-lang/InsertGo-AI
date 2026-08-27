@@ -383,7 +383,13 @@ mod imp {
         // applies live, without a settings-changed plumbing channel.
         let settings = crate::domain::settings::load_settings(app.clone()).unwrap_or_default();
 
-        if !settings.selection_bar {
+        // Consent gate, re-read with the rest. The hooks cannot be installed
+        // without a current acceptance (lib.rs), so this covers the window
+        // between an acceptance going stale — a settings.json edited by hand,
+        // or an update whose LEGAL_VERSION the running process outlived — and
+        // the restart that would re-ask. Reading a selection under a version
+        // the user never accepted is the thing to avoid, not the bar.
+        if !settings.consent_current() || !settings.selection_bar {
             skillbar_window::hide_skillbar(app);
             return;
         }

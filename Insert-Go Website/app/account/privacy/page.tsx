@@ -3,7 +3,14 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { currentConsent, NOTICE_VERSION, PURPOSES } from "@/lib/consent";
+import {
+  currentConsent,
+  NOTICE_VERSION,
+  PURPOSES,
+  type ConsentState,
+  type PurposeId,
+} from "@/lib/consent";
+import { noteDbFailure } from "@/lib/dbFailure";
 import { eraseAccount, raiseRequest, setPurpose } from "./actions";
 
 export const metadata: Metadata = {
@@ -12,6 +19,27 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
+
+/**
+ * What a failed server action redirects back with. Codes, not messages: the
+ * copy is written here and the action carries an enum, so nothing a database
+ * said can be reflected onto the page.
+ *
+ * Each line has to answer the one question the user actually has — *did it
+ * happen or not?* — because a withdrawal someone believes they made and we did
+ * not store is the §6(4) failure that stays invisible to both sides.
+ */
+const ACTION_ERRORS: Record<string, string> = {
+  save_failed:
+    "We could not save that choice, so nothing was changed. Please try again in a moment — your existing preferences are untouched.",
+  request_failed:
+    "We could not file that request just now, so it has not been recorded. Please try again, or write to our Grievance Officer at grievance@insertgo.ai — a request by email counts from the day you send it.",
+  erasure_failed:
+    "We could not complete the deletion, so your account is unchanged. Please try again, or write to grievance@insertgo.ai and we will action it within the statutory period.",
+};
+
+const GENERIC_ACTION_ERROR =
+  "Something went wrong on our side and the last action did not complete. Please try again, or write to grievance@insertgo.ai.";
 
 /**
  * Data-principal controls (R-10 withdrawal, R-11 rights).
@@ -32,13 +60,35 @@ export default async function PrivacyPage({
     raised?: string;
     required?: string;
     confirm?: string;
+    error?: string;
   }>;
 }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
 
-  const state = await currentConsent(session.user.id);
-  const { raised, required, confirm } = await searchParams;
+  // The consent store is what this page *displays*; it is not what makes the
+  // page worth reaching. §§11–14 rights — export, correction, grievance,
+  // nomination, erasure — are statutory and time-bound, so an outage in the
+  // read must not take the surface that exercises them down with it. Before
+  // this catch, a single 401 from PostgREST bubbled to app/error.tsx and the
+  // whole page became "Something went wrong", grievance route included.
+  let state: Map<PurposeId, ConsentState>;
+  let isDegraded = false;
+  try {
+    state = await currentConsent(session.user.id);
+  } catch (e) {
+    noteDbFailure("privacy", "consent_current", e, session.user.id);
+    // Fail SAFE, not merely open: an unknown decision renders as not granted,
+    // never as granted. The banner below says so plainly, because a stale
+    // "Withdraw" button would otherwise claim a consent we cannot prove.
+    state = new Map<PurposeId, ConsentState>();
+    isDegraded = true;
+  }
+
+  const { raised, required, confirm, error } = await searchParams;
+  const actionError = error
+    ? (ACTION_ERRORS[error] ?? GENERIC_ACTION_ERROR)
+    : null;
 
   return (
     <main className="flex min-h-screen justify-center px-5 pt-28 pb-16">
@@ -55,6 +105,24 @@ export default async function PrivacyPage({
             .
           </p>
 
+          {isDegraded && (
+            <p
+              role="status"
+              className="mt-4 mb-0 rounded-2xl bg-danger/10 px-4 py-3 text-sm leading-relaxed text-ink"
+            >
+              We could not sync your live consent records right now. Your
+              default preferences are displayed below. You can still submit
+              requests or contact our Grievance Officer.
+            </p>
+          )}
+          {actionError && (
+            <p
+              role="alert"
+              className="mt-4 mb-0 rounded-2xl bg-danger/10 px-4 py-3 text-sm leading-relaxed text-danger"
+            >
+              {actionError}
+            </p>
+          )}
           {raised === "1" && (
             <p
               role="status"

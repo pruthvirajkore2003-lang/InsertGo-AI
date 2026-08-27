@@ -16,6 +16,7 @@ import {
   deriveTier,
   useMonetizationStore,
 } from "@/store/monetizationStore";
+import { detectCurrency, storedCurrency } from "@/services/billing";
 
 function settings(over: Partial<Settings> = {}): Settings {
   return { ...DEFAULT_SETTINGS, ...over };
@@ -141,5 +142,30 @@ describe("tier reactivity / upgrade modal", () => {
     expect(useMonetizationStore.getState().upgradeReason).toBe("history");
     useMonetizationStore.getState().closeUpgrade();
     expect(useMonetizationStore.getState().upgradeReason).toBeNull();
+  });
+});
+
+describe("display currency", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useMonetizationStore.setState({ currency: "USD" });
+  });
+
+  it("remembers the choice across launches", () => {
+    // Re-detecting on every start would throw the choice away the moment the
+    // laptop's timezone disagreed with it — which is the case it exists for.
+    useMonetizationStore.getState().setCurrency("INR");
+    expect(useMonetizationStore.getState().currency).toBe("INR");
+    expect(storedCurrency()).toBe("INR");
+    expect(detectCurrency()).toBe("INR");
+  });
+
+  it("survives an auth or license change", () => {
+    // The tier is recomputed from those stores on every change; a full
+    // setState there would silently reset the column mid-session.
+    useMonetizationStore.getState().setCurrency("INR");
+    useAuthStore.setState({ user: null });
+    useLicenseStore.setState({ status: "inactive" });
+    expect(useMonetizationStore.getState().currency).toBe("INR");
   });
 });

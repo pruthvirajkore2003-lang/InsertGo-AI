@@ -8,6 +8,7 @@ import "./globals.css";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { JsonLd } from "@/components/SeoContent";
+import { SITE_URL } from "@/lib/seo";
 import { AdSenseScript } from "@/components/ads/AdSenseScript";
 import { ConsentMode } from "@/components/analytics/ConsentMode";
 import { ConsentSync } from "@/components/analytics/ConsentSync";
@@ -39,7 +40,12 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol = rawProtocol === "http" || rawProtocol === "https"
     ? rawProtocol
     : "https";
-  const origin = `${protocol}://${host}`;
+  // Canonicals and og:url have to name the production host, not whichever host
+  // served the request. A preview deployment (*.vercel.app) or an alias domain
+  // would otherwise self-canonicalize, and Google would see two indexable
+  // copies of every page competing with each other. Local dev keeps the
+  // request origin so relative asset URLs still resolve against the dev server.
+  const origin = isLocal ? `${protocol}://${host}` : SITE_URL;
   const socialImage = {
     url: `${origin}/og.png`,
     width: 1731,

@@ -19,13 +19,14 @@ import { motion, MotionConfig } from "framer-motion";
 import { TIER_LABELS, useMonetizationStore } from "@/store/monetizationStore";
 import { isPro, totalCredits, useAuthStore } from "@/store/authStore";
 import {
-  detectCurrency,
   formatMoney,
+  gstNote,
   openPricingPage,
   startCheckout,
   type CheckoutPayload,
   type PricingPlan,
 } from "@/services/billing";
+import { CurrencyToggle } from "./CurrencyToggle";
 
 /** Trial grant when the server reports no daily maximum (pre-3-tier build) —
  *  same default authStore falls back to for `credits`. */
@@ -98,10 +99,10 @@ export function MonetizationOnboarding() {
    *  action doesn't freeze every button on the panel. */
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
-  // Which price column to render. Pure and sync (one Intl lookup), so it does
-  // not need memoizing — and re-reading it per render means a timezone change
-  // is picked up without a restart.
-  const currency = detectCurrency();
+  // Which price column to render. Detected once (timezone, then UI language)
+  // when the store is created and overridable from the toggle below, so the
+  // choice holds across every pricing surface and across launches.
+  const currency = useMonetizationStore((s) => s.currency);
 
   // Loads once per session and never rejects; offline leaves the fallbacks up.
   useEffect(() => {
@@ -183,6 +184,11 @@ export function MonetizationOnboarding() {
         <p className="ig-plan-card__price">
           {formatMoney(plan.price[currency], currency)} {plan.per}
         </p>
+        {gstNote(plan.price[currency], currency) && (
+          <p className="ig-plan-card__renewal">
+            {gstNote(plan.price[currency], currency)}
+          </p>
+        )}
 
         <ul
           className="ig-plan-card__badges"
@@ -239,6 +245,19 @@ export function MonetizationOnboarding() {
           >
             {busy ? "Opening checkout…" : cta.label}
           </motion.button>
+          {/* California ARL §17601(c) / FTC ROSCA: the automatic-renewal terms
+              have to sit in visual proximity to the control that consents to
+              them, and this button opens a real subscription checkout — the
+              website's pricing page is not the only place a plan is bought.
+              Shown only on paid tiers, and only where the offer is live. */}
+          {plan.tier && !cta.disabled && (
+            <p className="ig-plan-card__renewal">
+              Renews automatically each month at this price, plus{" "}
+              {currency === "INR" ? "GST" : "tax"}, until you cancel. Cancel any
+              time in Account settings on insertgo.ai — one click, no email
+              needed.
+            </p>
+          )}
         </div>
       </article>
     );
@@ -251,6 +270,24 @@ export function MonetizationOnboarding() {
           <h3 className="ig-section-label">Your plan</h3>
           <span className="ig-plan__current">{TIER_LABELS[tier]}</span>
         </div>
+
+        {/* Trust plumbing made visible: the data route every prompt takes.
+            The relay holds the provider key server-side (Desktop invariant
+            #7), so this one line is the transparency promise behind every
+            plan below. role="img" treats the whole route as one picture. */}
+        <p
+          className="ig-muted"
+          style={{ margin: 0, textAlign: "center" }}
+          role="img"
+          aria-label="Your prompt goes through the InsertGo relay to the model — the provider key never leaves our servers"
+        >
+          Your prompt → InsertGo relay → model · no LLM key on this device
+        </p>
+
+        {/* Above the cards: the detection this app can do offline is a guess,
+            and the buyer it guessed wrong for needs the fix before they read a
+            price, not after. */}
+        <CurrencyToggle />
 
         <motion.div
           initial={{ opacity: 0, y: 8 }}
@@ -304,6 +341,14 @@ export function MonetizationOnboarding() {
                       <p className="ig-plan-card__price">
                         {formatMoney(pack.price[currency], currency)} one-time
                       </p>
+                      {/* Same drip-pricing rule as the plans above: a rupee
+                          figure that grows at checkout is the thing the CCPA
+                          2023 dark-pattern guidelines name. */}
+                      {gstNote(pack.price[currency], currency) && (
+                        <p className="ig-plan-card__renewal">
+                          {gstNote(pack.price[currency], currency)}
+                        </p>
+                      )}
                       <div className="ig-plan-card__actions">
                         <motion.button
                           type="button"

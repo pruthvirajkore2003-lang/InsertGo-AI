@@ -13,6 +13,7 @@ import {
   type PurposeId,
 } from "@/lib/consent";
 import { writeConsentCookie } from "@/lib/writeConsentCookie";
+import { noteDbFailure } from "@/lib/dbFailure";
 import { createDsr, eraseUser, fulfilDsr } from "@/lib/dsr";
 
 async function requireUserId(): Promise<{
@@ -55,14 +56,28 @@ export async function setPurpose(formData: FormData): Promise<void> {
   if (!found) redirect("/account/privacy");
   if (found.required && !granted) redirect("/account/privacy?required=1");
 
-  await recordConsent({
-    userId,
-    purpose: found.id as PurposeId,
-    granted,
-    method: "web_account_settings",
-    ip,
-    userAgent,
-  });
+  try {
+    await recordConsent({
+      userId,
+      purpose: found.id as PurposeId,
+      granted,
+      method: "web_account_settings",
+      ip,
+      userAgent,
+    });
+  } catch (e) {
+    noteDbFailure("privacy", "consent_write", e, userId);
+    // The attempt is worth a durable row even though the decision is not
+    // stored: "the user tried to withdraw and our store was down" is the one
+    // fact that explains, later, why the consent record still says granted.
+    audit(granted ? "consent.grant" : "consent.withdraw", {
+      outcome: "failure",
+      userId,
+      detail: { purpose: found.id, method: "web_account_settings" },
+    });
+    // Back to the page with a code, never with the database's own words.
+    redirect("/account/privacy?error=save_failed");
+  }
 
   // Re-read rather than patching the previous cookie: this action toggles ONE
   // purpose, and a cookie rebuilt from a stale local guess is how a withdrawal
@@ -100,12 +115,23 @@ export async function raiseRequest(formData: FormData): Promise<void> {
   const note = String(formData.get("note") ?? "").slice(0, 2000);
 
   // Verified: raised from a live session, which is control of the account.
-  const { id, dueAt } = await createDsr({
-    userId,
-    kind,
-    note: `[web session] ${note}`,
-    verified: true,
-  });
+  let id: number;
+  let dueAt: string;
+  try {
+    ({ id, dueAt } = await createDsr({
+      userId,
+      kind,
+      note: `[web session] ${note}`,
+      verified: true,
+    }));
+  } catch (e) {
+    noteDbFailure("privacy", "dsr_create", e, userId);
+    audit("dsr.request", { outcome: "failure", userId, detail: { kind } });
+    // Told plainly that it was NOT recorded, and pointed at the email route:
+    // §13's clock starts when the request reaches us, so a user who believes
+    // a failed submit filed a grievance is a user whose clock never started.
+    redirect("/account/privacy?error=request_failed");
+  }
 
   audit("dsr.request", {
     outcome: "success",
@@ -139,15 +165,57 @@ export async function eraseAccount(formData: FormData): Promise<void> {
     redirect("/account/privacy?confirm=1");
   }
 
-  const { id } = await createDsr({
-    userId,
-    kind: "erasure",
-    note: "[web session] self-service account deletion",
-    verified: true,
-  });
+  // Three failure scopes, not one, because the honest message differs at each
+  // step and a single catch would have to pick one and be wrong twice.
+  let id: number;
+  try {
+    ({ id } = await createDsr({
+      userId,
+      kind: "erasure",
+      note: "[web session] self-service account deletion",
+      verified: true,
+    }));
+  } catch (e) {
+    noteDbFailure("privacy", "dsr_create", e, userId);
+    audit("account.erasure", {
+      outcome: "failure",
+      userId,
+      detail: { stage: "dsr_create" },
+    });
+    redirect("/account/privacy?error=erasure_failed");
+  }
 
-  const result = await eraseUser(userId, id);
-  await fulfilDsr(id, "[web session] erased in place; Class B retained");
+  let result;
+  try {
+    result = await eraseUser(userId, id);
+  } catch (e) {
+    noteDbFailure("privacy", "erase_user", e, userId);
+    audit("account.erasure", {
+      outcome: "failure",
+      userId,
+      detail: { stage: "erase_user", dsrId: id },
+    });
+    // The account really is untouched here — `erase_user()` is one transaction
+    // and either applied all of it or none. The DSR row stays open on purpose:
+    // a verified erasure request was made, so §12's clock is running whether or
+    // not this attempt completed, and the queue is where that is visible.
+    redirect("/account/privacy?error=erasure_failed");
+  }
+
+  try {
+    await fulfilDsr(id, "[web session] erased in place; Class B retained");
+    audit("dsr.fulfilled", {
+      outcome: "success",
+      userId,
+      detail: { kind: "erasure", dsrId: id },
+    });
+  } catch (e) {
+    // Past the point of no return: the data IS gone. Telling this user their
+    // "account is unchanged" would be a false statement about an irreversible
+    // act, so this failure is logged and the flow continues. What is left
+    // undone is bookkeeping — the request stays open until dsr_fulfil lands.
+    noteDbFailure("privacy", "dsr_fulfil", e, userId);
+  }
 
   audit("account.erasure", {
     outcome: "success",
@@ -161,11 +229,6 @@ export async function eraseAccount(formData: FormData): Promise<void> {
       ledgerRetained: result.ledgerRetained,
       consentRetained: result.consentRetained,
     },
-  });
-  audit("dsr.fulfilled", {
-    outcome: "success",
-    userId,
-    detail: { kind: "erasure", dsrId: id },
   });
 
   // Every session row for this user is gone, so the cookie in hand is already

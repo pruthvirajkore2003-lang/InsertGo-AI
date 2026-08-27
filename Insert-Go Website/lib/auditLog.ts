@@ -46,6 +46,10 @@ export type AuditEvent =
   // Billing — "unauthorised access", "data tampering"
   | "billing.webhook.signature_invalid"
   | "billing.webhook.unmatched_user"
+  // Self-service cancellation (ARL / ROSCA). Not a security event: it is the
+  // durable, timestamped proof that a cancellation was offered online and
+  // honoured, which is what an automatic-renewal dispute actually turns on.
+  | "billing.subscription.cancelled"
   // Managed AI relay — metering bypass, "attacks on applications"
   | "ai.replay_refused"
   | "ai.quota_denied"

@@ -288,6 +288,11 @@ pub async fn open_selection_review(
 #[cfg(target_os = "windows")]
 #[tauri::command]
 pub async fn apply_to_selection(app: AppHandle, text: String) -> AppResult<()> {
+    // Consent gate (CIPA §§631/632): this path stages the clipboard and
+    // synthesises a paste into the app that owned the selection. It has its
+    // own clipboard code rather than routing through `clipboard::insert_from`,
+    // so it needs its own check — same gate, second door.
+    crate::domain::settings::require_consent(&app)?;
     use crate::platform::{clipboard, foreground};
     use std::time::Duration;
     use tauri_plugin_clipboard_manager::ClipboardExt;
@@ -350,6 +355,11 @@ pub async fn apply_to_selection(app: AppHandle, text: String) -> AppResult<()> {
 #[cfg(not(target_os = "windows"))]
 #[tauri::command]
 pub async fn apply_to_selection(app: AppHandle, text: String) -> AppResult<()> {
+    // Consent gate (CIPA §§631/632): this path stages the clipboard and
+    // synthesises a paste into the app that owned the selection. It has its
+    // own clipboard code rather than routing through `clipboard::insert_from`,
+    // so it needs its own check — same gate, second door.
+    crate::domain::settings::require_consent(&app)?;
     fallback(&app, text, "selection paste is Windows-only")
 }
 

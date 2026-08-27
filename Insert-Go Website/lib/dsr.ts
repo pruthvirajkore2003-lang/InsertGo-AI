@@ -55,6 +55,11 @@ export interface EraseResult {
   sessionsDeleted: number;
   accountsDeleted: number;
   apiUsageDeleted: number;
+  /** Per-generation cost telemetry ("generationLog"). Class A: token counts are
+   *  behavioural data about an identified person with no statutory-retention
+   *  basis, so they are purged — unlike the credit ledger, which is a book of
+   *  account and is retained. */
+  generationLogDeleted: number;
   verificationsDeleted: number;
   ledgerRetained: number;
   auditRetained: number;

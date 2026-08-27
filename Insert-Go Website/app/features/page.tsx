@@ -14,15 +14,34 @@ import { Reveal } from "@/components/Reveal";
 import { CustomSkillBuilderShowcase } from "@/components/demos/CustomSkillBuilderShowcase";
 import { FeatureAnimatedDemo } from "@/components/FeatureAnimatedDemo";
 import { PageHero, GlowBackdrop } from "@/components/PageHero";
+import { Breadcrumbs, JsonLd } from "@/components/SeoContent";
 import { DownloadButton, GhostButton } from "@/components/Buttons";
 import { HOTKEYS } from "@/lib/constants/hotkeys";
+import { pageGraph } from "@/lib/seo";
+
+const DESCRIPTION =
+  "Save reusable prompt templates, run dynamic prompts with fill-in forms, and transform selected text with the Skill Bar — all from one global hotkey on Windows.";
 
 export const metadata: Metadata = {
-  title: "Features — Prompt Library, Skill Bar & Auto-Insert",
-  description:
-    "Save reusable prompt templates, run dynamic prompts with fill-in forms, and transform selected text with the Skill Bar — global hotkey, OS-level insertion, managed AI with no API key setup.",
+  // Title and description both trimmed to survive the SERP cut: the old pair
+  // rendered at 63 and ~190 characters once the " — InsertGo.AI" template was
+  // appended.
+  title: "Features — Prompt Library & Auto-Insert",
+  description: DESCRIPTION,
   alternates: { canonical: "/features" },
+  openGraph: {
+    title: "Features — Prompt Library & Auto-Insert",
+    description:
+      "Reusable prompt templates, fill-in forms, selected-text actions, and insertion back at the cursor.",
+    url: "/features",
+    type: "article",
+  },
 };
+
+const breadcrumbs = [
+  { name: "Home", href: "/" },
+  { name: "Features", href: "/features" },
+];
 
 const blocks = [
   {
@@ -145,7 +164,19 @@ const customApps = [
 export default function FeaturesPage() {
   return (
     <main className="relative overflow-hidden">
+      {/* The hub every feature page links up to published no structured data,
+          so the breadcrumb trails on its children pointed at a node that did
+          not exist. */}
+      <JsonLd
+        data={pageGraph({
+          path: "/features",
+          name: "InsertGo features for Windows",
+          description: DESCRIPTION,
+          breadcrumbs,
+        })}
+      />
       <GlowBackdrop />
+      <Breadcrumbs items={breadcrumbs} />
 
       <PageHero
         kicker="Features"

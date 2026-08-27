@@ -34,12 +34,15 @@ export const metadata: Metadata = {
  * only job is to identify text we can still produce.
  */
 const VERSION = NOTICE_VERSION;
-const EFFECTIVE = "8 August 2026";
+const EFFECTIVE = "19 August 2026";
 
-/** Same officer as Terms section 23 — the mailbox is live, the name is a
- *  placeholder. Fill it in HERE, in app/terms, and in the app's mirror. */
+/** Same named officer as Terms section 24 and the desktop mirror — IT
+ *  (Intermediary Guidelines) Rules 2021 rule 3(2)(a) expects an individual,
+ *  and DPDP §13(3) expects the DPO's particulars to be published. Keep the
+ *  three copies identical. */
 const GRIEVANCE_OFFICER = {
-  name: "[Name to be appointed]",
+  name: "Pruthviraj Kore",
+  designation: "Grievance Officer & Data Protection Officer",
   email: "grievance@insertgo.ai",
 };
 
@@ -98,7 +101,20 @@ const sections: Array<{ heading: string; body: string }> = [
       "your clipboard, uses it to move the text, then puts the original " +
       "contents back — and your clipboard is not read at any other time. " +
       "InsertGo does not take screenshots, does not log keystrokes, does not " +
-      "record audio, and does not watch what you type between invocations.",
+      "record audio, and does not watch what you type between invocations. " +
+      "To notice that you have selected something, the application registers " +
+      "a global hotkey and low-level Windows keyboard and mouse hooks. Those " +
+      "hooks examine only Shift, the eight navigation keys and Escape, plus " +
+      "where the mouse was pressed and released; character keys are never " +
+      "inspected, and nothing typed is stored, transmitted or written to a " +
+      "log. NONE OF THIS RUNS UNTIL YOU ALLOW IT: on first launch the " +
+      "desktop application shows you these documents and asks you to tick a " +
+      "separate authorisation box, and it installs no hook, registers no " +
+      "hotkey and reads nothing until you do. You can withdraw that " +
+      "authorisation whenever you like by switching the selection skill bar " +
+      "off in Settings or by uninstalling the application; it is separate " +
+      "from — and never bundled with — the optional purposes below, which " +
+      "you grant or refuse one by one and can change at any time.",
   },
   {
     heading: "What happens when you use the managed AI service",
@@ -314,9 +330,11 @@ const sections: Array<{ heading: string; body: string }> = [
     heading: "Grievance Officer (India)",
     body:
       "Complaints about how we handle your personal data, and requests to " +
-      "exercise the rights above, can be sent to our Grievance Officer, " +
-      `${GRIEVANCE_OFFICER.name}, at ${GRIEVANCE_OFFICER.email}; our postal ` +
-      "address is available on request from that mailbox. The officer is " +
+      "exercise the rights above, can be sent to " +
+      `${GRIEVANCE_OFFICER.name}, ${GRIEVANCE_OFFICER.designation}, ` +
+      `InsertGo.AI, Pune, Maharashtra, India, at ${GRIEVANCE_OFFICER.email}; ` +
+      "our full postal " +
+      "address is provided on request from that mailbox. The officer is " +
       "appointed under the Information Technology (Reasonable Security " +
       "Practices and Procedures and Sensitive Personal Data or Information) " +
       "Rules, 2011 and the Information Technology (Intermediary Guidelines " +

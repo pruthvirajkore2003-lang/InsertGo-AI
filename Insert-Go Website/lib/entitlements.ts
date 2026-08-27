@@ -33,8 +33,26 @@ export type Denied = { status: 401 | 403 | 413 | 429; message: string };
  * quota bounds request *count*, not token size, so without this a single
  * account can spend the shared server Gemini key at maximum size per call.
  * The system prompt is ours (~2 KB today), so its cap is deliberately tight.
+ *
+ * Sizing `MAX_PROMPT_CHARS` (24k chars ≈ 6k tokens): a prompt is one skill
+ * template plus the user's selection. The largest shipped template is ~6.9 KB
+ * (`src/skills/10-reply-with-instructions.md`), which leaves ~17 KB of
+ * selection — several pages of pasted text, well past the "grab a paragraph
+ * and act on it" workflow the product is built around.
+ *
+ * The old 100k cap was ~4x the real ceiling and cost real money: paired with an
+ * uncapped output it made a single 1-credit call worth ~$0.029 of Gemini spend,
+ * which a maxed-out Pro account turns into ~$129/month against $14.99 of
+ * revenue. `maxOutputTokens` in lib/gemini.ts closes the larger half of that
+ * hole; this closes the input half.
+ *
+ * Keep in sync with the desktop's own `MAX_PROMPT_CHARS` (Windows
+ * `src/types/index.ts`). The client copy is advisory — it exists so an oversize
+ * paste fails instantly and locally instead of after a round trip — but if the
+ * client's is the larger of the two, users hit a server 413 the client never
+ * warned them about.
  */
-export const MAX_PROMPT_CHARS = 100_000;
+export const MAX_PROMPT_CHARS = 24_000;
 export const MAX_SYSTEM_CHARS = 20_000;
 
 /** 413 when the prompt or system prompt exceeds the server-side cap. */
@@ -155,27 +173,67 @@ export function requireSession(session: SessionLike): Denied | null {
 }
 
 /**
- * Grounding is billed: entitled when the user is subscribed, or still has
- * trial credits. Sessions from a server without the customSession plugin (or
- * a pre-migration DB) carry no fields — treat those as trial-with-credits so
- * a rollout mismatch degrades to today's behavior instead of locking everyone
- * out.
+ * Grounded runs allowed per tier per UTC day — a SEPARATE budget from
+ * `TIER_DAILY_CREDITS`, because a grounded run and a plain one differ in cost
+ * by roughly two orders of magnitude.
+ *
+ * Google bills Search grounding per grounded prompt, not per token: $35 per
+ * 1,000 on Gemini 2.5 and $14 per 1,000 on 3.x — i.e. $0.035 / $0.014 a call,
+ * against ~$0.0005 for a plain flash-lite generation. Charging both a flat 1
+ * credit (which is what the ledger does, and what it should keep doing — the
+ * credit is the user-facing unit of work) means the daily credit allowance
+ * bounds cost only for the cheap kind. Left ungoverned, a Pro account
+ * grounding all 150 daily credits bills ~$157/month against $14.99 of revenue,
+ * and a FREE account — entitled under the old `credits > 0` rule — bills ~$5.25
+ * a month against nothing at all.
+ *
+ * So grounding gets its own much smaller daily counter, enforced by the route
+ * through the same `consumeQuota` machinery as the burst/daily windows. At a
+ * 3.x grounding model these ceilings cost ~$0.84/month (Plus) and ~$2.94/month
+ * (Pro) at full use — affordable inside both prices.
+ *
+ * Free is 0 by design, and this table is the single source of truth for that:
+ * `isGroundingEntitled` derives the entitlement from it rather than keeping a
+ * second list that could drift.
+ *
+ * ponytail: flat per-tier ceilings, not a cost-weighted credit multiplier.
+ * Pricing grounding at N credits would be the more flexible model, but it needs
+ * `debit_credit` (supabase-edge-rpc.sql) to take a cost parameter, and that
+ * function's insert-first CTE is the atomicity guarantee the whole ledger rests
+ * on. Revisit when a second premium action needs the same treatment.
  */
-export function isGroundingEntitled(session: SessionLike): boolean {
-  if (!session?.user?.id) return false;
-  const { subscriptionStatus, credits } = session.user;
-  if (subscriptionStatus == null && credits == null) return true;
-  return subscriptionStatus === "subscribed" || (credits ?? 0) > 0;
+export const GROUNDED_DAILY_MAX: Record<Tier, number> = {
+  free: 0,
+  plus: 2,
+  pro: 7,
+};
+
+/**
+ * Whether this tier may ground at all. Derived from `GROUNDED_DAILY_MAX` so the
+ * gate and the counter can never disagree.
+ *
+ * Replaces an earlier `subscriptionStatus === "subscribed" || credits > 0`
+ * rule, which entitled every free account (they start with credits) to the most
+ * expensive call the service can make. Tier comes from the DB row the debit
+ * locked, not from the session — session fields are stamped at login by the
+ * customSession plugin and can be stale across an upgrade or downgrade.
+ */
+export function isGroundingEntitled(tier: Tier): boolean {
+  return GROUNDED_DAILY_MAX[tier] > 0;
 }
 
 /**
  * 403 when grounding is unavailable for this request: either the server has no
- * grounding model configured (`groundingConfigured` false) or the user isn't
+ * grounding model configured (`groundingConfigured` false) or the tier isn't
  * entitled. Both messages contain "upgrade"/"plan" so the client shows the
  * paywall path rather than logging the user out.
+ *
+ * Exhausting the daily grounded allowance is NOT handled here — that is a 429
+ * through `requireWithinQuota`, because it clears on its own and the client
+ * must not show a paywall for it.
  */
 export function requireGroundingEntitlement(
-  session: SessionLike,
+  tier: Tier,
   opts: { groundingConfigured: boolean }
 ): Denied | null {
   if (!opts.groundingConfigured) {
@@ -185,7 +243,7 @@ export function requireGroundingEntitlement(
         "Web search grounding isn't available on your plan yet — upgrade to enable it.",
     };
   }
-  if (!isGroundingEntitled(session)) {
+  if (!isGroundingEntitled(tier)) {
     return {
       status: 403,
       message: "Upgrade your plan to use web search grounding.",
