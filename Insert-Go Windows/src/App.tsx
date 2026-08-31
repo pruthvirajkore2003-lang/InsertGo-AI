@@ -182,7 +182,7 @@ export default function App() {
               />
             </span>
             <span className="ig-brand__name">
-              InsertGo<span className="ig-brand__ai">.AI</span>
+              InsertGo <span className="ig-brand__ai">AI</span>
             </span>
             {/* Paid-tier recognition mark (90/8/2): a compact micro-pill,
                 never a banner — Free stays visually clean. Pure decoration;
@@ -287,7 +287,7 @@ export default function App() {
                         <span className="ig-auth__tick" aria-hidden="true">
                           <i className="fa-solid fa-circle-check" />
                         </span>
-                        Syncs with your InsertGo.AI account
+                        Syncs with your InsertGo AI account
                       </li>
                     </motion.ul>
                     <motion.div variants={AUTH_RISE}>

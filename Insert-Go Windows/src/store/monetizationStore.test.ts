@@ -16,7 +16,6 @@ import {
   deriveTier,
   useMonetizationStore,
 } from "@/store/monetizationStore";
-import { detectCurrency, storedCurrency } from "@/services/billing";
 
 function settings(over: Partial<Settings> = {}): Settings {
   return { ...DEFAULT_SETTINGS, ...over };
@@ -146,26 +145,13 @@ describe("tier reactivity / upgrade modal", () => {
 });
 
 describe("display currency", () => {
-  beforeEach(() => {
-    localStorage.clear();
-    useMonetizationStore.setState({ currency: "USD" });
-  });
-
-  it("remembers the choice across launches", () => {
-    // Re-detecting on every start would throw the choice away the moment the
-    // laptop's timezone disagreed with it — which is the case it exists for.
-    useMonetizationStore.getState().setCurrency("INR");
-    expect(useMonetizationStore.getState().currency).toBe("INR");
-    expect(storedCurrency()).toBe("INR");
-    expect(detectCurrency()).toBe("INR");
-  });
-
-  it("survives an auth or license change", () => {
-    // The tier is recomputed from those stores on every change; a full
-    // setState there would silently reset the column mid-session.
-    useMonetizationStore.getState().setCurrency("INR");
+  it("is USD with no manual override", () => {
+    // There is no setCurrency and no second column, and an auth/license
+    // change (which recomputes the tier via setState) must not touch it.
+    expect(useMonetizationStore.getState().currency).toBe("USD");
+    expect("setCurrency" in useMonetizationStore.getState()).toBe(false);
     useAuthStore.setState({ user: null });
     useLicenseStore.setState({ status: "inactive" });
-    expect(useMonetizationStore.getState().currency).toBe("INR");
+    expect(useMonetizationStore.getState().currency).toBe("USD");
   });
 });

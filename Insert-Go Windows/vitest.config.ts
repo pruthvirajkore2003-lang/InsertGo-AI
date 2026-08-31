@@ -1,7 +1,12 @@
 /// <reference types="vitest" />
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
+// Same monorepo-root source of truth the app build uses (vite.config.ts). The
+// suite needs it: GEMINI_MODEL is inlined at transform time and `send()`
+// fail-fasts on an empty one, so without this default every GeminiProvider test
+// would depend on a git-ignored .env existing.
+import sharedConfig from "../shared-config.json";
 
 /** Absolute path to one of THIS package's dependencies, with posix separators.
  *  Vite alias replacements must be posix-style — a Windows path with
@@ -10,8 +15,17 @@ import path from "node:path";
 const localDep = (name: string) =>
   path.resolve(__dirname, "node_modules", name).split(path.sep).join("/");
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
+  define: {
+    // Mirrors vite.config.ts: an explicit VITE_GEMINI_MODEL still wins, the
+    // shared default only fills the gap. Kept here as well because Vitest reads
+    // THIS config, not vite.config.ts.
+    "import.meta.env.VITE_GEMINI_MODEL": JSON.stringify(
+      loadEnv(mode, __dirname, "VITE_").VITE_GEMINI_MODEL?.trim() ||
+        sharedConfig.defaultGeminiModel
+    ),
+  },
   resolve: {
     // @testing-library/* is hoisted to the REPO ROOT node_modules, which also
     // holds the website's React 19. Left alone, the library pulls react-dom 19
@@ -66,4 +80,4 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
   },
-});
+}));

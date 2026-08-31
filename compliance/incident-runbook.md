@@ -44,7 +44,7 @@ missed deadline the first time it lands while that person is on a flight.
 |---|---|---|---|
 | CERT-In Point of Contact (owns the 6-hour track) | *(R-16)* | *(R-16)* | *(R-16)* |
 | Privacy owner (owns the DPB track) | *(R-16)* | | |
-| Grievance Officer (data-principal comms) | *(name to be appointed)* | grievance@insertgo.ai | |
+| Grievance Officer (data-principal comms) | *(name to be appointed)* | support@insertgo.com | |
 
 ---
 
@@ -148,7 +148,7 @@ boilerplate nobody acts on or an apology that admits the wrong things.
 > useful — "no action needed" is a legitimate and better answer than invented
 > busywork)*.
 >
-> **Questions:** grievance@insertgo.ai. You may also complain to the Data
+> **Questions:** support@insertgo.com. You may also complain to the Data
 > Protection Board of India.
 
 ---
@@ -158,7 +158,7 @@ boilerplate nobody acts on or an apology that admits the wrong things.
 Send to `incident@cert-in.org.in` from the R-16 Point of Contact address.
 
 ```
-1.  Reporting entity      : InsertGo.AI
+1.  Reporting entity      : InsertGo AI
 2.  Point of Contact      : (R-16 — name, designation, phone, email)
 3.  Date/time NOTICED     : (UTC and IST — this is §2's recorded time)
 4.  Date/time OCCURRED    : (best estimate; "under investigation" is acceptable)

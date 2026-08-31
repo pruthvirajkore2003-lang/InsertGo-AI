@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { DEFAULT_SETTINGS, type Settings } from "@/types";
 
 vi.mock("@/services/tauriBridge", () => ({
@@ -95,43 +95,39 @@ describe("MonetizationOnboarding", () => {
   });
 });
 
-describe("currency toggle", () => {
+describe("single-currency display", () => {
   const plus = () => FALLBACK_PLANS.find((p) => p.tier === "plus")!;
 
-  it("switches every price and its tax note together", () => {
+  it("renders no manual currency switcher", () => {
+    render(<MonetizationOnboarding />);
+    expect(
+      screen.queryByRole("group", { name: "Display currency" })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /INR/ })).toBeNull();
+  });
+
+  it("shows USD prices from the catalog, and no other currency", () => {
     render(<MonetizationOnboarding />);
     expect(screen.getByText("$7.99 / month")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /INR/ }));
-
-    // Price, and the GST line that has to travel with it — a rupee figure
-    // shown without the tax added at checkout is drip pricing under the
-    // CCPA's 2023 dark-pattern guidelines.
-    expect(screen.getByText("₹499 / month")).toBeInTheDocument();
-    expect(
-      screen.getByText(`₹${plus().price.INR} + 18% GST = ₹588.82 total`)
-    ).toBeInTheDocument();
-    expect(screen.queryByText("$7.99 / month")).toBeNull();
+    expect(plus().price.USD).toBe(7.99);
+    expect(screen.queryByText(/₹/)).toBeNull();
   });
 
-  it("says the toggle changes the display, not the charge", () => {
-    // Dodo localises the real charge from the billing country on file, so a
-    // ₹ column in front of a $-billed buyer must not read as a promise.
+  it("states the prices are tax-exclusive rather than itemising a tax", () => {
+    // Dodo adds the buyer's regional tax at its hosted checkout, so the page
+    // may not imply the figure is the final one — that is the drip.
     render(<MonetizationOnboarding />);
-    expect(
-      screen.getByText(/Checkout charges in the currency of your billing country/i)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("group", { name: "Display currency" })
-    ).toBeInTheDocument();
+    expect(screen.getByText(/exclude tax/i)).toBeInTheDocument();
+    expect(screen.queryByText(/GST/i)).toBeNull();
   });
 
-  it("keeps the renewal disclosure in the selected currency's tax words", () => {
+  it("keeps the renewal disclosure's tax wording currency-neutral", () => {
     useAuthStore.setState({ user: null }); // signed out → paid CTAs are live
     render(<MonetizationOnboarding />);
-    fireEvent.click(screen.getByRole("button", { name: /INR/ }));
-    for (const n of screen.getAllByText(/renews automatically each month/i)) {
-      expect(n).toHaveTextContent(/plus GST/i);
+    const notes = screen.getAllByText(/renews automatically each month/i);
+    expect(notes.length).toBeGreaterThan(0);
+    for (const n of notes) {
+      expect(n).toHaveTextContent(/plus tax/i);
     }
   });
 });

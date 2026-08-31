@@ -48,7 +48,7 @@ export async function submitConsent(formData: FormData): Promise<void> {
     redirect("/consent?incomplete=1");
   }
 
-  const ip = clientIp(new Request("https://insertgo.ai", { headers: h }));
+  const ip = clientIp(new Request("https://insertgo.com", { headers: h }));
   const userAgent = h.get("user-agent");
 
   try {

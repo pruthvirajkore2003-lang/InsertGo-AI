@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/Link";
 import { GlowBackdrop } from "@/components/PageHero";
 import { FadeUp } from "@/components/Reveal";
 import { DownloadButton, GhostButton } from "@/components/Buttons";
@@ -24,7 +24,7 @@ export default function NotFound() {
     <main className="relative overflow-hidden">
       <GlowBackdrop />
 
-      <section className="relative px-6 pt-40 pb-14 text-center">
+      <section className="relative px-6 pt-24 pb-8 text-center sm:pt-28 sm:pb-10">
         <FadeUp>
           <p className="mb-4 text-xs font-medium tracking-[0.16em] text-brand uppercase">
             404

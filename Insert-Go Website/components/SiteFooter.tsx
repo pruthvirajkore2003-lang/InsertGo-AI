@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import Link from "next/link";
+import Link from "@/components/Link";
 import { WindowsLogo } from "./icons/WindowsLogo";
 import { HOTKEYS } from "@/lib/constants/hotkeys";
 
@@ -60,8 +60,8 @@ export function SiteFooter() {
               alt=""
               className="block h-[26px] w-[26px] shrink-0 [filter:drop-shadow(0_0_5px_rgba(255,255,255,0.3))_drop-shadow(0_0_14px_rgba(47,107,255,0.5))]"
             />
-            <span className="font-serif text-[17px] font-semibold">
-              InsertGo<span className="text-accent-primary">.AI</span>
+            <span className="font-serif whitespace-nowrap text-[17px] font-semibold">
+              InsertGo <span className="text-accent-primary">AI</span>
             </span>
           </Link>
           <p className="text-sm leading-relaxed text-muted">
@@ -174,7 +174,7 @@ export function SiteFooter() {
 
       <div className="relative mx-auto mt-14 flex max-w-[1080px] flex-wrap justify-between gap-3 border-t border-line pt-6">
         <span className="text-[13px] text-muted">
-          © 2026 InsertGo.AI — All rights reserved.
+          © 2026 InsertGo AI — All rights reserved.
         </span>
         <span className="text-[13px] text-muted">
           Built exclusively for Windows.

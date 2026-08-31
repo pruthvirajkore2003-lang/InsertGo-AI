@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
+import Link from "@/components/Link";
 import { GlowBackdrop } from "@/components/PageHero";
 import { FadeUp } from "@/components/Reveal";
 
@@ -30,7 +30,7 @@ export default function Error({
     <main className="relative overflow-hidden">
       <GlowBackdrop />
 
-      <section className="relative flex min-h-[70vh] flex-col items-center justify-center px-6 pt-40 pb-24 text-center">
+      <section className="relative flex min-h-[70vh] flex-col items-center justify-center px-6 pt-24 pb-24 text-center sm:pt-28">
         <FadeUp>
           <p className="mb-4 text-xs font-medium tracking-[0.16em] text-brand uppercase">
             Something went wrong

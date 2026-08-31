@@ -46,7 +46,7 @@ let row: { dodoSubscriptionId: string | null; cancelAtPeriodEnd: boolean };
 let flagWrites: number;
 
 const post = () =>
-  POST(new Request("https://insertgo.ai/api/billing/cancel", { method: "POST" }));
+  POST(new Request("https://insertgo.com/api/billing/cancel", { method: "POST" }));
 
 beforeEach(() => {
   row = { dodoSubscriptionId: "sub_abc", cancelAtPeriodEnd: false };

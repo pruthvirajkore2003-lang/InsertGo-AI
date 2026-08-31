@@ -1,4 +1,4 @@
--- InsertGo.AI — credential-at-rest hardening for "session" and "account" (R-04).
+-- InsertGo AI — credential-at-rest hardening for "session" and "account" (R-04).
 --
 -- Run once in Supabase (SQL Editor → New query → paste → Run), AFTER
 -- supabase-auth-schema.sql. Safe to re-run.

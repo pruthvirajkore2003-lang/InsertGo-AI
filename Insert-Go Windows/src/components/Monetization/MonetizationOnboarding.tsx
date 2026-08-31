@@ -20,13 +20,11 @@ import { TIER_LABELS, useMonetizationStore } from "@/store/monetizationStore";
 import { isPro, totalCredits, useAuthStore } from "@/store/authStore";
 import {
   formatMoney,
-  gstNote,
   openPricingPage,
   startCheckout,
   type CheckoutPayload,
   type PricingPlan,
 } from "@/services/billing";
-import { CurrencyToggle } from "./CurrencyToggle";
 
 /** Trial grant when the server reports no daily maximum (pre-3-tier build) —
  *  same default authStore falls back to for `credits`. */
@@ -52,7 +50,7 @@ export const FALLBACK_PLANS: PricingPlan[] = [
   {
     name: "Free",
     tier: null,
-    price: { USD: 0, INR: 0 },
+    price: { USD: 0 },
     per: "forever",
     features: [
       "5 credits every day",
@@ -64,7 +62,7 @@ export const FALLBACK_PLANS: PricingPlan[] = [
   {
     name: "Plus",
     tier: "plus",
-    price: { USD: 7.99, INR: 499 },
+    price: { USD: 7.99 },
     per: "/ month",
     features: [
       "50 credits every day",
@@ -76,7 +74,7 @@ export const FALLBACK_PLANS: PricingPlan[] = [
   {
     name: "Pro",
     tier: "pro",
-    price: { USD: 14.99, INR: 999 },
+    price: { USD: 14.99 },
     per: "/ month",
     features: [
       "150 credits every day",
@@ -99,9 +97,8 @@ export function MonetizationOnboarding() {
    *  action doesn't freeze every button on the panel. */
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
-  // Which price column to render. Detected once (timezone, then UI language)
-  // when the store is created and overridable from the toggle below, so the
-  // choice holds across every pricing surface and across launches.
+  // USD, the catalog's only column — no manual override, so every pricing
+  // surface shows the same single currency.
   const currency = useMonetizationStore((s) => s.currency);
 
   // Loads once per session and never rejects; offline leaves the fallbacks up.
@@ -184,11 +181,6 @@ export function MonetizationOnboarding() {
         <p className="ig-plan-card__price">
           {formatMoney(plan.price[currency], currency)} {plan.per}
         </p>
-        {gstNote(plan.price[currency], currency) && (
-          <p className="ig-plan-card__renewal">
-            {gstNote(plan.price[currency], currency)}
-          </p>
-        )}
 
         <ul
           className="ig-plan-card__badges"
@@ -252,10 +244,9 @@ export function MonetizationOnboarding() {
               Shown only on paid tiers, and only where the offer is live. */}
           {plan.tier && !cta.disabled && (
             <p className="ig-plan-card__renewal">
-              Renews automatically each month at this price, plus{" "}
-              {currency === "INR" ? "GST" : "tax"}, until you cancel. Cancel any
-              time in Account settings on insertgo.ai — one click, no email
-              needed.
+              Renews automatically each month at this price, plus tax, until
+              you cancel. Cancel any time in Account settings on insertgo.com —
+              one click, no email needed.
             </p>
           )}
         </div>
@@ -284,11 +275,6 @@ export function MonetizationOnboarding() {
           Your prompt → InsertGo relay → model · no LLM key on this device
         </p>
 
-        {/* Above the cards: the detection this app can do offline is a guess,
-            and the buyer it guessed wrong for needs the fix before they read a
-            price, not after. */}
-        <CurrencyToggle />
-
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -301,7 +287,8 @@ export function MonetizationOnboarding() {
             regional tax on top of every figure above. Saying so here is
             cheaper than the "why is it more than the price?" support ticket. */}
         <p className="ig-muted" style={{ margin: 0, textAlign: "center" }}>
-          Prices exclude tax — taxes (e.g. VAT/GST) are calculated at checkout.
+          Prices are in USD and exclude tax — any sales tax or VAT is
+          calculated at checkout.
         </p>
 
         {/* Consumables are visually subordinate to subscriptions: one-time
@@ -341,14 +328,6 @@ export function MonetizationOnboarding() {
                       <p className="ig-plan-card__price">
                         {formatMoney(pack.price[currency], currency)} one-time
                       </p>
-                      {/* Same drip-pricing rule as the plans above: a rupee
-                          figure that grows at checkout is the thing the CCPA
-                          2023 dark-pattern guidelines name. */}
-                      {gstNote(pack.price[currency], currency) && (
-                        <p className="ig-plan-card__renewal">
-                          {gstNote(pack.price[currency], currency)}
-                        </p>
-                      )}
                       <div className="ig-plan-card__actions">
                         <motion.button
                           type="button"

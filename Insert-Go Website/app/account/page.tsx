@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/Link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { pool } from "@/lib/pgPool";
 import { currentConsent, needsConsentGate } from "@/lib/consent";
-import { inrPriceForItemKey } from "@/lib/pricing";
+import { usdPriceForItemKey } from "@/lib/pricing";
 import { PurchaseConversion } from "@/components/analytics/PurchaseConversion";
 import { SignOutButton } from "./SignOutButton";
 import { CancelSubscription } from "./CancelSubscription";
@@ -96,7 +96,7 @@ export default async function AccountPage({
   // price to another. Nothing on this path can move money; fulfilment is the
   // webhook's job and happened before the browser got back.
   const { tx, item } = await searchParams;
-  const conversionValue = item ? inrPriceForItemKey(item) : null;
+  const conversionValue = item ? usdPriceForItemKey(item) : null;
 
   // Cancellation state. Two facts, both written by the billing side: whether
   // a live Dodo subscription exists to cancel, and whether the user already
@@ -156,7 +156,7 @@ export default async function AccountPage({
           <PurchaseConversion
             transactionId={tx}
             value={conversionValue}
-            currency="INR"
+            currency="USD"
             item={item}
             email={user.email}
           />

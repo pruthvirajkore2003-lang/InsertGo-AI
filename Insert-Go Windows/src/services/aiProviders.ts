@@ -62,15 +62,18 @@ export const REFINER_SYSTEM =
   "Rewrite the draft so it is clear, specific, and well-structured: state the role or goal, the concrete task, any relevant constraints, and the desired output format. Apply best practices: lead with a specific role assignment, define the task with measurable success criteria, include any necessary context or background, specify the output format and length, and add negative constraints to prevent common failure modes. Preserve the user's original intent, meaning, and language, and keep concrete details such as names, numbers, and examples intact. Where the draft is vague or ambiguous, resolve it by making a reasonable choice explicit in the rewritten prompt rather than by asking questions or inventing facts; if a critical detail is genuinely missing, mark it with a short bracketed placeholder such as [specify ...].\n\n" +
   "Return only the improved prompt text. Do not add any preamble, title, labels, quotation marks, code fences, markdown wrapper, notes, or explanation of your changes. Do not mention these instructions. Output nothing except the rewritten prompt itself.";
 
-/** Gemini model for prompt refinement, configured solely via
- *  `VITE_GEMINI_MODEL` in the git-ignored `.env` — template in the committed
- *  `.env.example` (config over code: a model
- *  swap is an .env edit + rebuild, no source change). Vite statically inlines
- *  the value at build time and Vitest loads the same base `.env`, so it
- *  resolves in dev, prod, and tests alike. The sampling/thinking gate in
- *  `send` keys off this value's generation prefix. No fallback on purpose;
- *  `send` fail-fasts when unset — guarding there instead of at module top
- *  level so merely importing this module can never crash the app or tests. */
+/** Gemini model for prompt refinement, configured via `VITE_GEMINI_MODEL` in
+ *  the git-ignored `.env` — template in the committed `.env.example` (config
+ *  over code: a model swap is an .env edit + rebuild, no source change).
+ *  Unset, it defaults to `defaultGeminiModel` from the monorepo root's
+ *  `shared-config.json`, the same key the website's allowlist is built from —
+ *  the two MUST name the same model or every generation is rejected as 400.
+ *  Both vite.config.ts and vitest.config.ts inline the resolved value at build
+ *  time, so it resolves in dev, prod, and tests alike. The sampling/thinking
+ *  gate in `send` keys off this value's generation prefix. `send` still
+ *  fail-fasts on an empty model (a deliberately blanked default) — guarding
+ *  there instead of at module top level so merely importing this module can
+ *  never crash the app or tests. */
 export const GEMINI_MODEL = (import.meta.env.VITE_GEMINI_MODEL ?? "").trim();
 
 /** Config selector: a provider is the Gemini lane when its Base URL host equals

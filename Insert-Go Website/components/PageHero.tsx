@@ -20,16 +20,24 @@ export function PageHero({
   sub,
   children,
   compact = false,
+  standalone = false,
 }: {
   kicker: string;
   title: ReactNode;
   sub?: ReactNode;
   children?: ReactNode;
+  /** @deprecated Every current call site renders Breadcrumbs above the hero,
+   *  so this now maps to the default breadcrumb mode. Use `standalone` for a
+   *  hero with no breadcrumbs. */
   compact?: boolean;
+  /** No breadcrumbs above: pad enough to clear the fixed navbar (~74px). */
+  standalone?: boolean;
 }) {
   return (
     <section
-      className={`relative px-6 pb-10 text-center ${compact ? "pt-14" : "pt-40"}`}
+      className={`relative px-6 pb-6 text-center sm:pb-8 ${
+        standalone ? "pt-24 sm:pt-28" : "pt-4 sm:pt-6"
+      }`}
     >
       <FadeUp>
         <p className="mb-4 text-xs font-medium tracking-[0.16em] text-brand uppercase">

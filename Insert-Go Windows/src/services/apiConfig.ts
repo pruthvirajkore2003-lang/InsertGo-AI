@@ -1,5 +1,5 @@
-// InsertGo.AI website — hosts the Better Auth server (PKCE sign-in, sessions).
-// Override per-environment via VITE_API_URL (e.g. https://insertgo.ai in prod).
+// InsertGo AI website — hosts the Better Auth server (PKCE sign-in, sessions).
+// Override per-environment via VITE_API_URL (e.g. https://insertgo.com in prod).
 // The localhost fallback below is DEV-ONLY by construction: vite.config.ts fails
 // a production build whose VITE_API_URL is unset or points at localhost, so a
 // shipped bundle can never send `Authorization: Bearer <session token>` to

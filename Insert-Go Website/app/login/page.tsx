@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { TIER_DAILY_CREDITS } from "@/lib/entitlements";
 import { Suspense } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -10,7 +11,7 @@ import { safeNext } from "./safeNext";
 export const metadata: Metadata = {
   title: "Sign in",
   description:
-    "Sign in to InsertGo.AI with Google, your organization's SSO, or a one-time email code.",
+    "Sign in to InsertGo AI with Google, your organization's SSO, or a one-time email code.",
   // Same reason as /account: robots.txt Disallow prevents the fetch, not the
   // listing. A sign-in form has no search intent worth owning.
   robots: { index: false, follow: false },
@@ -22,8 +23,12 @@ const trustPoints = [
     desc: "Email code, Google, or company SSO — you're in with one click.",
   },
   {
-    title: "7-day free trial included",
-    desc: "50 credits on signup. Every prompt runs on the managed AI relay.",
+    // There is no 7-day trial and no 50-credit signup grant: `free` is a
+    // permanent tier with a daily allowance, and "trial" survives only as the
+    // legacy `subscriptionStatus` string lib/auth.ts maps it to. The claim
+    // contradicted /pricing, /faq and the homepage.
+    title: "Free forever, no credit card",
+    desc: `${TIER_DAILY_CREDITS.free} AI credits every day. Every prompt runs on the managed AI relay.`,
   },
   {
     title: "Syncs with the Windows app",
@@ -75,8 +80,8 @@ export default async function LoginPage({
         <aside className="hidden flex-col justify-between px-12 pt-32 pb-16 lg:flex">
           <div className="flex items-center gap-2.5 text-ink">
             <BrandMark />
-            <span className="font-serif text-[17px] font-semibold tracking-[-0.01em]">
-              InsertGo<span className="text-brand">.AI</span>
+            <span className="font-serif whitespace-nowrap text-[17px] font-semibold tracking-[-0.01em]">
+              InsertGo <span className="text-brand">AI</span>
             </span>
           </div>
 
@@ -123,8 +128,8 @@ export default async function LoginPage({
             {/* Compact brand header — mobile only (brand pane is lg+). */}
             <div className="mb-8 flex items-center justify-center gap-2.5 text-ink lg:hidden">
               <BrandMark size={24} />
-              <span className="font-serif text-[17px] font-semibold tracking-[-0.01em]">
-                InsertGo<span className="text-brand">.AI</span>
+              <span className="font-serif whitespace-nowrap text-[17px] font-semibold tracking-[-0.01em]">
+                InsertGo <span className="text-brand">AI</span>
               </span>
             </div>
 

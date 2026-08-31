@@ -1,23 +1,29 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/Link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAppShortcuts } from "@/hooks/useAppShortcuts";
 import { useSession } from "@/lib/auth-client";
+import { stripLocale } from "@/i18n-config";
+import type { Dictionary } from "@/lib/i18n";
 import { WindowsLogo } from "./icons/WindowsLogo";
 
-const links = [
-  { label: "Home", href: "/" },
-  { label: "Features", href: "/features" },
-  { label: "How It Works", href: "/how-it-works" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "FAQ", href: "/faq" },
-  { label: "Contact", href: "/contact" },
+/** Labels are looked up per render rather than stored: the nav is the same six
+ *  routes in every language, only the words change. */
+const links: { key: keyof Dictionary["nav"]; href: string }[] = [
+  { key: "home", href: "/" },
+  { key: "features", href: "/features" },
+  { key: "howItWorks", href: "/how-it-works" },
+  { key: "pricing", href: "/pricing" },
+  { key: "faq", href: "/faq" },
+  { key: "contact", href: "/contact" },
 ];
 
-export function SiteNav() {
-  const pathname = usePathname();
+export function SiteNav({ t }: { t: Dictionary["nav"] }) {
+  // Locale-free, because the hrefs above are: `<Link>` adds the prefix on the
+  // way out, and the active check has to compare like with like.
+  const pathname = stripLocale(usePathname());
   // Signed-in visitors had no route to /account anywhere in the chrome — the
   // nav offered "Sign in" whether or not they already were. The slot below
   // keeps a fixed width and only fades in once the session resolves, so the
@@ -89,8 +95,8 @@ export function SiteNav() {
             alt=""
             className="block h-[26px] w-[26px] shrink-0 transition-transform duration-500 hover:rotate-[360deg] [filter:drop-shadow(0_0_5px_rgba(255,255,255,0.35))_drop-shadow(0_0_14px_rgba(47,107,255,0.55))]"
           />
-          <span className="font-serif text-[17px] font-semibold tracking-[-0.01em]">
-            InsertGo<span className="text-brand">.AI</span>
+          <span className="font-serif whitespace-nowrap text-[17px] font-semibold tracking-[-0.01em]">
+            InsertGo <span className="text-brand">AI</span>
           </span>
         </Link>
 
@@ -121,7 +127,7 @@ export function SiteNav() {
                   active ? "text-ink" : "text-muted hover:text-ink"
                 }`}
               >
-                {l.label}
+                {t[l.key]}
               </Link>
             );
           })}
@@ -148,7 +154,7 @@ export function SiteNav() {
                     .charAt(0)
                     .toUpperCase()}
                 </span>
-                Account
+                {t.account}
                 {/* Paid-tier recognition mark — a micro-pill beside the
                     account link, never a banner; Free renders nothing. */}
                 {(tier === "plus" || tier === "pro") && (
@@ -165,7 +171,7 @@ export function SiteNav() {
                 href="/login"
                 className="ease-apple inline-flex items-center rounded-full px-4 py-[11px] text-sm font-medium whitespace-nowrap text-muted transition-colors duration-300 hover:text-ink"
               >
-                Sign in
+                {t.signIn}
               </Link>
             )}
           </div>
@@ -174,13 +180,13 @@ export function SiteNav() {
             className="ease-apple inline-flex items-center gap-2 rounded-full bg-terracotta px-5 py-[11px] text-sm font-medium whitespace-nowrap text-on-accent transition-[transform,box-shadow] duration-300 hover:-translate-y-px hover:shadow-cta-sm active:translate-y-0 active:scale-[0.97] active:duration-75"
           >
             <WindowsLogo size={16} />
-            <span className="hidden sm:inline">Download for Windows</span>
-            <span className="sm:hidden">Download</span>
+            <span className="hidden sm:inline">{t.downloadCta}</span>
+            <span className="sm:hidden">{t.downloadShort}</span>
           </Link>
 
           <button
             type="button"
-            aria-label={open ? "Close menu" : "Open menu"}
+            aria-label={open ? t.closeMenu : t.openMenu}
             aria-expanded={open}
             aria-controls="site-nav-menu"
             onClick={() => setOpen((v) => !v)}
@@ -232,7 +238,7 @@ export function SiteNav() {
                   : "text-muted hover:bg-surface hover:text-ink"
               }`}
             >
-              {l.label}
+              {t[l.key]}
             </Link>
           );
         })}
@@ -245,7 +251,7 @@ export function SiteNav() {
             onClick={() => setOpen(false)}
             className="ease-apple mt-1 block rounded-2xl border-t border-line px-4 py-3 text-[15px] font-medium text-muted transition-colors duration-300 hover:bg-surface hover:text-ink"
           >
-            {session ? "Account" : "Sign in"}
+            {session ? t.account : t.signIn}
           </Link>
         )}
       </div>

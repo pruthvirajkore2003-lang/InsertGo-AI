@@ -1,6 +1,6 @@
 /**
- * Offline mirror of the Terms & Privacy text published at insertgo.ai/terms and
- * insertgo.ai/privacy (Insert-Go Website/app/terms and app/privacy). The two
+ * Offline mirror of the Terms & Privacy text published at insertgo.com/terms and
+ * insertgo.com/privacy (Insert-Go Website/app/terms and app/privacy). The two
  * copies are hand-kept — edit BOTH or they drift.
  *
  * STATUS (2026-08-19): **live.** `LegalConsentModal` renders TERMS and PRIVACY
@@ -50,7 +50,7 @@ export const LEGAL_EFFECTIVE = "19 August 2026";
 const GRIEVANCE_OFFICER = {
   name: "Pruthviraj Kore",
   designation: "Grievance Officer & Data Protection Officer",
-  email: "grievance@insertgo.ai",
+  email: "support@insertgo.com",
 };
 
 /**
@@ -98,18 +98,18 @@ export const TERMS: LegalDocument = {
     {
       heading: "1. Who we are and what these terms cover",
       body:
-        "InsertGo.AI (\"InsertGo\", \"we\", \"us\") operates the InsertGo desktop " +
-        "application for Windows, the insertgo.ai website, and the accounts, " +
+        "InsertGo AI (\"InsertGo\", \"we\", \"us\") operates the InsertGo desktop " +
+        "application for Windows, the insertgo.com website, and the accounts, " +
         "licensing and AI services behind them (together, the \"Service\"). " +
         "These Terms & Conditions form a binding agreement between you and " +
-        "InsertGo.AI, and they apply every time you install, launch or use " +
+        "InsertGo AI, and they apply every time you install, launch or use " +
         "the Service. If you do not accept them, do not use the Service. You " +
         "are asked to accept them, and to choose your privacy purposes, when " +
         `you sign in to your InsertGo account. This version, ${LEGAL_VERSION}, ` +
         `takes effect on ${LEGAL_EFFECTIVE} and replaces ` +
         "every earlier version. Our Privacy Policy is part of this agreement " +
         "and is incorporated by reference; the current text of both is always " +
-        "published at insertgo.ai/terms and insertgo.ai/privacy. PLEASE READ " +
+        "published at insertgo.com/terms and insertgo.com/privacy. PLEASE READ " +
         "SECTION 23 CAREFULLY: IF YOU LIVE IN THE UNITED STATES IT REQUIRES " +
         "YOU AND US TO RESOLVE DISPUTES BY BINDING INDIVIDUAL ARBITRATION, " +
         "AND IT WAIVES YOUR RIGHT TO A JURY TRIAL AND TO PARTICIPATE IN A " +
@@ -138,7 +138,7 @@ export const TERMS: LegalDocument = {
         "email code, a Google sign-in, or an enterprise SSO provider — we do " +
         "not use passwords. You are responsible for everything done through " +
         "your account and for keeping your email and sign-in provider secure; " +
-        "write to support@insertgo.ai as soon as you believe your account has " +
+        "write to support@insertgo.com as soon as you believe your account has " +
         "been used without your permission. One account is for one person: do " +
         "not share access, and do not create accounts by automated means or " +
         "to evade limits, suspensions or free-plan quotas.",
@@ -170,7 +170,7 @@ export const TERMS: LegalDocument = {
         "Service. Daily credits do not roll over; purchased pack credits stay " +
         "on your account and are spent after the day's allowance is used. The " +
         "plan contents, allowances and prices that apply to you are the ones " +
-        "published at insertgo.ai/pricing when you buy, and we may change " +
+        "published at insertgo.com/pricing when you buy, and we may change " +
         "them for future billing periods with notice.",
     },
     {
@@ -181,7 +181,7 @@ export const TERMS: LegalDocument = {
         "transaction. Their hosted checkout collects and processes your " +
         "payment details and calculates the tax for your country; we never " +
         "receive or store your card number. The prices shown on " +
-        "insertgo.ai/pricing and inside the application exclude tax: the tax " +
+        "insertgo.com/pricing and inside the application exclude tax: the tax " +
         "that applies where you are — Indian GST, EU or UK VAT, US sales tax " +
         "and the like — is calculated and added at that checkout before you " +
         "confirm, and the total shown there is what you pay. AUTOMATIC " +
@@ -192,7 +192,7 @@ export const TERMS: LegalDocument = {
         "term are shown next to the button before you buy, you confirm them " +
         "at Dodo's checkout, and we email you a receipt recording them that " +
         "you can keep. You may cancel at any time, online and by yourself, " +
-        "from Account → Cancel subscription at insertgo.ai/account — one " +
+        "from Account → Cancel subscription at insertgo.com/account — one " +
         "click and one confirmation, which is fewer steps than signing up " +
         "took; no email, phone call or support ticket is required, and none " +
         "will be asked of you. Cancellation " +
@@ -210,8 +210,8 @@ export const TERMS: LegalDocument = {
         "moment payment succeeds. There is nothing to ship, return or " +
         "exchange. Cancellation: you may cancel a subscription at any time " +
         "and without giving a reason, yourself and online, from Account → " +
-        "Cancel subscription at insertgo.ai/account, at no cancellation fee; " +
-        "writing to support@insertgo.ai also works but is never required. It " +
+        "Cancel subscription at insertgo.com/account, at no cancellation fee; " +
+        "writing to support@insertgo.com also works but is never required. It " +
         "stops the next renewal and takes effect at the " +
         "end of the period you have already paid for. Refunds: if you have " +
         "not consumed any credits under a charge, write to us within seven " +
@@ -229,7 +229,7 @@ export const TERMS: LegalDocument = {
         "right for consumers in the EU, EEA and UK — that right applies in " +
         "addition to this policy, although it may end once digital content " +
         "has been supplied with your express consent. Send refund and " +
-        "cancellation requests to support@insertgo.ai; if you are not " +
+        "cancellation requests to support@insertgo.com; if you are not " +
         "satisfied with the outcome, the grievance procedure in section 24 is " +
         "open to you.",
     },
@@ -309,7 +309,7 @@ export const TERMS: LegalDocument = {
         "in Settings, or uninstall the application, which removes its local " +
         "data from that device — and your optional privacy choices are " +
         "separate again, granular, and revocable at " +
-        "insertgo.ai/account/privacy. Withdrawing costs nothing and is not a " +
+        "insertgo.com/account/privacy. Withdrawing costs nothing and is not a " +
         "breach of these terms. It refuses password and " +
         "credential fields, and it reads only from applications within the " +
         "scope you allow in Settings. What you point it at is your " +
@@ -369,7 +369,7 @@ export const TERMS: LegalDocument = {
         "features, and may discontinue the Service or a plan; if we " +
         "discontinue a paid plan we will give reasonable notice and refund " +
         "the unused portion of any prepaid period. Support is provided by " +
-        "email at support@insertgo.ai on a commercially reasonable basis.",
+        "email at support@insertgo.com on a commercially reasonable basis.",
     },
     {
       heading: "16. Third-party services",
@@ -445,7 +445,7 @@ export const TERMS: LegalDocument = {
         "You may stop using InsertGo and uninstall it at any time; " +
         "uninstalling removes the application's local data from that device, " +
         "and you can ask us to delete your account by writing to " +
-        "support@insertgo.ai. We may suspend or terminate your access, with " +
+        "support@insertgo.com. We may suspend or terminate your access, with " +
         "notice where practicable, if you breach these terms, if your use " +
         "puts the Service, another user or a provider at risk, if payment " +
         "fails, or if the law requires it. On termination your licence ends " +
@@ -470,7 +470,7 @@ export const TERMS: LegalDocument = {
       heading: "22. Governing law and disputes (outside the United States)",
       body:
         "Informal resolution first, wherever you live: write to " +
-        "support@insertgo.ai and give us 30 days. Nearly everything is " +
+        "support@insertgo.com and give us 30 days. Nearly everything is " +
         "resolved in a single email, and it costs you nothing. If you are " +
         "resident in India or anywhere other than the United States, these " +
         "terms and any dispute arising out of them or out of the Service are " +
@@ -498,7 +498,7 @@ export const TERMS: LegalDocument = {
         "INCLUDING YOUR RIGHT TO A JURY TRIAL AND TO PARTICIPATE IN A CLASS " +
         "ACTION. It applies only if you are resident in the United States or " +
         "bring a claim in a United States court. (a) Agreement to arbitrate. " +
-        "You and InsertGo.AI agree that any dispute, claim or controversy " +
+        "You and InsertGo AI agree that any dispute, claim or controversy " +
         "arising out of or relating to these terms, the Service, our " +
         "advertising, your subscription or any charge — whether based in " +
         "contract, tort, statute, fraud, misrepresentation or any other " +
@@ -536,7 +536,7 @@ export const TERMS: LegalDocument = {
         "(e) 30-DAY RIGHT TO OPT OUT. You may reject this entire section by " +
         "sending written notice within 30 days of the date you first accept " +
         "these terms — or, if you already had an account, within 30 days of " +
-        "the date this version takes effect — to legal@insertgo.ai with the " +
+        "the date this version takes effect — to support@insertgo.com with the " +
         "subject line \"Arbitration Opt-Out\", stating your name and the " +
         "email address on your account. Opting out costs you nothing, is not " +
         "a breach, and changes nothing else about your account or these " +
@@ -565,7 +565,7 @@ export const TERMS: LegalDocument = {
         "Officer to receive complaints about the Service, about a charge, " +
         "refund or cancellation, about content, or about anything in these " +
         `terms or the Privacy Policy: ${GRIEVANCE_OFFICER.name}, ` +
-        `${GRIEVANCE_OFFICER.designation}, InsertGo.AI, Pune, Maharashtra, ` +
+        `${GRIEVANCE_OFFICER.designation}, InsertGo AI, Pune, Maharashtra, ` +
         `India, reachable at ${GRIEVANCE_OFFICER.email}; our full ` +
         "postal address is provided on request from that mailbox. Tell us " +
         "your name, the email your account uses, what happened and what you " +
@@ -592,7 +592,7 @@ export const TERMS: LegalDocument = {
         "rights under these terms without our consent; we may assign ours to " +
         "a successor in a merger, acquisition or sale of assets. There are no " +
         "third-party beneficiaries. Questions about these terms go to " +
-        "support@insertgo.ai.",
+        "support@insertgo.com.",
     },
   ],
 };
@@ -620,9 +620,9 @@ export const PRIVACY: LegalDocument = {
     {
       heading: "Who is responsible for your data",
       body:
-        "InsertGo.AI (\"we\", \"us\") is the controller of the personal data " +
+        "InsertGo AI (\"we\", \"us\") is the controller of the personal data " +
         "described here, and you can reach us about anything in this policy " +
-        "at support@insertgo.ai. We are the controller for every " +
+        "at support@insertgo.com. We are the controller for every " +
         "AI request the product makes: all of them run through our managed " +
         "service, and there is no configuration in which your text reaches a " +
         "provider without passing through us.",
@@ -671,7 +671,7 @@ export const PRIVACY: LegalDocument = {
         "uninstalling the application; it is separate from — and never " +
         "bundled with — the optional purposes you choose on the website, " +
         "which you grant or refuse one by one and can change at any time at " +
-        "insertgo.ai/account/privacy.",
+        "insertgo.com/account/privacy.",
     },
     {
       heading: "What happens when you use the managed AI service",
@@ -852,7 +852,7 @@ export const PRIVACY: LegalDocument = {
         "we do not collect passwords, health, biometric, medical or " +
         "sexual-orientation data at all. Providing your information is " +
         "voluntary and you may withdraw the consent you gave from your " +
-        "privacy settings at insertgo.ai/account/privacy — one click, no " +
+        "privacy settings at insertgo.com/account/privacy — one click, no " +
         "email — or by writing to " +
         "the Grievance Officer named below; in either case we may be unable " +
         "to continue providing the Service to you, which is the only " +
@@ -881,7 +881,7 @@ export const PRIVACY: LegalDocument = {
         "exercise them if you die or become incapacitated; in California and " +
         "comparable US states you have equivalent rights to know, delete, " +
         "correct and opt out, and we will not treat you worse for using them. " +
-        "Write to support@insertgo.ai — we will verify who you are and answer " +
+        "Write to support@insertgo.com — we will verify who you are and answer " +
         "within the period your law sets, which is one month under the GDPR " +
         "unless the request is complex. If you think we have got it wrong, " +
         "you can complain to your data protection authority: the Data " +
@@ -894,7 +894,7 @@ export const PRIVACY: LegalDocument = {
         "Complaints about how we handle your personal data, and requests to " +
         "exercise the rights above, can be sent to " +
         `${GRIEVANCE_OFFICER.name}, ${GRIEVANCE_OFFICER.designation}, ` +
-        `InsertGo.AI, Pune, Maharashtra, India, at ` +
+        `InsertGo AI, Pune, Maharashtra, India, at ` +
         `${GRIEVANCE_OFFICER.email}; our full ` +
         "postal address is provided on request from that mailbox. The " +
         "officer is appointed under the Information Technology (Reasonable " +
@@ -928,7 +928,7 @@ export const PRIVACY: LegalDocument = {
       body:
         "InsertGo is not intended for anyone under 18, and we do not " +
         "knowingly collect personal data from children. If you believe a " +
-        "child has given us personal data, write to support@insertgo.ai and " +
+        "child has given us personal data, write to support@insertgo.com and " +
         "we will delete it.",
     },
     {
@@ -945,14 +945,14 @@ export const PRIVACY: LegalDocument = {
         "We update this policy when what we do changes. A substantive change " +
         "raises the version number, the desktop application asks you to read " +
         "and accept the new version before it continues, and the current text " +
-        "is always published at insertgo.ai/privacy. The version and date " +
+        "is always published at insertgo.com/privacy. The version and date " +
         "tell you which text you are reading.",
     },
     {
       heading: "Contact",
       body:
         "Questions, requests and complaints about privacy go to " +
-        "support@insertgo.ai. We answer every one.",
+        "support@insertgo.com. We answer every one.",
     },
   ],
 };

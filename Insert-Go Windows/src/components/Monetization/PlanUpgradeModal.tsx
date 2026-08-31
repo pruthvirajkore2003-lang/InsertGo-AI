@@ -20,11 +20,9 @@ import { isTauri } from "@/services/tauriBridge";
 import { API_URL } from "@/services/apiConfig";
 import {
   formatMoney,
-  gstNote,
   planFor,
   type Money,
 } from "@/services/billing";
-import { CurrencyToggle } from "./CurrencyToggle";
 import { useAuthStore } from "@/store/authStore";
 import {
   useMonetizationStore,
@@ -34,10 +32,9 @@ import {
 const EASE = [0.32, 0.72, 0, 1] as const; // mirrors --ig-ease
 
 /** Monthly prices as the copy renders them. Used when the pricing catalog
- *  hasn't loaded (first open, offline) — the last known website prices. Both
- *  columns, or an INR user offline reads "₹8/mo". */
-const FALLBACK_PLUS: Money = { USD: 8, INR: 499 };
-const FALLBACK_PRO: Money = { USD: 15, INR: 999 };
+ *  hasn't loaded (first open, offline) — the last known website prices. */
+const FALLBACK_PLUS: Money = { USD: 8 };
+const FALLBACK_PRO: Money = { USD: 15 };
 
 type Prices = { plus: string; pro: string };
 
@@ -66,8 +63,8 @@ const COPY: Record<
     title: "Interaction history is part of InsertGo Plus",
     body: ({ plus, pro }) =>
       "Keep every interaction searchable on this device. Included in Plus " +
-      `(${plus}/mo) and Pro (${pro}/mo), before tax — taxes (e.g. VAT/GST) ` +
-      "are calculated at checkout.",
+      `(${plus}/mo) and Pro (${pro}/mo) in USD, before tax — any sales tax ` +
+      "or VAT is calculated at checkout.",
     cta: "Upgrade to Plus",
     anchor: "",
   },
@@ -94,9 +91,8 @@ export function PlanUpgradeModal() {
     if (open) void loadPricing();
   }, [open, loadPricing]);
 
-  // Shared with the plan panel via the store, so a toggle in either place
-  // moves both — two surfaces quoting different prices for the same plan is a
-  // worse bug than either of them guessing wrong.
+  // USD, the catalog's only column — one currency for every pricing surface,
+  // no manual override.
   const currency = useMonetizationStore((s) => s.currency);
   const amount = (tier: "plus" | "pro", fallback: Money) =>
     planFor(pricing, tier)?.price[currency] ?? fallback[currency];
@@ -107,11 +103,6 @@ export function PlanUpgradeModal() {
     plus: price("plus", FALLBACK_PLUS),
     pro: price("pro", FALLBACK_PRO),
   };
-  // Catalogue prices are tax-exclusive. An INR shopper shown only "₹499" is
-  // shown a price they cannot pay — drip pricing under the CCPA's 2023
-  // dark-pattern guidelines — so the total rides next to the figure here too,
-  // not only on the website.
-  const plusGst = gstNote(amount("plus", FALLBACK_PLUS), currency);
 
   const goPricing = async (anchor: string) => {
     const url = `${API_URL}/pricing${anchor}`;
@@ -159,12 +150,6 @@ export function PlanUpgradeModal() {
               {copy.title}
             </div>
             <p className="ig-muted">{copy.body(prices)}</p>
-            {plusGst && (
-              <p className="ig-muted" style={{ margin: 0 }}>
-                Plus: {plusGst}
-              </p>
-            )}
-            <CurrencyToggle />
 
             {reason === "credits" && dailyMax !== undefined && (
               <p className="ig-muted" style={{ margin: 0 }}>

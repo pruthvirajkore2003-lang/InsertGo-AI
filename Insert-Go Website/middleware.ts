@@ -1,4 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  isLocale,
+  isLocalizedPath,
+  negotiateLocale,
+} from "./i18n-config";
 
 /**
  * Per-request nonce Content-Security-Policy.
@@ -65,6 +70,31 @@ export function middleware(req: NextRequest) {
     process.env.CSP_REPORT_ONLY === "1"
       ? "Content-Security-Policy-Report-Only"
       : "Content-Security-Policy";
+
+  /*
+   * Locale negotiation, after the policy is built and before anything is
+   * returned, so the redirect below carries the same CSP as a rendered page.
+   * A redirect has no document to protect, but a response that leaves this file
+   * without the header is one fewer place the policy is guaranteed, and the
+   * next person to add a rewrite here would copy the version that skips it.
+   *
+   * Only the routes that actually have translations are redirected — the
+   * allowlist in i18n-config.ts. `/account` and friends stay unprefixed, and an
+   * unknown path like `/unsupported` is left alone so it reaches
+   * app/[locale]/layout.tsx and 404s there instead of 307ing first.
+   */
+  const { pathname } = req.nextUrl;
+  if (!isLocale(pathname.split("/")[1]) && isLocalizedPath(pathname)) {
+    const locale = negotiateLocale(req.headers.get("accept-language"));
+    const target = req.nextUrl.clone();
+    target.pathname = `/${locale}${pathname === "/" ? "" : pathname}`;
+    const redirect = NextResponse.redirect(target);
+    redirect.headers.set(header, csp);
+    // The destination depends on a request header, so a cache that keyed only
+    // on the URL would serve the first visitor's language to everyone else.
+    redirect.headers.set("Vary", "Accept-Language");
+    return redirect;
+  }
 
   // Request-side copy is what Next reads to nonce its own <script> tags.
   const requestHeaders = new Headers(req.headers);

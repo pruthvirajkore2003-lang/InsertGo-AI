@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { adsAllowedOn } from "./adPlacement";
 import { parseConsent, serializeConsent, NO_CONSENT } from "./consentCookie";
-import { inrPriceForItemKey } from "./pricing";
+import { usdPriceForItemKey } from "./pricing";
 
 /**
  * The three decisions in the monetization layer that are not obvious by
@@ -19,6 +19,11 @@ describe("adsAllowedOn", () => {
       "/features/prompt-library",
       "/use-cases/developers",
       "/faq",
+      // Locale-prefixed variants of the same routes — the form the header
+      // actually carries now that every public page lives under /<locale>.
+      "/fr/blog/windows-ai-productivity-guide",
+      "/de/faq",
+      "/es/features/prompt-library",
     ]) {
       expect(adsAllowedOn(path), path).toBe(true);
     }
@@ -37,6 +42,11 @@ describe("adsAllowedOn", () => {
       "/pricing",
       "/download",
       "/contact",
+      "/fr",
+      "/de/pricing",
+      // "zz" is not a supported locale, so it is a path segment, not a prefix
+      // to strip — and /zz/faq is not the FAQ.
+      "/zz/faq",
     ]) {
       expect(adsAllowedOn(path), path).toBe(false);
     }
@@ -87,19 +97,20 @@ describe("consent cookie mirror", () => {
   });
 });
 
-describe("inrPriceForItemKey", () => {
+describe("usdPriceForItemKey", () => {
   it("resolves catalogue prices for the keys checkout plants in the return URL", () => {
-    expect(inrPriceForItemKey("plan:plus")).toBe(499);
-    expect(inrPriceForItemKey("plan:pro")).toBe(999);
-    expect(inrPriceForItemKey("pack:150")).toBe(249);
+    // USD is the only column, so this is also the value the conversion reports.
+    expect(usdPriceForItemKey("plan:plus")).toBe(7.99);
+    expect(usdPriceForItemKey("plan:pro")).toBe(14.99);
+    expect(usdPriceForItemKey("pack:150")).toBe(3.99);
   });
 
   it("returns null for anything not in the catalogue", () => {
     // The key comes off a URL. A tampered one must report nothing rather than
     // invent a conversion value.
-    expect(inrPriceForItemKey("plan:free")).toBe(null);
-    expect(inrPriceForItemKey("pack:999999")).toBe(null);
-    expect(inrPriceForItemKey("garbage")).toBe(null);
-    expect(inrPriceForItemKey("")).toBe(null);
+    expect(usdPriceForItemKey("plan:free")).toBe(null);
+    expect(usdPriceForItemKey("pack:999999")).toBe(null);
+    expect(usdPriceForItemKey("garbage")).toBe(null);
+    expect(usdPriceForItemKey("")).toBe(null);
   });
 });

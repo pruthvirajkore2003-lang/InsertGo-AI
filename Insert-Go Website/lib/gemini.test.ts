@@ -8,6 +8,11 @@ import {
   resolveGroundingModel,
   RESEARCH_SYSTEM,
 } from "./gemini";
+// The monorepo-root single source of truth the code default is built from, so
+// these assertions track a model swap instead of silently testing a stale name.
+import sharedConfig from "../../shared-config.json";
+
+const MODEL = sharedConfig.defaultGeminiModel;
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -17,7 +22,7 @@ describe("isAllowedModel", () => {
   it("accepts the model the desktop actually ships", () => {
     // .env.example / VITE_GEMINI_MODEL — a default that rejected this would 400
     // every real generation.
-    expect(isAllowedModel("gemini-2.5-flash-lite")).toBe(true);
+    expect(isAllowedModel(MODEL)).toBe(true);
   });
 
   it("rejects a premium model the flat 1-credit debit doesn't cover", () => {
@@ -26,8 +31,8 @@ describe("isAllowedModel", () => {
   });
 
   it("ignores surrounding whitespace but never matches a partial name", () => {
-    expect(isAllowedModel("  gemini-2.5-flash-lite  ")).toBe(true);
-    expect(isAllowedModel("gemini-2.5-flash-lite-preview")).toBe(false);
+    expect(isAllowedModel(`  ${MODEL}  `)).toBe(true);
+    expect(isAllowedModel(`${MODEL}-preview`)).toBe(false);
     expect(isAllowedModel("")).toBe(false);
   });
 
@@ -37,12 +42,12 @@ describe("isAllowedModel", () => {
     expect(isAllowedModel("gemini-9-x")).toBe(true);
     // The code default is gone, not merged — that is what makes the env var a
     // ceiling an operator can actually reason about.
-    expect(isAllowedModel("gemini-2.5-flash-lite")).toBe(false);
+    expect(isAllowedModel(MODEL)).toBe(false);
   });
 
   it("falls back to the default when the env var is blank or only separators", () => {
     vi.stubEnv("GEMINI_ALLOWED_MODELS", " , ,");
-    expect(isAllowedModel("gemini-2.5-flash-lite")).toBe(true);
+    expect(isAllowedModel(MODEL)).toBe(true);
   });
 });
 
@@ -52,14 +57,12 @@ describe("resolveGroundingModel", () => {
     // Not in DEFAULT_ALLOWED_MODELS, and that is correct: the request body can't
     // choose it.
     expect(isAllowedModel("gemini-3.6-flash")).toBe(false);
-    expect(resolveGroundingModel("gemini-2.5-flash-lite")).toBe(
-      "gemini-3.6-flash"
-    );
+    expect(resolveGroundingModel(MODEL)).toBe("gemini-3.6-flash");
   });
 
   it("returns null for a lite request model with no env configured", () => {
     vi.stubEnv("GEMINI_GROUNDING_MODEL", "");
-    expect(resolveGroundingModel("gemini-2.5-flash-lite")).toBeNull();
+    expect(resolveGroundingModel(MODEL)).toBeNull();
   });
 });
 

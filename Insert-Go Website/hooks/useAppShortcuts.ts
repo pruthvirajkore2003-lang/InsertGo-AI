@@ -13,7 +13,7 @@
  *   because AltGr (= Ctrl+Alt) and plain keys type characters.
  *
  * This file is intentionally dependency-free and byte-identical in both
- * repos: InsertGo-AI/src/hooks/ and InsertGo.AI Website/hooks/. Edit both.
+ * repos: InsertGo-AI/src/hooks/ and InsertGo AI Website/hooks/. Edit both.
  */
 import { useEffect, useRef } from "react";
 

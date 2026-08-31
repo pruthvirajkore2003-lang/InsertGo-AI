@@ -86,6 +86,7 @@
 .fa-shuffle::before { content: "\f074"; }
 .fa-book-bookmark::before { content: "\e0bb"; }
 .fa-clock-rotate-left::before { content: "\f1da"; }
+.fa-arrow-rotate-left::before { content: "\f0e2"; }
 .fa-spinner::before { content: "\f110"; }
 .fa-universal-access::before { content: "\f29a"; }
 .fa-clipboard::before { content: "\f328"; }

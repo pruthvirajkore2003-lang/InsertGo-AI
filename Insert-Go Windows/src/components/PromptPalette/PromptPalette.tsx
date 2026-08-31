@@ -134,7 +134,10 @@ export function PromptPalette({ editorRef }: Props) {
         if (prev.isSending && !s.isSending && s.result && !s.error) {
           useHistoryStore.getState().record({
             body: s.body,
-            title: s.activeSkill?.label,
+            // Fallback label only when there is no body to preview — without
+            // it a body-less run renders as "Untitled run" in the History
+            // panel. A real body still wins via preview().
+            title: s.activeSkill?.label || (s.body.trim() ? undefined : "Composer Run"),
             outputTokens: s.metrics?.outputTokens ?? null,
             totalMs: s.metrics?.totalMs ?? null,
           });

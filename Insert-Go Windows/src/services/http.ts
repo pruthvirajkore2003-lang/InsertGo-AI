@@ -4,7 +4,7 @@ import { API_URL } from "@/services/apiConfig";
 import { getFreshToken } from "@/store/authStore";
 
 /**
- * Shared fetch for cross-origin calls to the InsertGo.AI website: Tauri's
+ * Shared fetch for cross-origin calls to the InsertGo AI website: Tauri's
  * Rust-side fetch when available (respects the capability allowlist and skips
  * webview CSP/CORS); plain fetch in browser dev mode. Every `${API_URL}` call
  * must go through this — plain `window.fetch` is blocked by the webview's

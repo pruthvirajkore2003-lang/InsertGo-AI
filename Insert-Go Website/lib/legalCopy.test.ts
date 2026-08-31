@@ -27,8 +27,8 @@ const read = (rel: string): string =>
 
 const CONSENT = read("./consent.ts");
 const COPIES: Array<[string, string]> = [
-  ["website privacy", read("../app/privacy/page.tsx")],
-  ["website terms", read("../app/terms/page.tsx")],
+  ["website privacy", read("../app/[locale]/privacy/page.tsx")],
+  ["website terms", read("../app/[locale]/terms/page.tsx")],
   ["desktop mirror", read("../../Insert-Go Windows/src/legal/index.ts")],
 ];
 
@@ -149,7 +149,7 @@ describe("dispute resolution and jurisdiction", () => {
       // struck as unconscionable — the opt-out is what buys the rest of it.
       expect(src, `${name}: no opt-out`).toContain("30-DAY RIGHT TO OPT OUT");
       expect(src, `${name}: opt-out has no address`).toContain(
-        "legal@insertgo.ai",
+        "support@insertgo.com",
       );
     }
   });

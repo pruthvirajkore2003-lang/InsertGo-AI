@@ -9,7 +9,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/Link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { LinearAdd } from "../icons/LinearAdd";
 import { LinearMagicStar } from "../icons/LinearMagicStar";

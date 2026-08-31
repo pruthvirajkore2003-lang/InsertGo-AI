@@ -12,7 +12,7 @@ import { hideWindow, showWindow } from "@/services/windowChrome";
 import { safeError } from "@/services/safeLog";
 
 /**
- * Auth via the InsertGo.AI website (Better Auth server).
+ * Auth via the InsertGo AI website (Better Auth server).
  *
  * Desktop sign-in is OAuth 2.0 Authorization Code + PKCE over a custom URI
  * scheme — the flow RFC 8252 prescribes for native apps:

@@ -26,8 +26,8 @@
       "identifier": "opener:allow-open-url",
       "comment": "The bare `https://*/**` rule exists for grounded-run citations (SkillComponentsFloater Sources): their hosts are arbitrary publisher/redirect domains that no allowlist can enumerate. It only ever hands a URL to the SYSTEM BROWSER — never the webview — and the caller filters to http(s) first, so no javascript:/file: URI can reach it.",
       "allow": [
-        { "url": "https://insertgo.ai/*" },
-        { "url": "https://www.insertgo.ai/*" },
+        { "url": "https://insertgo.com/*" },
+        { "url": "https://www.insertgo.com/*" },
         { "url": "https://dodopayments.com/*" },
         { "url": "https://*.dodopayments.com/*" },
         { "url": "https://*/**" },
@@ -37,11 +37,11 @@
     },
     {
       "identifier": "http:default",
-      "comment": "InsertGo.AI only. Every request the app makes goes to `${API_URL}` through services/http.ts; nothing else is reachable, and no AI provider is contacted directly — generations go to our relay. The ~35 provider hosts that used to be listed here were scaffolding for BYOK, which is a decided non-feature (R-15, 2026-08-08): they were unreachable code paths and pure egress surface, so they are gone. The loopback rules are the dev API server (apiConfig.ts falls back to http://localhost:3000); a release build cannot point at them, because vite.config.ts fails the build if VITE_API_URL is a dev origin.",
+      "comment": "InsertGo AI only. Every request the app makes goes to `${API_URL}` through services/http.ts; nothing else is reachable, and no AI provider is contacted directly — generations go to our relay. The ~35 provider hosts that used to be listed here were scaffolding for BYOK, which is a decided non-feature (R-15, 2026-08-08): they were unreachable code paths and pure egress surface, so they are gone. The loopback rules are the dev API server (apiConfig.ts falls back to http://localhost:3000); a release build cannot point at them, because vite.config.ts fails the build if VITE_API_URL is a dev origin.",
       "allow": [
-        { "url": "https://insertgo.ai/*" },
-        { "url": "https://www.insertgo.ai/*" },
-        { "url": "https://*.insertgo.ai/*" },
+        { "url": "https://insertgo.com/*" },
+        { "url": "https://www.insertgo.com/*" },
+        { "url": "https://*.insertgo.com/*" },
 
         { "url": "http://localhost:*/**" },
         { "url": "http://127.0.0.1:*/**" }

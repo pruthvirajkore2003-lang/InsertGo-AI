@@ -12,10 +12,12 @@
    Two layers on purpose — WebView2 transparent windows mis-composite
    gradients painted over a semi-transparent fill and punch the desktop
    through. The outer shell stays fully transparent (0-alpha rgba shell var)
-   and only handles hit-testing/centering — no overflow clipping, that would
-   eat the shadow. Every gradient/shadow lives on the inner layer, which sits
-   on a fully OPAQUE base. Gradients must fade to a 0-alpha color
-   (rgba(..., 0)), never the `transparent` keyword — same bug. */
+   and only handles centering — no hit-testing (pointer-events: none, so the
+   10px margin can't swallow clicks) and no overflow clipping (that would
+   eat the shadow). Every gradient/shadow lives on the inner layer, which
+   sits on a fully OPAQUE base and is the only hit-testable surface.
+   Gradients must fade to a 0-alpha color (rgba(..., 0)), never the
+   `transparent` keyword — same bug. */
 .ig-float {
   position: fixed;
   inset: 0;
@@ -23,16 +25,14 @@
   align-items: center;
   justify-content: center;
   background: var(--ig-float-shell);
-  cursor: grab;
+  pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
 }
 
-.ig-float:active {
-  cursor: grabbing;
-}
-
 .ig-float__inner {
+  pointer-events: auto;
+  cursor: grab;
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -56,16 +56,17 @@
   will-change: transform;
 }
 
-.ig-float:focus-visible .ig-float__inner {
+.ig-float__inner:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.85);
   outline-offset: 2px;
 }
 
-.ig-float:hover .ig-float__inner {
+.ig-float__inner:hover {
   filter: brightness(1.12);
 }
 
-.ig-float:active .ig-float__inner {
+.ig-float__inner:active {
+  cursor: grabbing;
   filter: brightness(0.94);
 }
 

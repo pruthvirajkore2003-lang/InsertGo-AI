@@ -31,7 +31,7 @@ import { POST } from "./route";
 
 const post = (body: unknown, headers: Record<string, string> = {}) =>
   POST(
-    new Request("https://insertgo.ai/api/contact", {
+    new Request("https://insertgo.com/api/contact", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
       body: typeof body === "string" ? body : JSON.stringify(body),
@@ -85,7 +85,7 @@ describe("POST /api/contact — request gate", () => {
 
   it("rejects a body over the cap with 413", async () => {
     const res = await POST(
-      new Request("https://insertgo.ai/api/contact", {
+      new Request("https://insertgo.com/api/contact", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -181,8 +181,8 @@ describe("POST /api/contact — request gate", () => {
 describe("POST /api/contact — dual dispatch", () => {
   beforeEach(() => {
     process.env.RESEND_API_KEY = "re_test_key";
-    process.env.CONTACT_TO = "support@insertgo.ai";
-    process.env.EMAIL_FROM = "InsertGo <hello@insertgo.ai>";
+    process.env.CONTACT_TO = "support@insertgo.com";
+    process.env.EMAIL_FROM = "InsertGo <hello@insertgo.com>";
   });
 
   it("sends the inbox alert and the visitor receipt, keyed to one submission", async () => {
@@ -195,7 +195,7 @@ describe("POST /api/contact — dual dispatch", () => {
     const [inbox, receipt] = sent();
     expect(send).toHaveBeenCalledTimes(2);
 
-    expect(inbox.payload.to).toEqual(["support@insertgo.ai"]);
+    expect(inbox.payload.to).toEqual(["support@insertgo.com"]);
     expect(inbox.payload.replyTo).toBe(valid.email);
     expect(inbox.payload.subject).toBe("[Bug report] Ada Lovelace");
     expect(inbox.payload.text).toContain(valid.message);
@@ -204,7 +204,7 @@ describe("POST /api/contact — dual dispatch", () => {
     );
 
     expect(receipt.payload.to).toEqual([valid.email]);
-    expect(receipt.payload.replyTo).toBe("support@insertgo.ai");
+    expect(receipt.payload.replyTo).toBe("support@insertgo.com");
     expect(receipt.payload.subject).toBe("We received your message: [Bug report]");
     expect(receipt.opts.idempotencyKey).toBe(
       `contact-ack/${bodyJson.submissionId}`,
@@ -218,7 +218,7 @@ describe("POST /api/contact — dual dispatch", () => {
     // receiver, and burns the sending domain's reputation on the way.
     await post(valid, freshIp());
     for (const { payload } of sent()) {
-      expect(payload.from).toBe("InsertGo <hello@insertgo.ai>");
+      expect(payload.from).toBe("InsertGo <hello@insertgo.com>");
       expect(payload.from).not.toContain(valid.email);
     }
   });
@@ -350,6 +350,6 @@ describe("POST /api/contact — dual dispatch", () => {
     await post(valid, freshIp());
     const [inbox] = sent();
     expect(inbox.payload.from).toBe("InsertGo <onboarding@resend.dev>");
-    expect(inbox.payload.to).toEqual(["support@insertgo.ai"]);
+    expect(inbox.payload.to).toEqual(["support@insertgo.com"]);
   });
 });

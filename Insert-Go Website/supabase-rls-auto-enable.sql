@@ -1,4 +1,4 @@
--- InsertGo.AI — auto-enable RLS on every new table in "public".
+-- InsertGo AI — auto-enable RLS on every new table in "public".
 --
 -- Run once in Supabase (SQL Editor → New query → paste → Run), AFTER
 -- supabase-auth-schema.sql. Safe to re-run.

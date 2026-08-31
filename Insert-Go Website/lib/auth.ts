@@ -223,7 +223,7 @@ function failureReason(err: {
   if (!location) return "";
   try {
     return (
-      new URL(location, "https://insertgo.ai").searchParams
+      new URL(location, "https://insertgo.com").searchParams
         .get("error")
         ?.slice(0, 64) ?? ""
     );
@@ -241,7 +241,7 @@ const authPool = g.__igAuthPool ?? new Pool(pgPoolConfig({ max: 10 }));
 if (process.env.NODE_ENV !== "production") g.__igAuthPool = authPool;
 
 export const auth = betterAuth({
-  appName: "InsertGo.AI",
+  appName: "InsertGo AI",
   baseURL: process.env.BETTER_AUTH_URL,
   secret: process.env.BETTER_AUTH_SECRET,
 

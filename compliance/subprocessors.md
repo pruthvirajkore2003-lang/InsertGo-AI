@@ -225,7 +225,7 @@ unconfigured processor is not a processor, but "probably unset" is not a registe
   reasoning stands, but it now has nothing to apply to: there is no BYOK mode, and
   the ~35 provider hosts that were listed in the desktop's Tauri capabilities were
   deleted with the feature (R-15). Every request the desktop makes goes to
-  `insertgo.ai`. Kept as a row because "we looked and it is not a subprocessor" and
+  `insertgo.com`. Kept as a row because "we looked and it is not a subprocessor" and
   "nobody considered it" must not read the same, and because the reasoning is what a
   reviewer needs if this is ever proposed again.
 - **The desktop application.** Runs on the data principal's own machine. It ships no

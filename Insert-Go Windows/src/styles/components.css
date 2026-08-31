@@ -139,12 +139,16 @@
   object-fit: contain;
 }
 
-/* Wordmark — Fraunces serif, like the site nav: InsertGo<span>.AI</span> */
+/* Wordmark — Fraunces serif, like the site nav: InsertGo <span>AI</span>.
+   The separator is a real space now, so nowrap is load-bearing: the header is
+   narrow and the brand can break across two lines, which the old full-stop
+   spelling could never do. */
 .ig-brand__name {
   font-family: var(--ig-font-serif);
   font-size: var(--ig-text-lg);
   font-weight: 600;
   letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 .ig-brand__name .ig-brand__ai {
@@ -1424,8 +1428,8 @@
   list-style: none;
 }
 
-/* History run row — prompt preview + run metrics + reuse, in the library's
-   card idiom. */
+/* History run card — title stacked over run metrics in the body column, with
+   reuse + delete actions trailing, in the library's card idiom. */
 .ig-history {
   display: flex;
   align-items: center;
@@ -1440,6 +1444,12 @@
 .ig-history__body {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-space-1);
+}
+
+.ig-history__title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1449,14 +1459,14 @@
 
 .ig-history__meta {
   display: flex;
-  flex-shrink: 0;
   gap: var(--ig-space-2);
   font-size: var(--ig-text-2xs);
   color: var(--ig-faint);
   font-variant-numeric: tabular-nums;
 }
 
-.ig-history .ig-btn {
+.ig-history .ig-btn,
+.ig-history .ig-iconbtn {
   flex-shrink: 0;
 }
 

@@ -979,7 +979,7 @@ honest exit is on the same page.
 withdraw the consent you gave by writing to" the grievance mailbox: the exact §6(4)
 asymmetry this item exists to remove — one checkbox in, an email out. Corrected in
 version 1.3.0 alongside R-15 (they are the same two files): the IT Rules paragraph now
-names `insertgo.ai/account/privacy` as the primary route, "one click, no email", with the
+names `insertgo.com/account/privacy` as the primary route, "one click, no email", with the
 Grievance Officer kept as the alternative rather than the only door.
 
 **Open (manual).** Run `supabase-consent-dsr.sql`.
@@ -1055,7 +1055,7 @@ Grievance Officer is not, and stays unverified until a human establishes who sen
 `erase_user()` **refuses** against an unverified erasure row, which is the difference
 between a right being exercised and an account being taken over.
 
-**Open (manual).** Run `supabase-consent-dsr.sql`; route `grievance@insertgo.ai` into the
+**Open (manual).** Run `supabase-consent-dsr.sql`; route `support@insertgo.com` into the
 `dsrRequest` queue rather than an inbox (R-20).
 
 **Acceptance.** Met in code. `dueAt` is exactly 90 days out and the CHECK makes any other
@@ -1145,7 +1145,7 @@ against a seeded account.
 **Evidence.** `app/privacy/page.tsx` is 412 lines and substantive: named processors,
 Dodo as merchant of record, BYOK direct-egress disclosure, the on-device boundary, a
 "what we do not do" section, DPDP nomination right, IT Rules 2011 Rule 4 acknowledgement,
-Grievance Officer at `grievance@insertgo.ai` (`:29-31`), 18+ statement, automated-decisions
+Grievance Officer at `support@insertgo.com` (`:29-31`), 18+ statement, automated-decisions
 section.
 
 **Analysis.** Lowered because the initial finding — "not itemised, English-only,
@@ -1611,7 +1611,7 @@ row. This limb closes when §6's two signals both return `ap-south-1`.
 **Priority:** Low *(lowered from Medium)* **Status:** Pending
 
 **Evidence.** `app/privacy/page.tsx:29-31` names a Grievance Officer with
-`grievance@insertgo.ai` and a stated acknowledgement window. The original finding —
+`support@insertgo.com` and a stated acknowledgement window. The original finding —
 "no published DPO / grievance contact" — was wrong.
 
 **Analysis.** Reduced to verification: the mailbox must be monitored by a named person,
@@ -1634,7 +1634,7 @@ Grievance Officer & Data Protection Officer — in all three copies
 (`app/privacy/page.tsx`, `app/terms` §24, desktop `src/legal/index.ts`), with the
 48-hour acknowledgement and the DPDP §13 designation stated. Notice version 1.5.0.
 
-**Open (manual).** (b) Route `grievance@insertgo.ai` into
+**Open (manual).** (b) Route `support@insertgo.com` into
 `dsr_create(..., p_verified => false)` — **false is load-bearing**: an emailed request has
 not proved who sent it, and `erase_user()` refuses unverified erasure rows for exactly
 that reason. (c) Add the postal address IT Rules 2011 Rule 5(9) expects; the policy

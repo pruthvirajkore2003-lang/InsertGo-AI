@@ -115,7 +115,7 @@ export async function POST(req: Request): Promise<Response> {
     return errorResponse(
       502,
       "We couldn't cancel with our payment provider just now. Please try " +
-        "again — if it keeps failing, email support@insertgo.ai and we will " +
+        "again — if it keeps failing, email support@insertgo.com and we will " +
         "cancel it for you and refund any charge taken in the meantime.",
     );
   }

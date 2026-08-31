@@ -89,7 +89,7 @@ would have used; in production that branch returns 503 rather than reporting a
 false success.
 
 Set `CONTACT_TO` to the inbox that should receive enquiries (default
-`support@insertgo.ai`).
+`support@insertgo.com`).
 
 **Resend sandbox rule — this is what bites in local dev.** On an unverified
 Resend account the shared `onboarding@resend.dev` sender only delivers to **the

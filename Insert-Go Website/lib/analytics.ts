@@ -98,7 +98,7 @@ export interface PurchaseInput {
 export function trackPurchase({
   transactionId,
   value,
-  currency = "INR",
+  currency = "USD",
   item,
   email,
 }: PurchaseInput): void {

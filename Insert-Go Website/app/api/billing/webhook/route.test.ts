@@ -217,7 +217,7 @@ function post(
     .update(`${id}.${timestamp}.${body}`)
     .digest("base64");
   return POST(
-    new Request("https://insertgo.ai/api/billing/webhook", {
+    new Request("https://insertgo.com/api/billing/webhook", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -307,7 +307,7 @@ describe("signature gate", () => {
 
   it("413s a body past the 64 KiB cap before any HMAC work", async () => {
     const res = await POST(
-      new Request("https://insertgo.ai/api/billing/webhook", {
+      new Request("https://insertgo.com/api/billing/webhook", {
         method: "POST",
         headers: { "content-length": String(70_000) },
         body: "x".repeat(70_000),

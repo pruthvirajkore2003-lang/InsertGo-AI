@@ -26,7 +26,7 @@ async function requireUserId(): Promise<{
   if (!session) redirect("/login");
   return {
     userId: session.user.id,
-    ip: clientIp(new Request("https://insertgo.ai", { headers: h })),
+    ip: clientIp(new Request("https://insertgo.com", { headers: h })),
     userAgent: h.get("user-agent"),
   };
 }

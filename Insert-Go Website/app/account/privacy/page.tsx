@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/Link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -33,13 +33,13 @@ const ACTION_ERRORS: Record<string, string> = {
   save_failed:
     "We could not save that choice, so nothing was changed. Please try again in a moment — your existing preferences are untouched.",
   request_failed:
-    "We could not file that request just now, so it has not been recorded. Please try again, or write to our Grievance Officer at grievance@insertgo.ai — a request by email counts from the day you send it.",
+    "We could not file that request just now, so it has not been recorded. Please try again, or write to our Grievance Officer at support@insertgo.com — a request by email counts from the day you send it.",
   erasure_failed:
-    "We could not complete the deletion, so your account is unchanged. Please try again, or write to grievance@insertgo.ai and we will action it within the statutory period.",
+    "We could not complete the deletion, so your account is unchanged. Please try again, or write to support@insertgo.com and we will action it within the statutory period.",
 };
 
 const GENERIC_ACTION_ERROR =
-  "Something went wrong on our side and the last action did not complete. Please try again, or write to grievance@insertgo.ai.";
+  "Something went wrong on our side and the last action did not complete. Please try again, or write to support@insertgo.com.";
 
 /**
  * Data-principal controls (R-10 withdrawal, R-11 rights).
@@ -269,8 +269,8 @@ export default async function PrivacyPage({
 
           <p className="mt-6 mb-0 text-center text-xs text-muted">
             Prefer to write to a person? Our Grievance Officer is at{" "}
-            <a href="mailto:grievance@insertgo.ai" className="underline">
-              grievance@insertgo.ai
+            <a href="mailto:support@insertgo.com" className="underline">
+              support@insertgo.com
             </a>
             .
           </p>

@@ -300,6 +300,48 @@ describe("PromptPalette streaming lifecycle", () => {
     );
   });
 
+  it("deletes a single history entry and persists the removal", () => {
+    useHistoryStore.setState({ entries: [] });
+    render(<PromptPalette editorRef={createRef<HTMLTextAreaElement>()} />);
+
+    act(() => {
+      usePromptStore.setState({ body: "doomed run", isSending: true });
+      usePromptStore.setState({ result: "done" });
+      usePromptStore.setState({ isSending: false });
+    });
+    const id = useHistoryStore.getState().entries[0].id;
+
+    fireEvent.click(screen.getByRole("tab", { name: /History/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete history entry" })
+    );
+
+    expect(useHistoryStore.getState().entries).toHaveLength(0);
+    expect(screen.getByText(/No history yet/)).toBeInTheDocument();
+    // localStorage holds the empty log, so other windows drop the entry too.
+    expect(JSON.parse(localStorage.getItem("ig.runHistory") ?? "[]")).toEqual(
+      []
+    );
+    expect(
+      useHistoryStore.getState().entries.find((e) => e.id === id)
+    ).toBeUndefined();
+  });
+
+  it("labels a body-less, skill-less composer run 'Composer Run', never 'Untitled run'", () => {
+    useHistoryStore.setState({ entries: [] });
+    render(<PromptPalette editorRef={createRef<HTMLTextAreaElement>()} />);
+
+    act(() => {
+      usePromptStore.setState({ body: "   ", isSending: true });
+      usePromptStore.setState({ result: "done" });
+      usePromptStore.setState({ isSending: false });
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: /History/ }));
+    expect(screen.getByText("Composer Run")).toBeInTheDocument();
+    expect(screen.queryByText("Untitled run")).toBeNull();
+  });
+
   it("shows the empty-editor guidance on Improvise only when there is no text", () => {
     render(<PromptPalette editorRef={createRef<HTMLTextAreaElement>()} />);
     expect(

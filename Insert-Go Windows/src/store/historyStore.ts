@@ -87,6 +87,8 @@ type HistoryState = {
   record: (run: Omit<HistoryEntry, "id" | "at">) => void;
   /** Re-read entries from storage (cross-window sync). */
   reload: () => void;
+  /** Delete one entry by id; persists so other windows see the removal. */
+  remove: (id: string) => void;
   clear: () => void;
 };
 
@@ -104,6 +106,12 @@ export const useHistoryStore = create<HistoryState>((set) => ({
       return { entries };
     }),
   reload: () => set({ entries: load() }),
+  remove: (id) =>
+    set((s) => {
+      const entries = s.entries.filter((e) => e.id !== id);
+      persist(entries);
+      return { entries };
+    }),
   clear: () => {
     persist([]);
     set({ entries: [] });

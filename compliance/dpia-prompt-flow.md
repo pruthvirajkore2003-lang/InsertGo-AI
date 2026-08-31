@@ -47,7 +47,7 @@ after an inquiry is a defence; one produced beforehand is a control.
 > - **The capability scopes now enforce the single flow.** The ~35 provider
 >   hosts in `capabilities/default.json` and the `https://**` scope on
 >   `selfloater.json` were deleted with the feature, so the desktop can reach
->   `insertgo.ai` and nothing else. That is a stronger safeguard than any
+>   `insertgo.com` and nothing else. That is a stronger safeguard than any
 >   sentence on this page, and it is new since the first correction.
 >
 > ---

@@ -9,6 +9,14 @@ import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { JsonLd } from "@/components/SeoContent";
 import { SITE_URL } from "@/lib/seo";
+import {
+  defaultLocale,
+  isIndexedLocale,
+  localeFromPathname,
+  ogLocale,
+  type Locale,
+} from "@/i18n-config";
+import { getDictionary } from "@/lib/i18n";
 import { AdSenseScript } from "@/components/ads/AdSenseScript";
 import { ConsentMode } from "@/components/analytics/ConsentMode";
 import { ConsentSync } from "@/components/analytics/ConsentSync";
@@ -24,15 +32,32 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
+/**
+ * The language this document is actually WRITTEN in — the path's locale only
+ * when that locale's copy is translated (INDEXED_LOCALES), and the default
+ * otherwise.
+ *
+ * `/fr/pricing` renders English copy today, so reporting `fr` would misstate
+ * the document language to a screen reader (WCAG 3.1.1) and to Google, which
+ * reads language from content. It drives `<html lang>`, `og:locale` and the
+ * nav dictionary together, so a half-translated page — French chrome over
+ * English prose — cannot happen either.
+ */
+function documentLocale(pathname: string | null): Locale {
+  const requested = localeFromPathname(pathname);
+  return isIndexedLocale(requested) ? requested : defaultLocale;
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
+  const locale = documentLocale(requestHeaders.get("x-pathname"));
   const rawHost =
     requestHeaders.get("x-forwarded-host")?.split(",")[0].trim() ??
     requestHeaders.get("host") ??
-    "insertgo.ai";
+    "insertgo.com";
   const host = /^[a-z0-9.-]+(?::\d+)?$/i.test(rawHost)
     ? rawHost
-    : "insertgo.ai";
+    : "insertgo.com";
   const isLocal = host.startsWith("localhost") || host.startsWith("127.0.0.1");
   const rawProtocol =
     requestHeaders.get("x-forwarded-proto")?.split(",")[0].trim() ??
@@ -50,34 +75,34 @@ export async function generateMetadata(): Promise<Metadata> {
     url: `${origin}/og.png`,
     width: 1731,
     height: 909,
-    alt: "InsertGo.AI — AI prompts. Inserted anywhere. Windows 10 and 11.",
+    alt: "InsertGo AI — AI prompts. Inserted anywhere. Windows 10 and 11.",
   };
 
   return {
     metadataBase: new URL(origin),
-    applicationName: "InsertGo.AI",
+    applicationName: "InsertGo AI",
     title: {
-      default: "InsertGo.AI — Floating AI Prompt Assistant for Windows",
-      template: "%s — InsertGo.AI",
+      default: "InsertGo AI — Vibe Coding Prompt Assistant for Windows",
+      template: "%s — InsertGo AI",
     },
     description:
-      "Open a floating AI prompt assistant in any Windows app with one hotkey. Run dynamic prompt templates, improve selected text, and insert AI output back at your cursor.",
+      "Free floating prompt assistant for Windows: write, refine, and reuse vibe coding prompts, then insert AI text at your cursor. 5 credits a day, no credit card.",
     category: "productivity",
     openGraph: {
-      title: "InsertGo.AI — Floating AI Prompt Assistant for Windows",
+      title: "InsertGo AI — Vibe Coding Prompt Assistant for Windows",
       description:
-        "One global hotkey for reusable AI prompts, selected-text actions, and direct insertion across Windows apps.",
+        "One global hotkey to write, reuse, and insert vibe coding prompts across editors, terminals, and browsers on Windows. Free plan, no credit card.",
       url: origin,
-      siteName: "InsertGo.AI",
-      locale: "en_US",
+      siteName: "InsertGo AI",
+      locale: ogLocale[locale],
       type: "website",
       images: [socialImage],
     },
     twitter: {
       card: "summary_large_image",
-      title: "InsertGo.AI — Floating AI Prompt Assistant for Windows",
+      title: "InsertGo AI — Vibe Coding Prompt Assistant for Windows",
       description:
-        "Reusable prompts and AI text insertion across your Windows desktop.",
+        "Reusable vibe coding prompt templates, selected-text actions, and AI text insertion across your Windows desktop.",
       images: [socialImage.url],
     },
   };
@@ -88,34 +113,41 @@ const siteLd = {
   "@graph": [
     {
       "@type": "Organization",
-      "@id": "https://insertgo.ai/#organization",
-      name: "InsertGo.AI",
+      "@id": "https://insertgo.com/#organization",
+      name: "InsertGo AI",
       alternateName: "InsertGo",
-      url: "https://insertgo.ai",
+      url: "https://insertgo.com",
       logo: {
         "@type": "ImageObject",
-        url: "https://insertgo.ai/main-logo.png",
+        url: "https://insertgo.com/main-logo.png",
       },
     },
     {
       "@type": "WebSite",
-      "@id": "https://insertgo.ai/#website",
-      name: "InsertGo.AI",
+      "@id": "https://insertgo.com/#website",
+      name: "InsertGo AI",
       alternateName: "InsertGo",
-      url: "https://insertgo.ai",
+      url: "https://insertgo.com",
       publisher: {
-        "@id": "https://insertgo.ai/#organization",
+        "@id": "https://insertgo.com/#organization",
       },
       inLanguage: "en",
     },
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // The <html> element is only rendered here, so `lang` cannot come from
+  // app/[locale]'s params — it comes from the path middleware stamped. This is
+  // also the one place that resolves the dictionary, because the chrome below
+  // sits outside the [locale] segment (it wraps /login and /account too).
+  const locale = documentLocale((await headers()).get("x-pathname"));
+  const t = getDictionary(locale);
+
   return (
-    <html lang="en" className={fraunces.variable}>
+    <html lang={locale} className={fraunces.variable}>
       {/* Consent Mode v2 defaults, as a direct child of <html> — Next's
           documented placement for `beforeInteractive`, and the one that puts
           the tag in <head> ahead of every bundle. The ORDER relative to the
@@ -132,7 +164,7 @@ export default function RootLayout({
           Skip to content
         </a>
         <PostHogProvider>
-          <SiteNav />
+          <SiteNav t={t.nav} />
           {/* tabIndex -1 so the skip link can actually move focus here; without
               it the browser scrolls but focus stays on the link. */}
           <div id="main-content" tabIndex={-1}>

@@ -153,7 +153,7 @@ export async function POST(req: Request) {
     return bad("Too many messages from this network. Try again later.", 429);
 
   const key = process.env.RESEND_API_KEY;
-  const to = process.env.CONTACT_TO ?? "support@insertgo.ai";
+  const to = process.env.CONTACT_TO ?? "support@insertgo.com";
   const from = process.env.EMAIL_FROM ?? "InsertGo <onboarding@resend.dev>";
 
   if (!key) {
@@ -201,7 +201,7 @@ export async function POST(req: Request) {
   const shell = (inner: string) =>
     `<div style="margin:0;padding:24px;background:#f6f4f1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#1c1917">` +
     `<div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e7e2dc;border-radius:14px;padding:28px">${inner}</div>` +
-    `<p style="max-width:560px;margin:14px auto 0;font-size:12px;color:#8a8177;text-align:center">InsertGo · insertgo.ai</p>` +
+    `<p style="max-width:560px;margin:14px auto 0;font-size:12px;color:#8a8177;text-align:center">InsertGo · insertgo.com</p>` +
     `</div>`;
   const detailRows =
     `<tr><td style="padding:4px 16px 4px 0;color:#8a8177;font-size:13px">Name</td><td style="padding:4px 0;font-size:13px">${safe.name}</td></tr>` +

@@ -21,7 +21,6 @@ import { isLicensePro, useLicenseStore } from "@/store/licenseStore";
 import {
   detectCurrency,
   fetchPricing,
-  storeCurrency,
   type Currency,
   type PricingData,
 } from "@/services/billing";
@@ -64,19 +63,16 @@ type MonetizationState = {
    *  offline). Every reader must carry its own fallback copy. */
   pricing: PricingData | null;
   /**
-   * Which price column every pricing surface renders. Lives here rather than
-   * being re-derived per component so the toggle in one modal moves the other
-   * one too — two surfaces disagreeing about the price of the same plan is a
-   * worse bug than either of them being wrong.
+   * Which price column every pricing surface renders. Auto-detected once from
+   * the system timezone and locale (see `detectCurrency`) — no manual
+   * override, so the display cannot be manipulated away from what the user's
+   * region implies.
    */
   currency: Currency;
 
   /** Open the contextual upgrade modal (out of credits / gated feature). */
   openUpgrade: (reason: UpgradeReason) => void;
   closeUpgrade: () => void;
-  /** Switch the display column and remember it across launches. Display only:
-   *  Dodo charges the server-pinned product at its own regionalized price. */
-  setCurrency: (currency: Currency) => void;
   /** Load the catalog once per session; safe to call from every pricing
    *  surface on mount. Never rejects — a failure just leaves `pricing` null. */
   loadPricing: () => Promise<void>;
@@ -102,11 +98,6 @@ export const useMonetizationStore = create<MonetizationState>((set, get) => ({
 
   openUpgrade: (reason) => set({ upgradeReason: reason }),
   closeUpgrade: () => set({ upgradeReason: null }),
-
-  setCurrency: (currency) => {
-    storeCurrency(currency);
-    set({ currency });
-  },
 
   loadPricing: () => {
     if (get().pricing) return Promise.resolve();

@@ -177,8 +177,10 @@ jobs:
       - name: Build and sign installer
         run: npm run tauri:build -- --verbose
         env:
-          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://insertgo.ai' }}
-          VITE_GEMINI_MODEL: ${{ vars.VITE_GEMINI_MODEL || 'gemini-2.5-flash-lite' }}
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://insertgo.com' }}
+          # Optional override only; unset falls back to shared-config.json's
+          # defaultGeminiModel, which vite.config.ts inlines at build time.
+          VITE_GEMINI_MODEL: ${{ vars.VITE_GEMINI_MODEL }}
           # bundle.createUpdaterArtifacts reads these. If the key is absent the
           # CLI does NOT fail — it just skips the .sig, and the manifest step
           # below is what turns that into a red build instead of a release that

@@ -1,3 +1,5 @@
+import { stripLocale } from "@/i18n-config";
+
 /**
  * Where ads are allowed. One predicate, consulted by both halves of the
  * integration — the loader script (components/ads/AdSenseScript.tsx) and every
@@ -15,8 +17,13 @@ const AD_PATH_PREFIXES = ["/blog", "/alternatives", "/features", "/use-cases", "
 
 export function adsAllowedOn(pathname: string | null | undefined): boolean {
   if (!pathname) return false;
+  // Public routes are locale-prefixed (`/fr/blog`), and both callers hand this
+  // the raw pathname. Matching without stripping would silently switch every
+  // ad off site-wide — and, worse, the same slip on a future denylist would
+  // switch them ON over an authenticated page.
+  const path = stripLocale(pathname);
   return AD_PATH_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
   );
 }
 

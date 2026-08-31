@@ -32,7 +32,7 @@ export const HeroPlate: React.FC = () => {
           whiteSpace: "nowrap",
         }}
       >
-        InsertGo<span style={{ color: T.accent }}>.AI</span>
+        InsertGo <span style={{ color: T.accent }}>AI</span>
       </div>
 
       <div

@@ -11,11 +11,11 @@ import { safeError } from "@/services/safeLog";
 import { toast } from "@/store/toastStore";
 
 // ── Pricing catalog (website lib/pricing.ts, served by /api/desktop/pricing) ─
-// Mirrors of the website types. Both currency columns ship in the payload and
-// the UI picks one for display; Dodo (Merchant of Record) localizes the real
-// charge from the server-pinned product, so `Currency` never reaches checkout.
+// Mirrors of the website types. The catalog prices in USD only; Dodo (Merchant
+// of Record) localizes the real charge from the server-pinned product and adds
+// the buyer's tax, so `Currency` never reaches checkout.
 
-export type Currency = "USD" | "INR";
+export type Currency = "USD";
 export type Money = Record<Currency, number>;
 
 export type PricingPlan = {
@@ -31,124 +31,26 @@ export type PricingPack = { credits: number; price: Money };
 
 export type PricingData = { plans: PricingPlan[]; packs: PricingPack[] };
 
-const SYMBOL: Record<Currency, string> = { USD: "$", INR: "₹" };
-
-/** IANA zones for India — `Asia/Calcutta` is the legacy alias Windows and
- *  older ICU builds still resolve to. */
-const INDIA_ZONES = new Set(["Asia/Kolkata", "Asia/Calcutta"]);
-
-/** Where the user's manual choice is kept. Mirrors the website's `ig_currency`
- *  cookie by name so the two surfaces read as one setting. */
-export const CURRENCY_KEY = "ig_currency";
-
-/** Narrow untrusted text (localStorage, a hand-edited store) to a currency. */
-export function parseCurrency(value: string | null | undefined): Currency | null {
-  const v = value?.trim().toUpperCase();
-  return v === "INR" || v === "USD" ? v : null;
-}
+const SYMBOL: Record<Currency, string> = { USD: "$" };
 
 /**
- * Whether a BCP-47 tag says "India": an explicit `-IN` region subtag
- * (`en-IN`, `ta-Latn-IN`) or bare Hindi, which has no other national market.
+ * Display currency for this machine: USD, always.
  *
- * The region has to FOLLOW a language, hence `-IN` and not `^IN` — a bare `in`
- * is the deprecated ISO-639 code for Indonesian. And not every Indian language
- * without a region: `bn` alone is as likely Bangladesh. Mirrors
- * `isIndianLocale` in the website's lib/currency.ts; keep the two in step.
- */
-export function isIndianLocale(tag: string | null | undefined): boolean {
-  const t = tag?.trim();
-  if (!t) return false;
-  return /-IN$/i.test(t) || /^hi(?:-|$)/i.test(t);
-}
-
-/** The stored manual choice, or null when the user has never picked one. */
-export function storedCurrency(): Currency | null {
-  try {
-    return parseCurrency(localStorage.getItem(CURRENCY_KEY));
-  } catch {
-    // Webview with storage disabled — detection still works, it just can't be
-    // remembered across launches.
-    return null;
-  }
-}
-
-/** Persist (or, with null, forget) the user's manual choice. */
-export function storeCurrency(currency: Currency | null): void {
-  try {
-    if (currency) localStorage.setItem(CURRENCY_KEY, currency);
-    else localStorage.removeItem(CURRENCY_KEY);
-  } catch {
-    // Non-fatal: the choice still holds for this session, in the store.
-  }
-}
-
-/**
- * Display currency for this machine.
- *
- * Order: the user's own choice, then the system timezone, then the UI
- * language. The website reads the CDN's IP-country header, but the desktop has
- * no such header and /api/desktop/pricing is force-static (it can't vary per
- * caller), so timezone and locale are the zero-dependency signals available
- * offline and without a geolocation call. The language pass is what catches a
- * machine set to `en-IN` on a VPN or a corporate UTC clock — the case where
- * the timezone alone silently pins an Indian buyer to dollars.
- *
- * A travelling laptop can still disagree with the real billing country, which
- * is why the toggle exists and why this is display only: Dodo charges the
- * pinned product at its own regionalized price either way.
+ * The catalog has one column, so there is nothing to detect and no manual
+ * override — every pricing surface, desktop and web, shows the same figure.
+ * Display only: Dodo charges the pinned product at its own regionalized price
+ * and adds the buyer's tax at checkout.
  */
 export function detectCurrency(): Currency {
-  const chosen = storedCurrency();
-  if (chosen) return chosen;
-
-  try {
-    if (INDIA_ZONES.has(Intl.DateTimeFormat().resolvedOptions().timeZone)) {
-      return "INR";
-    }
-  } catch {
-    // Locked-down webview with no ICU data — fall through to the language.
-  }
-
-  try {
-    const tags = navigator.languages?.length
-      ? navigator.languages
-      : [navigator.language];
-    if (tags.some(isIndianLocale)) return "INR";
-  } catch {
-    // No navigator (non-browser test harness): USD is the catalog's base.
-  }
-
   return "USD";
 }
 
-/** "$0", "$7.99", "₹499" — decimals only when the price has them (mirrors
- *  the site's `money()`). */
+/** "$0", "$7.99" — decimals only when the price has them (mirrors the site's
+ *  `money()`). */
 export function formatMoney(amount: number, currency: Currency): string {
   return `${SYMBOL[currency]}${
     Number.isInteger(amount) ? amount : amount.toFixed(2)
   }`;
-}
-
-/** India's standard GST rate on software services. */
-const GST_RATE = 0.18;
-
-/**
- * "₹499 + 18% GST = ₹588.82 total", or "" for anything that is not a non-zero
- * INR amount.
- *
- * Catalogue prices are tax-EXCLUSIVE — Dodo's products are, and its hosted
- * checkout adds the regional tax — so an Indian buyer shown only "₹499" is
- * being shown a price they cannot pay. That is drip pricing under the CCPA's
- * Guidelines for Prevention and Regulation of Dark Patterns, 2023. Mirrors
- * `gstNote` on the website's pricing page; keep the two in step.
- */
-export function gstNote(amount: number, currency: Currency): string {
-  if (currency !== "INR" || amount <= 0) return "";
-  return `₹${amount} + ${Math.round(GST_RATE * 100)}% GST = ₹${(
-    amount *
-    (1 + GST_RATE)
-  ).toFixed(2)} total`;
 }
 
 /** The catalog entry for a paid tier, or null when pricing hasn't loaded. */
@@ -161,8 +63,7 @@ export function planFor(
 
 // Remote JSON is untrusted input: anything malformed becomes `null` so the UI
 // keeps its offline fallbacks rather than rendering `undefined`.
-const isMoney = (v: any): v is Money =>
-  !!v && Number.isFinite(v.USD) && Number.isFinite(v.INR);
+const isMoney = (v: any): v is Money => !!v && Number.isFinite(v.USD);
 
 const isPlan = (v: any): v is PricingPlan =>
   !!v &&

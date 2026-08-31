@@ -446,7 +446,7 @@ mod tests {
                 "legacyBaseUrl":"",
                 "legacyProfiles":[{"id":"p-abc","name":"Work key","lane":"openrouter","model":"meta/llama","baseUrl":""}],
                 "activeLegacyProfileId":"p-abc",
-                "improveModel":"gemini-2.5-flash-lite",
+                "improveModel":"legacy-model-id",
                 "improveHotkey":"Ctrl+Alt+I",
                 "improveUndoHotkey":"Ctrl+Alt+Z",
                 "firstImproveDone":true,

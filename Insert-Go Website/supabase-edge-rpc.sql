@@ -1,4 +1,4 @@
--- InsertGo.AI — Edge-runtime RPC surface for /api/ai/generate.
+-- InsertGo AI — Edge-runtime RPC surface for /api/ai/generate.
 --
 -- Run once in Supabase (SQL Editor → New query → paste → Run), AFTER
 -- supabase-auth-schema.sql. Safe to re-run.

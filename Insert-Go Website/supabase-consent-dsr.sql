@@ -1,4 +1,4 @@
--- InsertGo.AI — consent artifact, data-principal requests, and erasure.
+-- InsertGo AI — consent artifact, data-principal requests, and erasure.
 -- Remediation items R-09 (consent), R-10 (withdrawal), R-11 (rights + 90-day
 -- SLA), R-12 (two-class retention), R-14 (age declaration).
 --

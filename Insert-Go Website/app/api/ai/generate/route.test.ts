@@ -70,7 +70,7 @@ vi.mock("@/lib/semanticCache", () => ({
 vi.mock("@/lib/groundingCache", () => ({
   cacheKey: vi.fn(async () => "k"),
   getCached: vi.fn(async () => undefined),
-  setCached: vi.fn(async () => {}),
+  setCached: vi.fn(async () => { }),
 }));
 
 const { audit } = vi.hoisted(() => ({ audit: vi.fn() }));
@@ -83,18 +83,21 @@ import { DbError, DbConfigError } from "@/lib/db";
 // Real (unmocked) — the grounded tests assert against the shipped ceilings, so
 // a change to those tables has to be a deliberate edit here too.
 import { GROUNDED_DAILY_MAX, TIER_DAILY_CREDITS } from "@/lib/entitlements";
+import sharedConfig from "../../../../../shared-config.json";
 import { POST } from "./route";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const MODEL = "gemini-2.5-flash-lite";
+// Monorepo-root single source of truth. It must stay a model isAllowedModel()
+// accepts, which is exactly what sharing the constant guarantees.
+const MODEL = sharedConfig.defaultGeminiModel;
 
 function post(
   body: Record<string, unknown> = {},
   headers: Record<string, string> = {},
 ) {
   return POST(
-    new Request("https://insertgo.ai/api/ai/generate", {
+    new Request("https://insertgo.com/api/ai/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify({ prompt: "tighten this", model: MODEL, ...body }),
@@ -173,7 +176,7 @@ describe("request gates run before anything is charged", () => {
 
   it("400s a malformed body without charging", async () => {
     const res = await POST(
-      new Request("https://insertgo.ai/api/ai/generate", {
+      new Request("https://insertgo.com/api/ai/generate", {
         method: "POST",
         body: "{",
       }),
@@ -366,7 +369,7 @@ describe("replay bounds", () => {
   });
 
   it("audits a refused replay as critical — this is metering bypass", async () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => { });
     debitCredit.mockResolvedValueOnce(replay({ replays: 9 }));
     await post({}, { "Idempotency-Key": "abused" });
     expect(audit).toHaveBeenCalledWith(
@@ -380,7 +383,7 @@ describe("replay bounds", () => {
   });
 
   it("never logs the prompt when refusing a replay (SPEC §10)", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => { });
     debitCredit.mockResolvedValueOnce(replay({ replays: 9 }));
     await post({ prompt: "SECRET-DRAFT-TEXT" }, { "Idempotency-Key": "k" });
     expect(warn.mock.calls.flat().join(" ")).not.toContain("SECRET-DRAFT-TEXT");
@@ -391,7 +394,7 @@ describe("replay bounds", () => {
 
 describe("metering failures fail closed", () => {
   beforeEach(() => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => { });
   });
 
   it("503s a transient DB failure and calls no model", async () => {
@@ -452,7 +455,7 @@ describe("stream contract", () => {
     // Headers (and the debit) are already committed by then. Documented, not
     // accidental: a refund path here would need a compensating ledger write,
     // and a partially-streamed answer is still a served answer.
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => { });
     streamContent.mockRejectedValueOnce(new Error("gemini 500"));
     const res = await post();
     expect(res.status).toBe(200);

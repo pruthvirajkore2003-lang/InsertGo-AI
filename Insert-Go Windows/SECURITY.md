@@ -88,7 +88,7 @@ effective network boundary.
 |-----------------|----------------------|----------------|
 | `main`          | `default.json`       | `https://**` + localhost |
 | `selfloater`    | `selfloater.json`    | `https://**` + localhost — runs the selection-review provider stream |
-| `skillbar`      | `skillbar.json`      | `insertgo.ai` + localhost only |
+| `skillbar`      | `skillbar.json`      | `insertgo.com` + localhost only |
 | `improvechip`   | `improvechip.json`   | none |
 | `floating-icon` | `floating-icon.json` | none |
 

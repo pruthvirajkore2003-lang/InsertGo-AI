@@ -1,4 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// Monorepo-root single source of truth; the namespace key is model-scoped, so
+// these fixtures must use the model the app actually sends.
+import sharedConfig from "../../shared-config.json";
+
+const MODEL = sharedConfig.defaultGeminiModel;
 
 /**
  * In-memory stand-in for the Upstash Vector index. It reproduces the two
@@ -150,7 +155,7 @@ describe("semanticCacheEnabled", () => {
 
 describe("lookup/store", () => {
   const req = (prompt: string, system = "sys", userId = "user-1") => ({
-    model: "gemini-2.5-flash-lite",
+    model: MODEL,
     system,
     prompt,
     userId,
@@ -241,7 +246,7 @@ describe("lookup/store", () => {
     embedFromMap({ base: [1, 0, 0] });
     const miss = await lookupSemanticCache(req("base"));
     await storeSemanticCache(miss.pending, "stale");
-    const ns = await namespaceKey("gemini-2.5-flash-lite", "sys", "user-1");
+    const ns = await namespaceKey(MODEL, "sys", "user-1");
     expect(space(ns).size).toBe(1);
 
     expect((await lookupSemanticCache(req("base"))).hit).toBeNull();
@@ -257,7 +262,7 @@ describe("lookup/store", () => {
     expect(aAgain.hit?.text).toBe("A");
     await storeSemanticCache(aAgain.pending, "A2");
 
-    const ns = await namespaceKey("gemini-2.5-flash-lite", "sys", "user-1");
+    const ns = await namespaceKey(MODEL, "sys", "user-1");
     expect(space(ns).size).toBe(1); // refreshed in place, not twinned
     expect((await lookupSemanticCache(req("a"))).hit?.text).toBe("A");
 

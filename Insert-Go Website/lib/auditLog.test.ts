@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { audit, clientIp, encodeDetail } from "./auditLog";
 
 function req(headers: Record<string, string>): Request {
-  return new Request("https://insertgo.ai/api/x", { method: "POST", headers });
+  return new Request("https://insertgo.com/api/x", { method: "POST", headers });
 }
 
 describe("clientIp", () => {

@@ -162,7 +162,7 @@ export function LegalConsentModal({ onAccept }: LegalConsentModalProps) {
           </label>
           <p className="ig-muted ig-legal__aside">
             Optional things — product analytics, marketing email — are asked
-            separately on insertgo.ai and you can change them any time. This
+            separately on insertgo.com and you can change them any time. This
             box is not about those.
           </p>
 

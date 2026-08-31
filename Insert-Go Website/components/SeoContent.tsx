@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Link";
 import type { ReactNode } from "react";
 import { DownloadButton, GhostButton } from "./Buttons";
 import type { BreadcrumbItem, FaqItem } from "@/lib/seo";
@@ -18,7 +18,7 @@ export function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="mx-auto max-w-[1080px] px-6 pt-32 text-sm text-muted"
+      className="mx-auto max-w-[1080px] px-6 pt-24 text-sm text-muted sm:pt-28"
     >
       <ol className="flex flex-wrap items-center gap-2">
         {items.map((item, index) => (

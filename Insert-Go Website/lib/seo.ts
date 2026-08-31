@@ -1,6 +1,13 @@
+import { defaultLocale, type Locale } from "@/i18n-config";
 import { HOTKEYS } from "@/lib/constants/hotkeys";
+import { plans } from "@/lib/pricing";
 
-export const SITE_URL = "https://insertgo.ai";
+export const SITE_URL = "https://insertgo.com";
+/** Origin plus the default locale. Every *page* URL now carries a locale
+ *  segment, so a bare `${SITE_URL}/download` is a redirect, not a document.
+ *  Entities that are the same in every language — the product, its offers —
+ *  anchor on the default locale rather than pretending to be locale-free. */
+export const DEFAULT_LOCALE_URL = `${SITE_URL}/${defaultLocale}`;
 export const CONTENT_UPDATED = "2026-08-18";
 
 /** Stable @id anchors. The Organization and WebSite nodes are emitted once per
@@ -44,35 +51,57 @@ export function faqSchema(items: FaqItem[]) {
   };
 }
 
-function breadcrumbNodes(items: BreadcrumbItem[]) {
+function breadcrumbNodes(items: BreadcrumbItem[], locale: Locale) {
   return items.map(({ name, href }, index) => ({
     "@type": "ListItem",
     position: index + 1,
     name,
-    item: `${SITE_URL}${href}`,
+    // `href` is written locale-free at every call site, exactly like a
+    // `<Link href>`, so the crumb trail follows the page it describes.
+    item: `${SITE_URL}/${locale}${href === "/" ? "" : href}`,
   }));
 }
 
-export function breadcrumbSchema(items: BreadcrumbItem[]) {
+export function breadcrumbSchema(items: BreadcrumbItem[], locale: Locale) {
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: breadcrumbNodes(items),
+    itemListElement: breadcrumbNodes(items, locale),
   };
 }
+
+/** Price range read off the real catalogue in lib/pricing.ts rather than
+ *  restated here, so the entity an answer engine quotes for "how much is
+ *  InsertGo AI" cannot drift from the pricing page. These are the same display
+ *  prices /pricing renders; lib/dodo.ts stays authoritative for what is
+ *  charged. A bare `price: "0"` was true of the free tier and silently wrong
+ *  about the other two. */
+const usdPrices = plans.map((plan) => plan.price.USD);
+
+const offersNode = {
+  "@type": "AggregateOffer",
+  offerCount: plans.length,
+  lowPrice: Math.min(...usdPrices).toFixed(2),
+  highPrice: Math.max(...usdPrices).toFixed(2),
+  priceCurrency: "USD",
+  url: `${DEFAULT_LOCALE_URL}/pricing`,
+};
 
 /** The product entity, without @context so it can be embedded in a @graph. */
 const softwareApplicationNode = {
   "@type": "SoftwareApplication",
   "@id": SOFTWARE_ID,
-  name: "InsertGo.AI",
+  name: "InsertGo AI",
   alternateName: "InsertGo",
   applicationCategory: "ProductivityApplication",
   applicationSubCategory: "AI prompt assistant",
   operatingSystem: "Windows 10, Windows 11",
-  url: SITE_URL,
-  downloadUrl: `${SITE_URL}/download`,
-  softwareHelp: { "@type": "CreativeWork", url: `${SITE_URL}/how-it-works` },
+  url: DEFAULT_LOCALE_URL,
+  downloadUrl: `${DEFAULT_LOCALE_URL}/download`,
+  softwareHelp: {
+    "@type": "CreativeWork",
+    url: `${DEFAULT_LOCALE_URL}/how-it-works`,
+  },
   description:
     "Floating, always-on-top AI prompt assistant for Windows with global hotkeys, reusable dynamic prompt templates, and direct text insertion into the previously active app.",
   featureList: [
@@ -83,24 +112,19 @@ const softwareApplicationNode = {
     "Managed AI with no API key setup",
     "Local prompt and settings storage",
   ],
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "USD",
-    url: `${SITE_URL}/pricing`,
-  },
+  offers: offersNode,
   publisher: {
     "@type": "Organization",
     "@id": ORG_ID,
-    name: "InsertGo.AI",
+    name: "InsertGo AI",
     url: SITE_URL,
   },
 };
 
-export const softwareApplicationSchema = {
-  "@context": "https://schema.org",
-  ...softwareApplicationNode,
-};
+// `softwareApplicationSchema` — the standalone, @context-carrying copy of the
+// node above — is gone. The homepage was its only caller and now takes the
+// node through pageGraph(); keeping the export around is an invitation to
+// re-emit the product entity as an orphan a second time on the same document.
 
 /** The insert workflow, in the product's own terms. Shared by every page that
  *  claims "hotkey to cursor" so the HowTo steps can never drift apart. */
@@ -123,8 +147,27 @@ export const HOTKEY_WORKFLOW_STEPS: HowToStepItem[] = [
   },
 ];
 
+export type ArticleInput = {
+  /** Defaults to "BlogPosting"; use "Article" for non-blog pillar pages. */
+  type?: "BlogPosting" | "Article";
+  headline: string;
+  description: string;
+  datePublished: string;
+  dateModified?: string;
+  /** Subjects the piece covers, beyond the product itself. */
+  keywords?: string[];
+};
+
 export type PageGraphInput = {
-  /** Route path, leading slash, no trailing slash. */
+  /** The language this document is served in. Everything below that names a
+   *  page URL is built from it, so the graph a French page emits addresses the
+   *  French URLs — a graph that self-identified as the English page would fight
+   *  the canonical in the same `<head>`. */
+  locale: Locale;
+  /** Route path, leading slash, no trailing slash, and locale-FREE. `""`
+   *  addresses the root,
+   *  which resolves to SITE_URL — not `"/"`, which would canonicalise the
+   *  homepage one character away from every other node that names it. */
   path: string;
   name: string;
   description: string;
@@ -136,6 +179,11 @@ export type PageGraphInput = {
     totalTime?: string;
     steps: HowToStepItem[];
   };
+  /** Editorial layer for pillar and blog pages. Authorship and publisher
+   *  resolve to the Organization node app/layout.tsx already emits, so the
+   *  article joins the site graph instead of restating an unlinked publisher
+   *  of its own. */
+  article?: ArticleInput;
 };
 
 /**
@@ -144,14 +192,16 @@ export type PageGraphInput = {
  * an optional HowTo — all cross-referenced by @id rather than duplicated.
  */
 export function pageGraph({
+  locale,
   path,
   name,
   description,
   breadcrumbs,
   faqs,
   howTo,
+  article,
 }: PageGraphInput) {
-  const url = `${SITE_URL}${path}`;
+  const url = `${SITE_URL}/${locale}${path}`;
   const pageId = `${url}#webpage`;
   const breadcrumbId = `${url}#breadcrumb`;
 
@@ -161,7 +211,7 @@ export function pageGraph({
     url,
     name,
     description,
-    inLanguage: "en",
+    inLanguage: locale,
     dateModified: CONTENT_UPDATED,
     isPartOf: { "@id": WEBSITE_ID },
     about: { "@id": SOFTWARE_ID },
@@ -175,7 +225,7 @@ export function pageGraph({
     {
       "@type": "BreadcrumbList",
       "@id": breadcrumbId,
-      itemListElement: breadcrumbNodes(breadcrumbs),
+      itemListElement: breadcrumbNodes(breadcrumbs, locale),
     },
   ];
 
@@ -186,7 +236,7 @@ export function pageGraph({
       name: howTo.name,
       description: howTo.description,
       ...(howTo.totalTime ? { totalTime: howTo.totalTime } : {}),
-      tool: { "@type": "HowToTool", name: "InsertGo.AI for Windows" },
+      tool: { "@type": "HowToTool", name: "InsertGo AI for Windows" },
       mainEntityOfPage: { "@id": pageId },
       step: howTo.steps.map((step, index) => ({
         "@type": "HowToStep",
@@ -195,6 +245,24 @@ export function pageGraph({
         text: step.text,
         url: `${url}#step-${index + 1}`,
       })),
+    });
+  }
+
+  if (article) {
+    graph.push({
+      "@type": article.type ?? "BlogPosting",
+      "@id": `${url}#article`,
+      headline: article.headline,
+      description: article.description,
+      datePublished: article.datePublished,
+      dateModified: article.dateModified ?? article.datePublished,
+      inLanguage: locale,
+      author: { "@id": ORG_ID },
+      publisher: { "@id": ORG_ID },
+      isPartOf: { "@id": WEBSITE_ID },
+      about: { "@id": SOFTWARE_ID },
+      mainEntityOfPage: { "@id": pageId },
+      ...(article.keywords?.length ? { keywords: article.keywords } : {}),
     });
   }
 

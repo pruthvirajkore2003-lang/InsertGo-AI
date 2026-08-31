@@ -65,8 +65,9 @@ export function updateGoogleConsent({ adsConsent, analyticsConsent }: ConsentCho
 export interface ConversionInput {
   /** Order value in the reporting currency. */
   value: number;
-  /** ISO-4217. Dodo is Merchant of Record and localises the real charge; this
-   *  is the catalogue price for the item the user bought. */
+  /** ISO-4217 — always "USD", the catalog's only currency. Dodo is Merchant
+   *  of Record and localises the real charge; this is the catalogue price for
+   *  the item the user bought. */
   currency?: string;
   /** Our own id, planted in Dodo checkout metadata. Google dedups conversions
    *  on it, which is what makes a refresh of the return page harmless. */
@@ -91,7 +92,7 @@ function normalizeEmail(email: string): string {
  */
 export function trackGoogleAdsConversion({
   value,
-  currency = "INR",
+  currency = "USD",
   transactionId,
   email,
 }: ConversionInput): void {

@@ -32,7 +32,7 @@ bug in this table, not a gap to be filled with prose.**
 
 | | |
 |---|---|
-| **Organisation** | InsertGo.AI |
+| **Organisation** | InsertGo AI |
 | **Services** | InsertGo desktop application (Windows) and the insertgo.com website + managed AI API |
 | **In scope** | The Next.js website and API on Vercel; the Supabase Postgres estate; the Tauri desktop client; the release build and signing pipeline; all seven processors in `subprocessors.md` §3 |
 | **Out of scope** | The data principal's own machine beyond what the client writes there; enterprise customers' identity providers |

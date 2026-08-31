@@ -12,11 +12,10 @@
  * Prices/products are pinned server-side via DODO_PRODUCT_ID_* env — nothing
  * money-shaped is accepted from the client beyond the catalog selector, which
  * is validated against lib/dodo.ts. The billing country handed to Dodo comes
- * from the edge geolocation header on this request, never from the body or the
- * `ig_currency` display cookie: Dodo prices per country, so a client-chosen
- * country would be a client-chosen price. Without gateway env keys the route
- * answers 503 with a clear message. Fulfilment lands via the webhook
- * (app/api/billing/webhook).
+ * from the edge geolocation header on this request, never from the body:
+ * Dodo prices per country, so a client-chosen country would be a
+ * client-chosen price. Without gateway env keys the route answers 503 with a
+ * clear message. Fulfilment lands via the webhook (app/api/billing/webhook).
  */
 import { auth } from "@/lib/auth";
 import {
@@ -123,10 +122,9 @@ export async function POST(req: Request): Promise<Response> {
       name: user.name ?? "",
       item,
       // Read from the CDN's geolocation header on THIS request — deliberately
-      // not from the body and not from the `ig_currency` display cookie. Dodo
-      // prices per billing country, so a country the shopper can set is a
-      // price the shopper can set; the toggle on /pricing changes what is
-      // shown, never what is charged.
+      // not from the body. Dodo prices per billing country, so a country the
+      // shopper can set is a price the shopper can set; there is no
+      // client-controllable currency input anywhere in the flow.
       country: countryFromHeaders(req.headers),
     });
     return Response.json({ gateway: "dodo", url });

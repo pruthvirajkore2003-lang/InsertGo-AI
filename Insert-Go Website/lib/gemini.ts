@@ -46,6 +46,11 @@ import {
   type GenerateContentResponse,
   type GroundingMetadata,
 } from "@google/genai/web";
+// Monorepo-root single source of truth, shared with the desktop build (its
+// vite.config.ts inlines the same value as the VITE_GEMINI_MODEL default).
+// A plain JSON import: bundled and inlined at build time, so it costs the Edge
+// runtime nothing and needs no sync step.
+import sharedConfig from "../../shared-config.json";
 
 /** One web source behind a grounded answer (title + link), display-only. */
 export type Citation = { uri: string; title: string };
@@ -129,7 +134,7 @@ function isGroundingCapable(model: string): boolean {
  * The model pass 1 should use, or null when grounding isn't available on this
  * server for this request. Env `GEMINI_GROUNDING_MODEL` wins; otherwise the
  * request model is reused only if it's itself grounding-capable. Returning null
- * (e.g. the client's `gemini-2.5-flash-lite` default with no env configured)
+ * (e.g. the client's lite default — see shared-config.json — with no env set)
  * lets the route reject the grounded request with the entitlement message shape
  * the client already maps — deployments enable grounding by setting
  * `GEMINI_GROUNDING_MODEL` (e.g. `gemini-2.5-flash`).
@@ -156,7 +161,7 @@ export function resolveGroundingModel(requestModel: string): string | null {
  * config, never request data.
  *
  * Allowlist by MEASURED PRICE, never by a name pattern. A `-flash-lite` suffix
- * is not a price guarantee: `gemini-2.5-flash-lite` bills $0.10/$0.40 per 1M
+ * is not a price guarantee: the 2.5 flash-lite tier bills $0.10/$0.40 per 1M
  * tokens, while the published 3.x-lite tier bills $0.30/$2.50 — 3x input and
  * 6.25x output under a name that reads as the same tier. Pre-approving an
  * unreleased successor on that assumption is how a 1-credit generation
@@ -165,7 +170,8 @@ export function resolveGroundingModel(requestModel: string): string | null {
  */
 const DEFAULT_ALLOWED_MODELS = [
   // The desktop's shipped VITE_GEMINI_MODEL. $0.10 in / $0.40 out per 1M.
-  "gemini-2.5-flash-lite",
+  // Same value the desktop build inlines — see shared-config.json.
+  sharedConfig.defaultGeminiModel,
 ];
 
 /** True when the request model is one this deployment agrees to pay for.
@@ -338,10 +344,9 @@ export async function generateGrounded(
   ) {
     throw new Error(
       "grounding pass 1 returned no research " +
-        `(queries=${grounding.queries.length}, chunks=${grounding.chunks.length}, ` +
-        `findingsChars=${findings.length}, finishReason=${
-          candidate?.finishReason ?? "none"
-        })`
+      `(queries=${grounding.queries.length}, chunks=${grounding.chunks.length}, ` +
+      `findingsChars=${findings.length}, finishReason=${candidate?.finishReason ?? "none"
+      })`
     );
   }
   return { findings, grounding };

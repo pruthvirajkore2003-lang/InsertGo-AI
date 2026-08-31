@@ -1,0 +1,5 @@
+{
+  "//": "SINGLE SOURCE OF TRUTH for values both workspaces must agree on. Plain JSON so every toolchain can read it with no build step: the website imports it directly (lib/gemini.ts), and the desktop's vite.config.ts inlines it as the VITE_GEMINI_MODEL default. Env vars still override — see the notes on each key.",
+  "//defaultGeminiModel": "The model the desktop ships and the website's /api/ai/generate agrees to bill for. Both sides MUST agree or every generation 400s, which is the whole reason this lives in one file. Overrides: desktop VITE_GEMINI_MODEL (.env, build time), server GEMINI_ALLOWED_MODELS (comma-separated, replaces the default outright). Change this only after checking the model's PRICE — the debit is a flat 1 credit per generation, so a pricier model silently multiplies COGS.",
+  "defaultGeminiModel": "gemini-3.5-flash-lite"
+}

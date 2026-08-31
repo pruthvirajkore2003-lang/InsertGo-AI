@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, MotionConfig, type Variants } from "framer-motion";
-import { useAuthStore } from "@/store/authStore";
+import { isPro, tierOf, totalCredits, useAuthStore } from "@/store/authStore";
 import { copyToClipboard } from "@/services/clipboard";
 import { toast } from "@/store/toastStore";
 
@@ -33,6 +33,10 @@ export function AuthPanel() {
     cancelSignIn,
     logout,
   } = useAuthStore();
+
+  // Capitalized plan tier ("Free" / "Plus" / "Pro") for the Status row.
+  const tier = tierOf(user);
+  const statusLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
 
   const copyLink = async () => {
     if (!browserPrompt) return;
@@ -76,12 +80,12 @@ export function AuthPanel() {
                     <span className="ig-auth__key">Status</span>
                     <span
                       className={
-                        user.subscriptionStatus === "subscribed"
+                        isPro(user)
                           ? "ig-auth__val ig-auth__val--cap ig-auth__val--ok"
                           : "ig-auth__val ig-auth__val--cap"
                       }
                     >
-                      {user.subscriptionStatus}
+                      {statusLabel}
                     </span>
                   </div>
                   <div className="ig-auth__row">
@@ -91,9 +95,7 @@ export function AuthPanel() {
                         className="fa-solid fa-coins ig-auth__coin"
                         aria-hidden="true"
                       />
-                      {user.subscriptionStatus === "trial"
-                        ? `${user.credits} remaining`
-                        : "Unlimited"}
+                      {totalCredits(user)} remaining
                     </span>
                   </div>
                   <div className="ig-auth__row">

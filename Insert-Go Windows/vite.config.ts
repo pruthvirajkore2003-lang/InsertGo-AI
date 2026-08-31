@@ -1,6 +1,11 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
+// Monorepo-root single source of truth, shared with the website (its
+// lib/gemini.ts builds DEFAULT_ALLOWED_MODELS from the same key). Both sides
+// have to name the same model or every generation is rejected as 400, which is
+// why the value lives in one file instead of in each .env template.
+import sharedConfig from "../shared-config.json";
 
 // @tauri-apps/cli sets these; keep dev server stable for Tauri.
 const host = process.env.TAURI_DEV_HOST;
@@ -18,9 +23,11 @@ const host = process.env.TAURI_DEV_HOST;
  * top-level throw that would take the whole app down on import (the reason
  * aiProviders.ts guards inside `send()` instead).
  */
-function requireProductionApiUrl(mode: string): void {
+function requireProductionApiUrl(
+  mode: string,
+  env: Record<string, string>
+): void {
   if (mode !== "production") return;
-  const env = loadEnv(mode, process.cwd(), "VITE_");
   if (env.VITE_ALLOW_DEV_API_URL === "1") return; // deliberate local smoke build
   const url = env.VITE_API_URL?.trim();
   if (
@@ -37,13 +44,24 @@ function requireProductionApiUrl(mode: string): void {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  requireProductionApiUrl(mode);
+  // Covers .env files AND prefixed process env, so CI can still override.
+  const env = loadEnv(mode, process.cwd(), "VITE_");
+  requireProductionApiUrl(mode, env);
   return {
     plugins: [react()],
     define: {
       // Defensive guard: even if someone re-adds VITE_GEMINI_API_KEY to .env,
       // it can never be inlined into the shipped bundle (SECURITY.md).
       "import.meta.env.VITE_GEMINI_API_KEY": "undefined",
+      // Model config, defaulted from the shared root JSON so the name is not
+      // copied into .env.example and the release workflow as well. An explicit
+      // VITE_GEMINI_MODEL (.env or CI env) still wins — this only supplies the
+      // value when nothing sets one, replacing what .env.example used to
+      // hardcode. `send()` in aiProviders.ts keeps its empty-model fail-fast:
+      // it costs nothing and still covers a deliberately blanked default.
+      "import.meta.env.VITE_GEMINI_MODEL": JSON.stringify(
+        env.VITE_GEMINI_MODEL?.trim() || sharedConfig.defaultGeminiModel
+      ),
     },
     resolve: {
       alias: {

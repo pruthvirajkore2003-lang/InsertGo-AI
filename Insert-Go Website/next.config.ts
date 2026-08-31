@@ -33,7 +33,7 @@ const SECURITY_HEADERS = [
  * Two reasons, and the second is the one that matters here: an ad blocker that
  * drops `*.i.posthog.com` takes the product funnel with it, and a third-party
  * analytics host in `connect-src` widens the CSP for every page. Proxied, the
- * browser only ever talks to `insertgo.ai/_phex/*`, so `connect-src 'self'`
+ * browser only ever talks to `insertgo.com/_phex/*`, so `connect-src 'self'`
  * covers it (middleware.ts) and there is no host for a blocker to match.
  *
  * `/static` is the asset/recorder bundle host, `/_phex/*` is the event API.

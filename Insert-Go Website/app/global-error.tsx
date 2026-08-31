@@ -21,7 +21,7 @@ export default function GlobalError({
       <body className="flex min-h-screen items-center justify-center px-6 text-center">
         <div className="flex max-w-[440px] flex-col items-center gap-4">
           <h1 className="m-0 font-serif text-[28px] font-semibold tracking-[-0.02em] text-ink">
-            InsertGo.AI is having a moment
+            InsertGo AI is having a moment
           </h1>
           <p className="m-0 text-[15px] leading-relaxed text-muted">
             Something failed before the page could render. Reloading usually

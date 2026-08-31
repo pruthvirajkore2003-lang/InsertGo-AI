@@ -1,7 +1,7 @@
 ---
 title: InsertGo SEO/AEO research and content ownership
 updated: 2026-08-23
-owner: InsertGo.AI
+owner: InsertGo AI
 ---
 
 # InsertGo SEO/AEO research and content ownership
@@ -30,7 +30,7 @@ this table gets violated.
 
 | URL | Primary intent | Primary query | Supporting queries |
 | --- | --- | --- | --- |
-| `/` | Product/category | floating AI prompt assistant Windows | What is InsertGo AI; Spotlight for AI prompts |
+| `/` | Product/category | vibe coding prompt writing | floating AI prompt assistant Windows; What is InsertGo AI; how to write better prompts for vibe coding |
 | `/features` | Feature hub | — summarizes and links | InsertGo features |
 | `/features/auto-text-insert` | Feature/how-to | AI text auto-insert desktop | global hotkey AI prompt manager; text selection floating AI tool |
 | `/features/prompt-library` | Feature/solution | AI prompt library software | dynamic AI prompt templates with form fields |
@@ -60,7 +60,8 @@ heading — not off Search Console data. Treat them as the intent each page is
 
 ## Cannibalization rules
 
-- Homepage owns **floating AI prompt assistant**. Desktop-assistant hub uses **Windows desktop AI assistant** and links back to product core.
+- Homepage owns **vibe coding prompt writing** and **floating AI prompt assistant**. Desktop-assistant hub uses **Windows desktop AI assistant** and links back to product core.
+- The homepage owns the *practice* — what vibe coding prompt writing is, and how to structure the instruction. `/use-cases/developers` keeps the *tooling* query (VS Code, Windows Terminal, JetBrains) and the concrete templates. The homepage links down to it and must not grow a template gallery of its own.
 - Raycast and Spotlight comparison intent stays on one page. Do not add a separate Spotlight landing page.
 - Auto-insert page owns selection-floater and global-hotkey utility subsections. Do not split those into thin pages without Search Console evidence.
 - Prompt-library page owns all form-command documentation and AEO answers. Feature hub summarizes and links. This includes `/features/ai-text-expander`, which carried a fuller command reference than the owner page until 2026-08-23 — a rule is only worth writing down if you check the pages that quietly break it.
@@ -69,10 +70,37 @@ heading — not off Search Console data. Treat them as the intent each page is
 - `/how-it-works` owns the mechanism — focus capture, foreground verification, clipboard restore — and deliberately does not phrase its direct answer as "how do you insert AI text into a Windows app". That query belongs to `/features/auto-text-insert`.
 - Generic category tables (`/`, `/features/desktop-assistant`, both use-case pages) compare InsertGo to a *class* of tool and need no date or source. Any table naming a real product does, and lives on an `/alternatives/*` page.
 
+## The "free" modifier
+
+`free` is a query modifier with its own intent, not a decoration: *free AI
+prompt assistant Windows*, *free AI text expander*, *free alternative to
+TextExpander*, *free Raycast alternative Windows*. It is carried in the title
+tag only where the page's own primary query survives intact in front of it —
+`Free Text Blaze Alternative for Windows` keeps the exact phrase the table
+assigns that page; `Free Raycast Alternative for Windows` would not, so Raycast
+carries the modifier in its description instead.
+
+Rules that keep it honest, because a `free` claim is a consumer-facing one:
+
+- Only pages a free user can actually act on carry it: `/`, `/download`,
+  `/pricing`, the feature and alternatives pages, both use cases. `/how-it-works`
+  and the blog pillar are mechanism and explainer pages and get nothing.
+- Every allowance is read from `TIER_DAILY_CREDITS`, never retyped. `/faq`
+  carried `5`, `50` and `150` as prose until 2026-08-31 — three claims that
+  would have survived a tier change unchanged.
+- Prices stay on `/pricing`. A description may say "free plan" and "no credit
+  card"; it may not restate a paid amount that `lib/pricing.ts` owns.
+- "Free forever" is the Free tier, which is real ($0, `per: "forever"`). Do not
+  write "free trial" for it anywhere: `/login` already says "7-day free trial
+  included", which describes something else and should be reconciled.
+- Max one `free` in a title and one in a description. Two is stuffing, and the
+  second one displaces a differentiator.
+
 ## Answer-engine format
 
-- Put a 35–55 word direct answer immediately below each main question heading.
-- Keep the same answer visible in page content and structured data.
+- Put a 40–55 word direct answer immediately below each main question heading, inside the first third of the document. `/` and `/features` carried none until 2026-08-27 — they were the two highest-value pages on the site and the only two content routes without one, because the capsule was treated as a long-tail-page device rather than the page-level default.
+- Keep the same answer visible in page content and structured data. The way to guarantee it is one exported string used by both, not two copies a reviewer compares by eye.
+- Quantify with numbers already enforced somewhere in the repo — daily credits from `TIER_DAILY_CREDITS`, hotkeys from `HOTKEYS`, plan prices from `lib/pricing.ts`. A number retyped into prose is a claim with nothing behind it the moment the constant moves.
 - Prefer real HTML tables, ordered steps, code examples, descriptive headings, and stable anchor links.
 - State product limits and fallback behavior. Answer engines are more likely to trust precise, falsifiable text than absolute marketing claims.
 - Date competitor comparisons and link official sources.
@@ -86,10 +114,12 @@ answers sat in the index as an orphan, linked to neither the `WebSite` nor the
 product entity.
 
 - Global: `Organization` + `WebSite` (once per document, from `app/layout.tsx`).
-- Homepage: `SoftwareApplication` + visible `FAQPage`.
+- Homepage: `WebPage` + `SoftwareApplication` + visible `FAQPage` + `BreadcrumbList`. Until 2026-08-27 it emitted a bare `SoftwareApplication` and a bare `FAQPage` as two standalone scripts, with no `WebPage` node at all — the exact orphan shape recorded on `/faq` above, left in place on the page the rest of the site links up to. The rule is not "hubs and long-tail pages use `pageGraph()`"; it is every page.
+- `pageGraph({ path: "" })` is how the root is addressed: it resolves to `SITE_URL` with no trailing slash, matching the canonical and the `url` on the product node.
 - Feature how-to pages: `HowTo` + `FAQPage` + `BreadcrumbList`.
 - Comparison page: visible `FAQPage` + `BreadcrumbList`.
-- Pillar guide: `BlogPosting` + visible `FAQPage` + `BreadcrumbList`.
+- Pillar guide: `BlogPosting` + visible `FAQPage` + `BreadcrumbList`, via `pageGraph({ article })`. The `article` layer references `ORG_ID` for both author and publisher instead of restating an Organization the document already declares.
+- `SoftwareApplication.offers` is an `AggregateOffer` derived from `lib/pricing.ts`, not a literal. The hardcoded `price: "0"` it replaced was true of the free tier and silently wrong about Plus and Pro, which is worse than no offer at all when the question being answered is "how much does it cost".
 - Hub, walkthrough and transactional pages (`/features`, `/how-it-works`, `/download`, `/pricing`, `/faq`): `WebPage` + `BreadcrumbList` at minimum. A page named by another node — `downloadUrl`, `offers.url`, `softwareHelp`, a child's breadcrumb — must publish a node of its own to receive the reference.
 - Anything a `HowTo` numbers must be an `<ol>` in the document with matching `#step-N` anchors. A step sequence built from `<div>`s is not an ordered list to a parser.
 - **Marked-up content must be in the server HTML.** Not "on the page after a click" — in the response. The `/faq` accordion mounted only the open panel, so ten of eleven declared answers did not exist for a crawler. Collapse with `<details>` or CSS, never by unmounting.
@@ -99,7 +129,7 @@ product entity.
 
 - Canonicals and `og:url` resolve from `SITE_URL`, not the request host. A host-derived `metadataBase` makes every preview deployment self-canonical and puts a second indexable copy of the site in front of Google. Local development is the only exception.
 - `robots.txt` `Disallow` stops the fetch, not the listing. Every private surface needs `robots: { index: false }` in its own metadata as well.
-- Titles are budgeted against the ` — InsertGo.AI` template appended by the root layout: keep the page's own title at or under ~46 characters. Descriptions at or under ~158.
+- Titles are budgeted against the ` — InsertGo AI` template appended by the root layout: keep the page's own title at or under ~46 characters. Descriptions at or under ~158.
 
 ## Measurement
 

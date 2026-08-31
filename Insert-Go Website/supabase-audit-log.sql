@@ -1,4 +1,4 @@
--- InsertGo.AI — append-only security audit log (CERT-In Direction 4).
+-- InsertGo AI — append-only security audit log (CERT-In Direction 4).
 --
 -- Run once in Supabase (SQL Editor → New query → paste → Run), AFTER
 -- supabase-auth-schema.sql. Safe to re-run.

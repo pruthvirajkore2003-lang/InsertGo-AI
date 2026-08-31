@@ -78,31 +78,31 @@ export function FloatingIcon() {
   }, []);
 
   return (
-    <div
-      className="ig-float"
-      role="button"
-      tabIndex={0}
-      aria-label="Open InsertGo"
-      title="InsertGo — click to open, drag to move, right-click for menu"
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") void openMain();
-      }}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        void popupMenu();
-      }}
-    >
-      {/* Animation lives on the inner visual only — the outer shell owns the
-          pointer handlers and must not transform (its geometry is what the
-          drag-threshold math and the OS window bounds see). whileTap can be
-          left "pressed" if startDragging() steals the pointerup; framer
-          resets the gesture on the next pointer enter/leave/down, so it
-          self-heals the moment the cursor moves. */}
+    // The shell is hit-transparent (pointer-events: none in CSS): the 10px
+    // transparent margin around the 44px circle must not intercept clicks,
+    // so all interaction lives on the inner bubble alone.
+    <div className="ig-float">
+      {/* Animation lives on the inner visual only — and now the pointer
+          handlers do too, so the shell's transparent margin can't receive
+          DOM events. whileTap can be left "pressed" if startDragging()
+          steals the pointerup; framer resets the gesture on the next pointer
+          enter/leave/down, so it self-heals the moment the cursor moves. */}
       <motion.div
         className="ig-float__inner"
+        role="button"
+        tabIndex={0}
+        aria-label="Open InsertGo"
+        title="InsertGo — click to open, drag to move, right-click for menu"
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") void openMain();
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          void popupMenu();
+        }}
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.92 }}
         transition={{ type: "spring", stiffness: 420, damping: 24 }}

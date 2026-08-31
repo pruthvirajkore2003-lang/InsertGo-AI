@@ -45,7 +45,7 @@ Website is network authority. Desktop is public client. Desktop must never conta
 | Environment | Desktop | Website |
 | --- | --- | --- |
 | Local | VITE_API_URL=http://localhost:3000 | BETTER_AUTH_URL=http://localhost:3000 |
-| Production | VITE_API_URL=https://insertgo.ai | BETTER_AUTH_URL=https://insertgo.ai |
+| Production | VITE_API_URL=https://insertgo.com | BETTER_AUTH_URL=https://insertgo.com |
 
 Rules:
 

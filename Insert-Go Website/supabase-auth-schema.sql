@@ -1,4 +1,4 @@
--- InsertGo.AI — Better Auth schema (v1.6.x) for Supabase Postgres.
+-- InsertGo AI — Better Auth schema (v1.6.x) for Supabase Postgres.
 -- Generated from the live plugin config in lib/auth.ts
 -- (core + email-otp + sso + device-authorization + bearer).
 --
